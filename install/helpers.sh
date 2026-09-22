@@ -9,7 +9,7 @@ step_heading() {
 }
 
 run_step() {
-  local name=$1 file="$OMACOS_INSTALL/$1.sh"
+  local file="$OMACOS_INSTALL/$1.sh"
   [[ -f $file ]] || { printf '\033[31mMissing install step: %s\033[0m\n' "$file" >&2; return 1; }
   # Leaves are sourced so they share one shell (and one sudo timestamp).
   # shellcheck source=/dev/null

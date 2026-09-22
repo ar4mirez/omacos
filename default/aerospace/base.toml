@@ -1,0 +1,54 @@
+# omacos AeroSpace base settings — package-owned. Keybindings are appended by
+# `omacos keymap build` from ~/.config/omacos/keymap.conf.
+
+after-login-command = []
+after-startup-command = [
+  'exec-and-forget /opt/homebrew/bin/borders',
+  'exec-and-forget /opt/homebrew/bin/sketchybar',
+]
+
+# AeroSpace reimplements workspaces rather than using native Spaces, so nothing
+# else can observe a workspace switch. This is the only bridge SketchyBar gets.
+exec-on-workspace-change = [
+  '/bin/bash', '-c',
+  'sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE',
+]
+
+start-at-login = true
+
+enable-normalization-flatten-containers = true
+enable-normalization-opposite-orientation-for-nested-containers = true
+
+accordion-padding = 30
+default-root-container-layout = 'tiles'
+default-root-container-orientation = 'auto'
+
+# Mouse follows the focused window, which keeps hover menus where you expect.
+on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
+
+automatically-unhide-macos-hidden-apps = true
+
+[key-mapping]
+preset = 'qwerty'
+
+[gaps]
+inner.horizontal = 8
+inner.vertical = 8
+outer.left = 8
+outer.bottom = 8
+outer.top = 8
+outer.right = 8
+
+# Apps that must never be tiled: modal, utility, or genuinely fixed-size.
+[[on-window-detected]]
+if.app-id = 'com.apple.systempreferences'
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.finder'
+if.window-title-regex-substring = 'Info'
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = 'com.1password.1password'
+run = 'layout floating'

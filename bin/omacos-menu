@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# omacos:summary=The omacos menu
+# omacos:args=[route]
+# omacos:examples=omacos menu | omacos menu style.theme
+#
+# Rows are keyed by dotted id; the parent is inferred from the id, so adding a
+# row never means editing navigation code. Users add or override rows in
+# ~/.config/omacos/extensions/omacos-menu.jsonc — reusing an id replaces the
+# shipped row.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+command -v gum >/dev/null || { echo "omacos menu needs gum: brew install gum" >&2; exit 1; }
+command -v jq  >/dev/null || { echo "omacos menu needs jq: brew install jq" >&2; exit 1; }
+
+shipped="$OMACOS_PATH/default/menu.json"
+extension="$OMACOS_CONFIG/extensions/omacos-menu.jsonc"
+
+# JSONC: drop whole-line comments and end-of-line comments that follow
+# whitespace, so a "//" inside a URL survives.
+strip_jsonc() { sed -e 's|^[[:space:]]*//.*$||' -e 's|[[:space:]]//[[:space:]].*$||' "$1"; }
+
+load_menu() {
+  if [[ -f $extension ]]; then
+    jq -s '.[0] * .[1]' "$shipped" <(strip_jsonc "$extension")
+  else
+    cat "$shipped"
+  fi
+}
+
+MENU_JSON=$(load_menu)
+
+# Direct children of a route: ids with exactly one more dotted segment.
+children_of() {
+  local route=$1
+  if [[ $route == root ]]; then
+    jq -r 'to_entries[] | select(.key | test("^[^.]+$")) | .key' <<<"$MENU_JSON"
+  else
+    jq -r --arg p "$route" 'to_entries[]
+      | select(.key | startswith($p + "."))
+      | select((.key | ltrimstr($p + ".")) | test("^[^.]+$"))
+      | .key' <<<"$MENU_JSON"
+  fi
+}
+
+field() { jq -r --arg k "$1" --arg f "$2" '.[$k][$f] // empty' <<<"$MENU_JSON"; }
+
+# `when` hides a row when its shell condition fails; `checked` appends a tick.
+# Both let rows reflect live system state instead of a stale snapshot.
+visible() {
+  local when; when=$(field "$1" when)
+  [[ -z $when ]] && return 0
+  bash -c "$when" >/dev/null 2>&1
+}
+checked_mark() {
+  local checked; checked=$(field "$1" checked)
+  [[ -z $checked ]] && return 0
+  bash -c "$checked" >/dev/null 2>&1 && printf '  ✓'
+}
+
+# --list is for scripting and tests: print a route's rows and exit.
+if [[ ${1:-} == --list ]]; then
+  children_of "${2:-root}" | while IFS= read -r id; do
+    [[ -n $id ]] || continue
+    visible "$id" || continue
+    printf '%s\t%s\t%s\n' "$id" "$(field "$id" label)" "$(field "$id" action)"
+  done
+  exit 0
+fi
+
+route=${1:-root}
+trail=()
+
+while :; do
+  labels=(); ids=()
+  while IFS= read -r id; do
+    [[ -n $id ]] || continue
+    visible "$id" || continue
+    ids+=("$id")
+    labels+=("$(printf '%s  %s%s' "$(field "$id" icon)" "$(field "$id" label)" "$(checked_mark "$id")")")
+  done < <(children_of "$route")
+
+  ((${#ids[@]})) || { echo "Nothing here." >&2; exit 0; }
+
+  if [[ $route == root ]]; then
+    header="omacos"
+  else
+    header="omacos · ${route//./ · }"
+    labels+=("←  Back")
+  fi
+
+  choice=$(printf '%s\n' "${labels[@]}" | gum filter --placeholder "$header" --height 14 --prompt "› ") || exit 0
+
+  if [[ $choice == "←  Back" ]]; then
+    if ((${#trail[@]})); then
+      route=${trail[-1]}
+      unset "trail[${#trail[@]}-1]"
+    else
+      route=root
+    fi
+    continue
+  fi
+
+  selected=""
+  for i in "${!labels[@]}"; do
+    if [[ ${labels[i]} == "$choice" ]]; then selected=${ids[i]:-}; break; fi
+  done
+  [[ -n $selected ]] || exit 0
+
+  action=$(field "$selected" action)
+  if [[ -n $action ]]; then
+    eval "$action"
+    exit 0
+  fi
+
+  trail+=("$route")
+  route=$selected
+done

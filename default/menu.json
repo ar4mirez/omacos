@@ -1,0 +1,31 @@
+{
+  "style":               { "icon": "◐", "label": "Style" },
+  "style.theme":         { "icon": "◑", "label": "Theme", "action": "omacos-menu-theme" },
+  "style.theme-next":    { "icon": "◒", "label": "Next theme", "action": "omacos-theme-next" },
+  "style.light-dark":    { "icon": "☀", "label": "Toggle light/dark", "action": "omacos-cmd-toggle-appearance" },
+
+  "setup":               { "icon": "⚙", "label": "Setup" },
+  "setup.keybindings":   { "icon": "⌘", "label": "Keybindings", "action": "omacos-keymap-show; read -n 1 -s -r -p 'Press any key'" },
+  "setup.keymap-build":  { "icon": "↻", "label": "Rebuild keymap", "action": "omacos-keymap-build" },
+  "setup.features":      { "icon": "⊞", "label": "Features", "action": "omacos-menu-feature" },
+  "setup.doctor":        { "icon": "✚", "label": "Doctor", "action": "omacos-doctor; read -n 1 -s -r -p 'Press any key'" },
+  "setup.edit-keymap":   { "icon": "✎", "label": "Edit keymap", "action": "${EDITOR:-nvim} ~/.config/omacos/keymap.conf && omacos-keymap-build" },
+  "setup.edit-local":    { "icon": "✎", "label": "Edit local.env", "action": "${EDITOR:-nvim} ~/.config/omacos/local.env" },
+
+  "update":              { "icon": "⇩", "label": "Update" },
+  "update.omacos":       { "icon": "⇧", "label": "Update omacos", "action": "omacos-update" },
+  "update.packages":     { "icon": "□", "label": "Update packages only", "action": "brew update && brew upgrade" },
+  "update.migrations":   { "icon": "▶", "label": "Run pending migrations", "action": "omacos-migrate", "when": "omacos-migrate --pending" },
+
+  "system":              { "icon": "▣", "label": "System" },
+  "system.activity":     { "icon": "▤", "label": "Activity", "action": "btop" },
+  "system.disk":         { "icon": "▦", "label": "Disk usage", "action": "df -h; read -n 1 -s -r -p 'Press any key'" },
+  "system.wifi":         { "icon": "≋", "label": "Wi-Fi settings", "action": "open 'x-apple.systempreferences:com.apple.wifi-settings-extension'" },
+  "system.displays":     { "icon": "▭", "label": "Displays", "action": "open 'x-apple.systempreferences:com.apple.Displays-Settings.extension'" },
+
+  "power":               { "icon": "⏻", "label": "Power" },
+  "power.lock":          { "icon": "🔒", "label": "Lock", "action": "pmset displaysleepnow" },
+  "power.sleep":         { "icon": "☾", "label": "Sleep", "action": "pmset sleepnow" },
+  "power.restart":       { "icon": "↻", "label": "Restart", "action": "osascript -e 'tell app \"System Events\" to restart'" },
+  "power.shutdown":      { "icon": "⏼", "label": "Shut down", "action": "osascript -e 'tell app \"System Events\" to shut down'" }
+}

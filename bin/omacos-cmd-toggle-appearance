@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# omacos:summary=Toggle macOS between light and dark
+# omacos:examples=omacos cmd toggle-appearance
+set -euo pipefail
+osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to not dark mode'

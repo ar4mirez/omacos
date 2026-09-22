@@ -51,7 +51,7 @@ if command -v brew >/dev/null; then
 else bad "Homebrew not installed"; fi
 
 section "Seeded config"
-if omacos done check seed 2>/dev/null; then ok "Config seeded"
+if omacos-done check seed 2>/dev/null; then ok "Config seeded"
 else note "Config not seeded yet" "Run: omacos-install or $OMACOS_PATH/install.sh"; fi
 for dir in "$OMACOS_CONFIG" "$OMACOS_STATE"; do
   [[ -d $dir ]] && ok "$(printf '%s' "${dir/#$HOME/\~}")" || note "missing ${dir/#$HOME/\~}"

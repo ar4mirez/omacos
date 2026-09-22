@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# ~/.config/sketchybar/sketchybarrc — yours. omacos seeded it once.
+# Colours come from the active omacos theme and are re-sourced on --reload.
+
+PLUGIN_DIR="$HOME/.config/sketchybar/plugins"
+
+# Theme colours. Falls back to something readable if no theme is set yet.
+THEME_COLORS="$HOME/.local/state/omacos/current/theme/sketchybar.sh"
+if [[ -f $THEME_COLORS ]]; then
+  # Generated per theme, so there is nothing for shellcheck to follow.
+  # shellcheck source=/dev/null
+  source "$THEME_COLORS"
+else
+  # Fallback palette. These are read by plugins/*.sh, not by this file.
+  # shellcheck disable=SC2034
+  { BAR_COLOR=0xff1a1b26; LABEL_COLOR=0xffa9b1d6; ICON_COLOR=0xffa9b1d6
+    ACCENT_COLOR=0xff7aa2f7; DIM_COLOR=0xff565f89; ITEM_BG_COLOR=0xff24283b
+    HIGHLIGHT_COLOR=0xffc0caf5; GREEN=0xff9ece6a; YELLOW=0xffe0af68; RED=0xfff7768e; }
+fi
+
+FONT="JetBrainsMono Nerd Font"
+
+sketchybar --bar height=36 \
+                 position=top \
+                 sticky=on \
+                 padding_left=8 \
+                 padding_right=8 \
+                 color="$BAR_COLOR"
+
+sketchybar --default updates=when_shown \
+                     icon.font="$FONT:Bold:14.0" \
+                     icon.color="$ICON_COLOR" \
+                     label.font="$FONT:Semibold:13.0" \
+                     label.color="$LABEL_COLOR" \
+                     padding_left=4 \
+                     padding_right=4 \
+                     background.corner_radius=6 \
+                     background.height=24
+
+# --- workspaces -------------------------------------------------------------
+# AeroSpace does not use native Spaces, so it pushes workspace changes to us
+# with `sketchybar --trigger aerospace_workspace_change` (see aerospace.toml).
+sketchybar --add event aerospace_workspace_change
+
+if command -v aerospace >/dev/null 2>&1; then
+  for workspace in $(aerospace list-workspaces --all); do
+    sketchybar --add item "space.$workspace" left \
+               --subscribe "space.$workspace" aerospace_workspace_change \
+               --set "space.$workspace" \
+                     label="$workspace" \
+                     icon.drawing=off \
+                     background.color="$ITEM_BG_COLOR" \
+                     background.drawing=off \
+                     click_script="aerospace workspace $workspace" \
+                     script="$PLUGIN_DIR/workspace.sh"
+  done
+fi
+
+sketchybar --add item front_app left \
+           --set front_app script="$PLUGIN_DIR/front_app.sh" \
+                           icon.drawing=off \
+                           label.color="$ACCENT_COLOR" \
+                           label.font="$FONT:Bold:13.0" \
+           --subscribe front_app front_app_switched
+
+# --- right side -------------------------------------------------------------
+sketchybar --add item clock right \
+           --set clock update_freq=10 script="$PLUGIN_DIR/clock.sh"
+
+sketchybar --add item battery right \
+           --set battery update_freq=120 script="$PLUGIN_DIR/battery.sh" \
+           --subscribe battery power_source_change
+
+sketchybar --add item theme right \
+           --set theme icon="◐" \
+                       label.drawing=off \
+                       click_script="omacos-theme-next" \
+                       icon.color="$ACCENT_COLOR"
+
+sketchybar --update

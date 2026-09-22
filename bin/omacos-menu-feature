@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# omacos:summary=Toggle optional layers interactively
+# omacos:examples=omacos menu feature
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+command -v gum >/dev/null || { echo "needs gum" >&2; exit 1; }
+
+name=$(omacos-feature list | sed 's/\x1b\[[0-9;]*m//g' | awk '{print $NF}' \
+  | gum filter --placeholder "Feature to toggle" --height 10 --prompt "› ") || exit 0
+[[ -n $name ]] || exit 0
+
+if omacos-feature check "$name"; then
+  omacos-feature disable "$name"
+else
+  omacos-feature enable "$name"
+  gum confirm "Install packages for '$name' now?" && omacos-install-feature "$name"
+fi

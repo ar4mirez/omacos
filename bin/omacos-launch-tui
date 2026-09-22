@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# omacos:summary=Run a terminal command in its own floating window
+# omacos:args=<command...>
+# omacos:examples=omacos launch tui btop
+set -euo pipefail
+
+command=${*:-}
+[[ -n $command ]] || { echo "usage: omacos launch tui <command>" >&2; exit 1; }
+
+# A login shell so the command sees the same PATH and theme env as a normal one.
+exec open -na Ghostty --args \
+  --title="omacos" \
+  --window-width=110 --window-height=32 \
+  -e "$SHELL" -lc "$command"

@@ -1,3 +1,7 @@
+# Tildes in this file appear inside messages shown to the user, where they
+# are meant to stay literal rather than resolve to /Users/<name>.
+# shellcheck disable=SC2088
+
 step_heading "Config"
 
 # Seed-if-absent, rather than a single global marker. A file you already have is
@@ -60,3 +64,6 @@ if [[ -f $HOME/.zprofile ]] && ! omacos-done check zprofile-notice 2>/dev/null; 
   warn "~/.zprofile is no longer read (ZDOTDIR moved). Its contents are now in ~/.config/zsh/.zprofile"
   omacos-done mark zprofile-notice
 fi
+
+# Agent skills: symlinked so updates improve them without re-running install.
+omacos-finalize-user | sed 's/^/      /'

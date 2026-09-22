@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# omacos:summary=Pick a theme interactively
+# omacos:examples=omacos menu theme
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+command -v gum >/dev/null || { echo "needs gum" >&2; exit 1; }
+
+current=$(omacos-theme-current 2>/dev/null || echo "")
+choice=$(omacos-theme-list --plain | sort -u | gum filter \
+  --placeholder "Theme (current: ${current:-none})" --height 12 --prompt "› ") || exit 0
+[[ -n $choice ]] && exec omacos-theme-set "$choice"

@@ -32,9 +32,12 @@ declare -A GROUP_DESCRIPTIONS=(
   [done]="One-shot completion markers"
   [hook]="User extension points"
   [dev]="Contributor tooling"
+  [finalize]="Per-user setup"
   [cmd]="Small predicates and helpers"
   [doctor]="Check this machine's setup"
   [feature]="Enable or disable optional layers"
+  [keymap]="Window manager keybindings"
+  [launch]="Launch apps and TUIs"
 )
 
 # ---------------------------------------------------------------- metadata ---

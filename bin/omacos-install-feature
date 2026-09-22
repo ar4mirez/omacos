@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# omacos:summary=Install the packages a feature needs
+# omacos:args=<feature>
+# omacos:examples=omacos install feature desktop
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+feature=${1:?usage: omacos install feature <name>}
+case $feature in
+  desktop|statusbar|borders)
+    brew bundle install --file "$OMACOS_PATH/Brewfile.desktop" --no-upgrade
+    omacos-keymap-build
+    printf '\n\033[33mAeroSpace needs Accessibility permission.\033[0m\n'
+    printf 'Grant it in System Settings > Privacy & Security > Accessibility, then run:\n'
+    printf '  open -a AeroSpace\n'
+    ;;
+  hyper)
+    brew install --cask karabiner-elements
+    printf '\n\033[33mKarabiner needs a driver extension approved in System Settings.\033[0m\n'
+    ;;
+  *) echo "Unknown feature: $feature" >&2; exit 1 ;;
+esac

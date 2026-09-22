@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# omacos:summary=Update omacos, run migrations, and refresh packages
+# omacos:args=[-y]
+# omacos:examples=omacos update | omacos update -y
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+unattended=false; [[ ${1:-} == -y ]] && unattended=true
+
+lock="$OMACOS_STATE/update.lock"
+mkdir -p "$OMACOS_STATE"
+if ! mkdir "$lock" 2>/dev/null; then
+  echo "An update is already running." >&2; exit 1
+fi
+trap 'rm -rf "$lock"' EXIT
+
+step() { printf '\n\033[1;34m▸\033[0m \033[1m%s\033[0m\n' "$1"; }
+
+# -y is a promise not to ask anything, so it is also what CI and hooks pass.
+if ! $unattended && [[ -t 0 ]] && command -v gum >/dev/null; then
+  gum confirm "Update omacos and refresh packages?" || exit 0
+fi
+
+step "Fetching omacos"
+if [[ -d $OMACOS_PATH/.git ]]; then
+  before=$(git -C "$OMACOS_PATH" rev-parse HEAD)
+  if git -C "$OMACOS_PATH" pull --ff-only 2>&1 | sed 's/^/  /'; then
+    after=$(git -C "$OMACOS_PATH" rev-parse HEAD)
+    [[ $before == "$after" ]] && echo "  Already up to date."
+  else
+    echo "  Could not fast-forward — you have local changes. Skipping." >&2
+  fi
+else
+  echo "  Not a git checkout; skipping."
+fi
+
+step "Packages"
+brew bundle install --file "$OMACOS_PATH/Brewfile" --no-upgrade 2>&1 | sed 's/^/  /'
+if omacos-feature check desktop 2>/dev/null; then
+  brew bundle install --file "$OMACOS_PATH/Brewfile.desktop" --no-upgrade 2>&1 | sed 's/^/  /'
+fi
+
+step "Migrations"
+# Migrations ship with the code fetched above and are written against it, so
+# they run after the pull and before anything that depends on the new layout.
+omacos-migrate
+
+step "Config"
+# Seeds any config file added since the last update. Existing files are yours
+# and are never touched.
+seeded=0
+while IFS= read -r -d '' source_file; do
+  relative=${source_file#"$OMACOS_PATH"/config/}
+  target="${XDG_CONFIG_HOME:-$HOME/.config}/$relative"
+  [[ -e $target ]] && continue
+  mkdir -p "$(dirname "$target")"
+  cp "$source_file" "$target"
+  printf '  seeded %s\n' "$relative"
+  seeded=$((seeded + 1))
+done < <(find "$OMACOS_PATH/config" -type f -print0 2>/dev/null)
+((seeded)) || echo "  Nothing new to seed."
+
+step "Refresh"
+command -v omacos-keymap-build >/dev/null && omacos-feature check desktop 2>/dev/null && omacos-keymap-build
+theme=$(omacos-theme-current 2>/dev/null || echo "")
+[[ -n $theme ]] && omacos-theme-set "$theme" >/dev/null && echo "  Reapplied theme: $theme"
+
+omacos-hook post-update || true
+
+# Anything that asked for a restart during this run says so once, here.
+for marker in "$OMACOS_STATE"/restart-*-required; do
+  [[ -e $marker ]] || continue
+  name=$(basename "$marker"); name=${name#restart-}; name=${name%-required}
+  printf '\n\033[33m!\033[0m Restart %s to pick up changes.\n' "$name"
+  rm -f "$marker"
+done
+
+printf '\n\033[1;32momacos is up to date.\033[0m\n'

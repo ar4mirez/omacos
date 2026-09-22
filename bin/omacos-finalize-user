@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# omacos:summary=Link agent skills and finish per-user setup
+# omacos:hidden=true
+#
+# Symlinks (not copies) so `omacos dev link` against a working checkout
+# repoints them, and so an update improves the skill without a re-run.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+linked=0
+for agent_dir in "$HOME/.claude/skills" "$HOME/.config/opencode/skills" "$HOME/.codex/skills"; do
+  [[ -d $(dirname "$agent_dir") ]] || continue
+  mkdir -p "$agent_dir"
+  for skill in "$OMACOS_PATH"/skills/*/; do
+    [[ -d $skill ]] || continue
+    name=$(basename "$skill")
+    ln -sfn "${skill%/}" "$agent_dir/$name"
+    linked=$((linked + 1))
+  done
+done
+printf 'Linked %d agent skill(s).\n' "$linked"
