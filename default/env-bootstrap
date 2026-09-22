@@ -10,6 +10,22 @@
 if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/omacos/path.conf" ]; then
   # Written by `omacos dev link` to point at a working checkout.
   . "${XDG_CONFIG_HOME:-$HOME/.config}/omacos/path.conf"
+  # A checkout is an ordinary directory: it can be renamed, deleted, or sit on
+  # a volume that is not mounted yet. Trusting it blindly puts a dead path on
+  # PATH and takes `omacos` with it — including `omacos dev unlink`, the one
+  # command that would undo this. Fall back so the escape hatch stays reachable.
+  if [ -n "${OMACOS_PATH:-}" ] && [ ! -x "$OMACOS_PATH/bin/omacos" ]; then
+    # Said once per process tree, not once per command: every script sources
+    # this file, and a warning that repeats on each one stops being read.
+    if [ -z "${OMACOS_STALE_LINK:-}" ]; then
+      printf 'omacos: linked checkout is gone (%s); using the installed copy.\n' \
+        "$OMACOS_PATH" >&2
+      printf 'omacos: run `omacos dev unlink` to forget it.\n' >&2
+    fi
+    OMACOS_STALE_LINK=$OMACOS_PATH
+    export OMACOS_STALE_LINK
+    unset OMACOS_PATH
+  fi
 fi
 : "${OMACOS_PATH:=$HOME/.local/share/omacos}"
 export OMACOS_PATH

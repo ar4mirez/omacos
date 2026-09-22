@@ -1,6 +1,6 @@
 ---
 name: omacos
-description: Use when working on or with omacos — the omakase macOS developer environment installed at ~/.local/share/omacos. Covers its CLI, config boundary, theme engine, keymap, migrations, and install flow. Triggers on "omacos", "my dotfiles", "theme", "keybindings", "aerospace.toml", "sketchybar", or edits under ~/.local/share/omacos or ~/.config/omacos.
+description: Use when working on or with omacos — the omakase macOS developer environment installed at ~/.local/share/omacos. Covers its CLI, config boundary, theme engine, keymap, migrations, and install flow. Triggers on "omacos", "my dotfiles", "theme", "keybindings", "aerospace.toml", "sketchybar", or edits under an omacos checkout, ~/.local/share/omacos or ~/.config/omacos.
 ---
 
 # omacos
@@ -22,7 +22,20 @@ omacos doctor              # what is actually true on this machine
   rebuilt by `omacos theme set` and the migration runner.
 
 So: to change behaviour for this user, edit the file in `~/.config`. To change
-what *omacos ships*, edit `~/.local/share/omacos` and add a migration.
+what *omacos ships*, edit **the working checkout** and add a migration — never
+`~/.local/share/omacos`, which is a plain clone of the remote and will either
+lose your edits on the next `omacos update` or refuse to fast-forward past them.
+
+```bash
+omacos dev status      # names the checkout, and which tree is in use right now
+```
+
+Two trees, on purpose: `~/Work/<you>/omacos` is what you edit and push from,
+`~/.local/share/omacos` is exactly what any other machine has. The normal loop
+is edit → `./test/run.sh` → commit → push → `omacos update`. When that is too
+slow, `omacos dev link <checkout>` points bin/, the zsh layer and the agent
+skills at the checkout so edits apply immediately; `omacos dev unlink` returns.
+While linked, `omacos update` pulls into the checkout, not the installed tree.
 
 Most seeded configs include a `*.local` sibling that omacos never writes
 (`~/.config/ghostty/local.ghostty`, `~/.config/zsh/local.zsh`,

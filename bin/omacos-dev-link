@@ -8,14 +8,43 @@
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
 
+installed="$HOME/.local/share/omacos"
+
 target=${1:?usage: omacos dev link <path-to-checkout>}
 target=$(cd "$target" 2>/dev/null && pwd) || { echo "No such directory: $1" >&2; exit 1; }
-[[ -x $target/bin/omacos ]] || { echo "Not an omacos checkout: $target" >&2; exit 1; }
+# Both halves matter: bin/omacos is the dispatcher, and every script in it
+# sources default/env-bootstrap on its first line. A tree with one and not the
+# other links fine and then fails on every command.
+for required in bin/omacos default/env-bootstrap; do
+  [[ -e $target/$required ]] || { echo "Not an omacos checkout: $target (no $required)" >&2; exit 1; }
+done
+[[ -x $target/bin/omacos ]] || { echo "Not executable: $target/bin/omacos" >&2; exit 1; }
 
-mkdir -p "$OMACOS_CONFIG"
+# Linking to the installed tree is what unlinking means. Leaving a path.conf
+# behind would make `dev status` and `doctor` disagree about which mode this is.
+if [[ $target == "$installed" ]]; then
+  exec omacos-dev-unlink
+fi
+
+mkdir -p "$OMACOS_CONFIG" "$OMACOS_STATE"
 printf 'OMACOS_PATH=%q\n' "$target" > "$OMACOS_CONFIG/path.conf"
+# Outlives the link on purpose. Unlinking should return you to the installed
+# tree, not make the checkout unfindable — `omacos dev status` reads this so it
+# can answer "where is the checkout?" in either mode.
+printf '%s\n' "$target" > "$OMACOS_STATE/dev-checkout"
 printf '\033[32mLinked omacos to %s\033[0m\n' "$target"
 printf '\033[2mOpen a new shell for it to take effect. Undo with: omacos dev unlink\033[0m\n'
 
-# Agent skills are symlinks, so repoint them at the checkout too.
-omacos-finalize-user >/dev/null 2>&1 || true
+# Agent skills are symlinks, so repoint them at the checkout too. Failure is
+# not fatal — the link itself already worked — but it must not be silent, or
+# an agent goes on reading the installed tree while you edit the checkout.
+if ! "$target/bin/omacos-finalize-user"; then
+  printf '\033[33m!\033[0m Could not repoint agent skills; run: omacos finalize user\n' >&2
+fi
+
+# A checkout is usually ahead of the installed tree, so it can carry migrations
+# this machine has never run. They are not run here — linking should not change
+# the machine — but silence would let them accumulate unnoticed.
+if "$target/bin/omacos-migrate" --pending >/dev/null 2>&1; then
+  printf '\033[33m!\033[0m This checkout has pending migrations. Run: omacos migrate\n'
+fi

@@ -9,6 +9,23 @@ installed="$HOME/.local/share/omacos"
 if [[ $OMACOS_PATH == "$installed" ]]; then
   printf '\033[32minstalled\033[0m  %s\n' "${OMACOS_PATH/#$HOME/\~}"
   printf '\033[2mThis is what an end user runs. `omacos update` pulls from the remote.\033[0m\n'
+  # env-bootstrap falls back to the installed tree when a linked checkout has
+  # gone. That keeps the machine working; this is the command whose whole job
+  # is saying which tree is in use, so it should not omit the one being ignored.
+  if [[ -f $OMACOS_CONFIG/path.conf ]]; then
+    stale=$(sed -n 's/^OMACOS_PATH=//p' "$OMACOS_CONFIG/path.conf" | head -1)
+    printf '\n\033[33m!\033[0m Ignoring a stale link to %s\n' "${stale//\'/}"
+    printf '\033[2m  It no longer exists. Clear it with: omacos dev unlink\033[0m\n'
+  fi
+  # Unlinked is the normal state, so this is where "where do I edit?" gets
+  # asked — by a person returning to the project, or by an agent reading it.
+  if [[ -r $OMACOS_STATE/dev-checkout ]]; then
+    checkout=$(head -1 "$OMACOS_STATE/dev-checkout")
+    if [[ -x $checkout/bin/omacos ]]; then
+      printf '\n\033[2mcheckout\033[0m  %s\n' "${checkout/#$HOME/\~}"
+      printf '\033[2mEdit there, not here. Iterate against it with: omacos dev link\033[0m\n'
+    fi
+  fi
 else
   printf '\033[33mlinked\033[0m  %s\n' "${OMACOS_PATH/#$HOME/\~}"
   printf '\033[2mA working checkout. Edits take effect immediately; `omacos dev unlink` returns to\033[0m\n'

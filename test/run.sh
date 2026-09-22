@@ -233,5 +233,77 @@ assert set(d['persistent-workspaces']) == bound, (d['persistent-workspaces'], bo
 check "cheatsheet renders"     "omacos-keymap-show --plain | grep -q 'Focus left'"
 check "every binding documented" "test \$(grep -cE '^[a-z].*\\|.*\\|' $OMACOS_CONFIG/keymap.conf) -eq \$(omacos-keymap-show --plain | grep -cE '^  [a-z]')"
 
+printf '\n\033[1mDev link\033[0m\n'
+# The two-tree workflow rests on this pair of commands, so exercise the round
+# trip rather than trusting that writing one file is self-evidently correct.
+export HOME="$sandbox"
+fake_installed="$HOME/.local/share/omacos"
+mkdir -p "$(dirname "$fake_installed")"
+ln -sfn "$OMACOS_PATH" "$fake_installed"
+
+link_resolves_to() {
+  env HOME="$HOME" XDG_CONFIG_HOME="$XDG_CONFIG_HOME" XDG_STATE_HOME="$XDG_STATE_HOME" \
+    bash -c '. "$0"/default/env-bootstrap; printf %s "$OMACOS_PATH"' "$OMACOS_PATH"
+}
+
+checkout="$sandbox/checkout"
+mkdir -p "$checkout/bin" "$checkout/default"
+cp "$OMACOS_PATH/bin/omacos" "$checkout/bin/omacos"
+cp "$OMACOS_PATH/default/env-bootstrap" "$checkout/default/env-bootstrap"
+cp -R "$OMACOS_PATH/bin/omacos-finalize-user" "$OMACOS_PATH/bin/omacos-migrate" "$checkout/bin/"
+
+check "rejects a non-checkout"     "! omacos-dev-link $sandbox 2>/dev/null"
+check "rejects a missing path"     "! omacos-dev-link $sandbox/nope 2>/dev/null"
+# bin/omacos alone is not enough: every script sources default/env-bootstrap.
+partial="$sandbox/partial"; mkdir -p "$partial/bin"; cp "$OMACOS_PATH/bin/omacos" "$partial/bin/omacos"
+check "rejects an incomplete tree" "! omacos-dev-link $partial 2>/dev/null"
+
+check "link writes path.conf"      "omacos-dev-link $checkout >/dev/null 2>&1 && grep -q $checkout $OMACOS_CONFIG/path.conf"
+check "bootstrap follows the link" "test \"\$(link_resolves_to)\" = $checkout"
+check "status reports linked"      "omacos-dev-status 2>/dev/null | grep -q linked"
+
+# The failure this pair is most likely to hit in real use: the checkout gets
+# renamed or deleted while still linked. Without a fallback, OMACOS_PATH points
+# at nothing, bin/ never lands on PATH, and `omacos dev unlink` is unreachable.
+mv "$checkout" "$sandbox/checkout-moved"
+check "stale link falls back"      "test \"\$(link_resolves_to)\" = $fake_installed"
+check "stale link says so"         "link_resolves_to 2>&1 >/dev/null | grep -q 'checkout is gone'"
+# Every command sources env-bootstrap, so an unguarded warning would print on
+# each one and train people to ignore it.
+check "stale link warns once"      "test \$(link_resolves_to 2>&1 >/dev/null | grep -c 'checkout is gone') -eq 1"
+check "child processes stay quiet" "test -z \"\$(env HOME=$HOME XDG_CONFIG_HOME=$XDG_CONFIG_HOME OMACOS_STALE_LINK=x bash -c '. $OMACOS_PATH/default/env-bootstrap' 2>&1)\""
+check "omacos still resolves"      "omacos --help >/dev/null 2>&1"
+mv "$sandbox/checkout-moved" "$checkout"
+
+check "unlink removes path.conf"   "omacos-dev-unlink >/dev/null 2>&1; ! test -e $OMACOS_CONFIG/path.conf"
+check "unlink twice is harmless"   "omacos-dev-unlink >/dev/null 2>&1"
+check "status reports installed"   "omacos-dev-status 2>/dev/null | grep -q installed"
+# A stale link leaves the machine working and the mode misreported, which is
+# exactly the state `dev status` exists to rule out.
+printf 'OMACOS_PATH=%q\n' "$sandbox/vanished" > "$OMACOS_CONFIG/path.conf"
+check "status flags a stale link"  "omacos-dev-status 2>/dev/null | grep -q 'stale link'"
+rm -f "$OMACOS_CONFIG/path.conf"
+# Unlinked is the normal state; forgetting where the checkout is would send the
+# next person — or agent — straight back to editing the installed tree.
+check "status names the checkout when unlinked" \
+  "omacos-dev-status 2>/dev/null | grep -A1 checkout | grep -q $(basename "$checkout")"
+# Linking to the installed tree is what unlinking means; a leftover path.conf
+# would make status and doctor disagree about which mode this is.
+check "linking to installed unlinks" \
+  "omacos-dev-link $fake_installed >/dev/null 2>&1; ! test -e $OMACOS_CONFIG/path.conf"
+
+# .zshrc names a tree before OMACOS_PATH exists, so it always reaches for the
+# installed one. Without a handoff, `dev link` repoints bin/ but the shell layer
+# keeps coming from the installed tree — edits to it silently do nothing.
+mkdir -p "$checkout/default/zsh"
+printf 'source "${OMACOS_PATH:-$HOME/.local/share/omacos}/default/env-bootstrap"\necho FROM_CHECKOUT\n' \
+  > "$checkout/default/zsh/omacos.zsh"
+omacos-dev-link "$checkout" >/dev/null 2>&1
+check "zsh layer follows the link" \
+  "env HOME=$HOME XDG_CONFIG_HOME=$XDG_CONFIG_HOME zsh -c 'source $OMACOS_PATH/default/zsh/omacos.zsh' 2>/dev/null | grep -q FROM_CHECKOUT"
+omacos-dev-unlink >/dev/null 2>&1
+check "zsh layer stops following"  \
+  "! env HOME=$HOME XDG_CONFIG_HOME=$XDG_CONFIG_HOME zsh -c 'source $OMACOS_PATH/default/zsh/omacos.zsh' 2>/dev/null | grep -q FROM_CHECKOUT"
+
 printf '\n\033[1m%d passed, %d failed\033[0m\n\n' "$pass" "$fail"
 ((fail == 0))

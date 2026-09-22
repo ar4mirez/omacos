@@ -22,6 +22,13 @@ if [[ ! -d $OMACOS_PATH ]]; then
   bad "OMACOS_PATH missing: $OMACOS_PATH"
 elif [[ $OMACOS_PATH == "$HOME/.local/share/omacos" ]]; then
   ok "OMACOS_PATH  $OMACOS_PATH"
+  # env-bootstrap silently falls back when a linked checkout has gone, which is
+  # the right thing to do and the wrong thing to say nothing about: the machine
+  # looks normal while still carrying a link to a tree that no longer exists.
+  if [[ -f $OMACOS_CONFIG/path.conf ]]; then
+    stale=$(sed -n 's/^OMACOS_PATH=//p' "$OMACOS_CONFIG/path.conf" | head -1)
+    note "Ignoring a stale dev link" "${stale//\'/} is gone — clear it with: omacos dev unlink"
+  fi
 else
   # Worth saying plainly: while linked, `omacos update` pulls into your
   # checkout rather than the installed tree.

@@ -4,6 +4,22 @@
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
 
+installed="$HOME/.local/share/omacos"
+
+if [[ ! -f $OMACOS_CONFIG/path.conf ]]; then
+  printf '\033[2mNot linked; already using %s.\033[0m\n' "${installed/#$HOME/\~}"
+  exit 0
+fi
+
 rm -f "$OMACOS_CONFIG/path.conf"
-printf '\033[33mUnlinked. Open a new shell to use %s again.\033[0m\n' "$HOME/.local/share/omacos"
-OMACOS_PATH="$HOME/.local/share/omacos" "$HOME/.local/share/omacos/bin/omacos-finalize-user" >/dev/null 2>&1 || true
+printf '\033[33mUnlinked. Open a new shell to use %s again.\033[0m\n' "$installed"
+
+# OMACOS_PATH is still exported from this process's own bootstrap, and PATH
+# still points at the checkout, so name the installed tree outright rather than
+# letting either decide where the skills land.
+if [[ -x $installed/bin/omacos-finalize-user ]]; then
+  OMACOS_PATH="$installed" "$installed/bin/omacos-finalize-user" \
+    || printf '\033[33m!\033[0m Could not repoint agent skills; run: omacos finalize user\n' >&2
+else
+  printf '\033[33m!\033[0m No installed tree at %s — reinstall to get one.\n' "$installed" >&2
+fi

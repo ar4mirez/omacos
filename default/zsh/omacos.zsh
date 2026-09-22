@@ -3,6 +3,22 @@
 
 source "${OMACOS_PATH:-$HOME/.local/share/omacos}/default/env-bootstrap"
 
+# ~/.config/zsh/.zshrc has to name a tree before OMACOS_PATH exists, so it
+# always reaches for the installed one — even while `omacos dev link` is in
+# effect. env-bootstrap has just resolved the real tree; if that is a checkout,
+# the shell layer being edited lives there, not here. Hand off once, so a
+# linked tree owns this file too and not just bin/.
+if [[ -z ${_OMACOS_ZSH_HANDOFF:-} ]]; then
+  _omacos_zsh_linked="${OMACOS_PATH%/}/default/zsh/omacos.zsh"
+  if [[ -r $_omacos_zsh_linked && ${_omacos_zsh_linked:A} != ${${(%):-%x}:A} ]]; then
+    typeset -g _OMACOS_ZSH_HANDOFF=1
+    source "$_omacos_zsh_linked"
+    unset _OMACOS_ZSH_HANDOFF _omacos_zsh_linked
+    return
+  fi
+  unset _omacos_zsh_linked
+fi
+
 # ------------------------------------------------------------------ history ---
 HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
 mkdir -p "${HISTFILE:h}"

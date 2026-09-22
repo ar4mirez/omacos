@@ -136,8 +136,26 @@ omacos dev unlink                     # back to the installed tree
 ```
 
 `dev link` writes `~/.config/omacos/path.conf`, which `default/env-bootstrap`
-reads before anything else, and repoints the agent-skill symlinks at the
-checkout so an assistant reads the code you are actually editing.
+reads before anything else. Three things follow it, and they have to move
+together or "edits take effect immediately" is only partly true:
+
+- **`bin/`**, via `PATH`.
+- **The zsh layer.** `~/.config/zsh/.zshrc` has to name a tree before
+  `OMACOS_PATH` exists, so it always reaches for the installed one;
+  `default/zsh/omacos.zsh` hands off to the linked copy once bootstrap has
+  resolved the real tree.
+- **The agent-skill symlinks**, so an assistant reads the code you are editing.
+
+A checkout is an ordinary directory — it can be renamed, deleted, or live on a
+volume that is not mounted yet. If the linked tree is gone, bootstrap falls back
+to the installed one and says so once. It has to: without that, `OMACOS_PATH`
+points at nothing, `bin/` never reaches `PATH`, and `omacos dev unlink` — the
+one command that would undo it — is itself unreachable. `doctor` and
+`dev status` both report the link they are ignoring.
+
+`dev status` names the checkout in either mode. The path is recorded when you
+link and kept after you unlink, because unlinked is the normal state and
+"where do I edit?" is the question asked from it.
 
 Under the `~/Work/<Org>/<Repo>` convention the checkout also picks up that
 organisation's git identity, so omacos commits are signed with the key that
