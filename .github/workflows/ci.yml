@@ -12,7 +12,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install test dependencies
-        run: brew install shellcheck yq jq gum
+        # bash matters: the dispatcher needs 4+ for associative arrays, and
+        # macOS ships 3.2, so `env bash` finds the old one without this.
+        run: brew install bash shellcheck yq jq gum
 
       - name: Run the test suite
         run: ./test/run.sh

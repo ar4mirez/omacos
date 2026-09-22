@@ -78,4 +78,6 @@ fi
 
 touch "$app_dir"   # nudge Launch Services to notice the new bundle
 printf '\033[32mInstalled \033[1m%s\033[0m\033[32m → %s\033[0m\n' "$name" "${app_dir/#$HOME/\~}"
-[[ -z $browser ]] && printf '\033[2mNo Chromium-family browser found, so it opens in your default browser.\033[0m\n'
+if [[ -z $browser ]]; then
+  printf '\033[2mNo Chromium-family browser found, so it opens in your default browser.\033[0m\n'
+fi

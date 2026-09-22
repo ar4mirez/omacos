@@ -28,6 +28,21 @@ done
 ok "all bin/ scripts parse"
 check "shellcheck is clean" "shellcheck --severity=warning --shell=bash $OMACOS_PATH/bin/omacos*"
 
+# Under `set -e`, a bare `cond && action` as the FINAL statement makes the
+# script exit non-zero whenever cond is false — a success reported as failure.
+# CI caught one of these; this catches the next one.
+trailing_conditional() {
+  local file last
+  for file in "$OMACOS_PATH"/bin/omacos*; do
+    last=$(grep -vE "^[[:space:]]*(#|$)" "$file" | tail -1)
+    case $last in
+      *"]] &&"*|*"] &&"*) echo "$(basename "$file"): $last"; return 0 ;;
+    esac
+  done
+  return 1
+}
+check "no script ends in a bare conditional" "! trailing_conditional"
+
 printf '\n\033[1mDispatcher\033[0m\n'
 check "root help lists groups"        "omacos --help | grep -q theme"
 check "commands --json is valid JSON" "omacos commands --json | python3 -m json.tool"
