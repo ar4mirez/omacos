@@ -10,6 +10,39 @@
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
 
+# A keybinding runs us through AeroSpace's exec-and-forget, which has no
+# terminal attached — and gum cannot draw without one. Relaunch into a floating
+# Ghostty window so the same command works from a key and from a shell.
+pidfile="$OMACOS_STATE/menu.pid"
+
+menu_already_running() {
+  [[ -f $pidfile ]] || return 1
+  local pid; pid=$(cat "$pidfile" 2>/dev/null) || return 1
+  [[ -n $pid ]] && kill -0 "$pid" 2>/dev/null
+}
+
+if [[ ! -t 0 && ${1:-} != --list ]]; then
+  # Pressing the key twice should bring the menu forward, not stack a second
+  # window on the first. A pid file rather than a window-title match: a window
+  # that is still starting has no title yet, which made that check racy.
+  if menu_already_running; then
+    if command -v aerospace >/dev/null 2>&1; then
+      existing=$(aerospace list-windows --all --format '%{window-id}|%{window-title}' 2>/dev/null \
+                 | awk -F'|' '$2 == "omacos" { print $1; exit }')
+      [[ -n ${existing:-} ]] && exec aerospace focus --window-id "$existing"
+    fi
+    exit 0
+  fi
+  exec omacos-launch-tui "omacos-menu ${1:-}"
+fi
+
+# Running with a terminal: this is the instance the user interacts with.
+if [[ ${1:-} != --list ]]; then
+  mkdir -p "$OMACOS_STATE"
+  printf '%s\n' "$$" > "$pidfile"
+  trap 'rm -f "$pidfile"' EXIT
+fi
+
 command -v gum >/dev/null || { echo "omacos menu needs gum: brew install gum" >&2; exit 1; }
 command -v jq  >/dev/null || { echo "omacos menu needs jq: brew install jq" >&2; exit 1; }
 

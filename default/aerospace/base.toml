@@ -57,3 +57,10 @@ run = 'layout floating'
 [[on-window-detected]]
 if.app-id = 'com.1password.1password'
 run = 'layout floating'
+
+# omacos TUI windows (the menu, the keybinding cheatsheet) are transient, so
+# they float instead of rearranging your tiles every time you open one.
+[[on-window-detected]]
+if.app-id = 'com.mitchellh.ghostty'
+if.window-title-regex-substring = 'omacos'
+run = 'layout floating'

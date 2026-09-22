@@ -7,8 +7,24 @@ set -euo pipefail
 command=${*:-}
 [[ -n $command ]] || { echo "usage: omacos launch tui <command>" >&2; exit 1; }
 
-# A login shell so the command sees the same PATH and theme env as a normal one.
+# A login shell, so the command sees the same PATH and theme environment as an
+# ordinary one. $SHELL is not set in AeroSpace's exec environment, hence the
+# fallback.
+shell=${SHELL:-/bin/zsh}
+[[ -x $shell ]] || shell=/bin/zsh
+
+# Set the title from inside the shell as well as via --title: a non-interactive
+# `-e` command leaves the window title empty, and the window manager needs a
+# title to match on so these windows float instead of retiling the workspace.
+title=${OMACOS_TUI_TITLE:-omacos}
+command=$(printf 'printf "\\033]0;%s\\007"; %s' "$title" "$command")
+
+# --window-save-state=never matters: the seeded Ghostty config sets
+# `window-save-state = always`, so without this every launch also restores the
+# previous TUI window and re-runs its command, duplicating windows each time.
 exec open -na Ghostty --args \
-  --title="omacos" \
-  --window-width=110 --window-height=32 \
-  -e "$SHELL" -lc "$command"
+  --window-save-state=never \
+  --title="$title" \
+  --window-width="${OMACOS_TUI_WIDTH:-110}" \
+  --window-height="${OMACOS_TUI_HEIGHT:-32}" \
+  -e "$shell" -lc "$command"
