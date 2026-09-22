@@ -23,14 +23,34 @@ if [[ -z $public_key ]]; then
   # The agent lists public keys only; there is nothing secret in this output.
   mapfile -t keys < <(SSH_AUTH_SOCK="$agent_sock" ssh-add -L 2>/dev/null | grep -v '^The agent')
   ((${#keys[@]})) || { echo "No SSH keys in the agent. Add one in 1Password first." >&2; exit 1; }
+
   if ((${#keys[@]} == 1)); then
     public_key=${keys[0]}
-  elif command -v gum >/dev/null; then
-    public_key=$(printf '%s\n' "${keys[@]}" | gum choose --header "Which key should sign your commits?") || exit 0
   else
-    echo "Several keys available; pass the one you want as an argument:" >&2
-    printf '  %s\n' "${keys[@]}" >&2
-    exit 1
+    # Describe each key by its 1Password item name plus a fingerprint: the raw
+    # key material is unreadable, and two items can share a name.
+    labels=()
+    for key in "${keys[@]}"; do
+      comment=${key#* * }
+      fingerprint=$(printf '%s\n' "$key" | ssh-keygen -lf - 2>/dev/null | awk '{print $2}')
+      labels+=("$(printf '%-24s %s' "${comment:-(unnamed)}" "${fingerprint:-?}")")
+    done
+
+    if command -v gum >/dev/null; then
+      chosen=$(printf '%s\n' "${labels[@]}" | gum choose --header "Which key should sign your commits?") || exit 0
+    else
+      echo "Keys available in the agent:" >&2
+      for i in "${!labels[@]}"; do printf '  %d) %s\n' "$((i + 1))" "${labels[i]}" >&2; done
+      read -r -p "Number: " index
+      [[ $index =~ ^[0-9]+$ ]] || { echo "Not a number." >&2; exit 1; }
+      chosen=${labels[$((index - 1))]:-}
+    fi
+    [[ -n ${chosen:-} ]] || exit 0
+
+    for i in "${!labels[@]}"; do
+      [[ ${labels[i]} == "$chosen" ]] && { public_key=${keys[i]}; break; }
+    done
+    [[ -n $public_key ]] || { echo "Could not match that selection." >&2; exit 1; }
   fi
 fi
 
