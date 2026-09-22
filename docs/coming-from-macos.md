@@ -50,6 +50,16 @@ the wallpaper no longer sweeps your windows aside to show it. `~/Desktop` is
 still a folder and Finder still opens it — it has just stopped being a surface
 that sits behind everything collecting files.
 
+Plenty of people work off the desktop, though, so this one is an opinion you
+can decline. In `~/.config/omacos/local.env`:
+
+```bash
+DESKTOP_ICONS=true
+```
+
+Icons come back, and stay back — an install that keeps re-hiding something you
+put back is a fork waiting to happen.
+
 What replaces them is the bar across the top: workspaces on the left, the
 focused app beside them, and on the right the things that are true right now.
 Two of its items draw nothing at all until they matter — a recording light and

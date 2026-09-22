@@ -741,6 +741,20 @@ check "desktop icons are turned off" \
   "grep -q 'com.apple.finder CreateDesktop bool 0' $OMACOS_PATH/install/4-macos-defaults.sh"
 check "the wallpaper is not a button" \
   "grep -q 'EnableStandardClickToShowDesktop bool 0' $OMACOS_PATH/install/4-macos-defaults.sh"
+# Hiding them is an opinion, and an install that keeps re-hiding icons you put
+# back is a fork waiting to happen.
+check "desktop icons can be declined" \
+  "grep -q 'DESKTOP_ICONS' $OMACOS_PATH/install/4-macos-defaults.sh"
+# The knob is read at the top of the file; if local.env moved back below the
+# desktop block it would be unset by the time that block runs.
+desktop_icons_knob_is_readable() {
+  local file="$OMACOS_PATH/install/4-macos-defaults.sh" env_line use_line
+  # Match the code, not the comments that mention either name.
+  env_line=$(grep -n '^\[\[ -f \$OMACOS_CONFIG/local.env' "$file" | head -1 | cut -d: -f1)
+  use_line=$(grep -n '\${DESKTOP_ICONS' "$file" | head -1 | cut -d: -f1)
+  [[ -n $env_line && -n $use_line ]] && (( env_line < use_line ))
+}
+check "local.env is read before it is used" desktop_icons_knob_is_readable
 # Hiding the macOS menu bar is a choice, not a default: plenty of Mac apps
 # keep the only copy of a command up there.
 check "the menu bar stays unless asked" \

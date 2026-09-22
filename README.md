@@ -254,7 +254,8 @@ Ordered cheapest to most drastic. You should never have to fork.
 
 1. Edit the seeded file in `~/.config` — yours, never overwritten
 2. Use the `*.local` sibling (`~/.config/zsh/local.zsh`, `local.ghostty`, …)
-3. Turn off a class of defaults: `OMACOS_ALIASES=false`, `OMACOS_PROMPT=false`
+3. Turn off a class of defaults: `OMACOS_ALIASES=false`, `OMACOS_PROMPT=false`,
+   `DESKTOP_ICONS=true`
 4. `~/.config/omacos/hooks/<event>.d/` — extend update and theme events
 5. `~/.config/omacos/extensions/omacos-menu.jsonc` — add or replace menu rows
 6. `~/.config/omacos/themed/*.tpl` — theme an app omacos has never heard of

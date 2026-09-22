@@ -1,5 +1,10 @@
 step_heading "macOS defaults"
 
+# Your file, read before anything is written: two of the defaults below are
+# opinions you are allowed to disagree with (CAPSLOCK, DESKTOP_ICONS).
+# shellcheck source=/dev/null
+[[ -f $OMACOS_CONFIG/local.env ]] && . "$OMACOS_CONFIG/local.env"
+
 # Keyboard — the single biggest quality-of-life win, and it matters most for a
 # Neovim-first setup where held-key repeat is constant.
 set_default NSGlobalDomain KeyRepeat int 2
@@ -42,7 +47,14 @@ if omacos-feature check desktop 2>/dev/null; then
   # above; this is the other half. Nothing is deleted — ~/Desktop is still a
   # folder, and Finder still opens it — it just stops being a surface that
   # sits behind every window collecting files.
-  set_default com.apple.finder CreateDesktop bool 0
+  #
+  # Plenty of people work off the desktop, though, and an install that keeps
+  # hiding icons you have put back is a fork waiting to happen. DESKTOP_ICONS
+  # in local.env settles it either way.
+  case ${DESKTOP_ICONS:-} in
+    true|yes|1) skip "Desktop icons kept — DESKTOP_ICONS is set in local.env" ;;
+    *)          set_default com.apple.finder CreateDesktop bool 0 ;;
+  esac
 
   # And stop the wallpaper from being a button. Clicking empty space to reveal
   # the desktop shoves every tiled window off-screen, which with a tiling WM
@@ -57,8 +69,7 @@ ok "Restarted Dock, Finder, SystemUIServer and WindowManager"
 
 # Caps Lock is the best-placed key on the board and does nothing useful. Remap
 # it when local.env says to; hidutil needs no driver, so this is safe to script.
-# shellcheck source=/dev/null
-[[ -f $OMACOS_CONFIG/local.env ]] && . "$OMACOS_CONFIG/local.env"
+# local.env is already sourced at the top of this file.
 if [[ -n ${CAPSLOCK:-} ]]; then
   omacos-setup-capslock "$CAPSLOCK" | sed 's/^/      /'
 else
