@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# omacos:summary=Set up the one-time shortcut Do Not Disturb needs
+# omacos:examples=omacos setup dnd
+#
+# Focus has no public API outside Shortcuts, and the `shortcuts` CLI can only
+# run, list, view and sign — not create. ~/Library/Shortcuts is TCC-protected,
+# so omacos cannot write one on your behalf either. One manual minute, once.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+shortcut=${OMACOS_DND_SHORTCUT:-omacos-dnd}
+
+if omacos-toggle-dnd status >/dev/null 2>&1; then
+  printf '\033[32mAlready set up.\033[0m The "%s" shortcut exists.\n' "$shortcut"
+  printf '\033[2mToggle it with alt-ctrl-comma, or: omacos toggle dnd\033[0m\n'
+  exit 0
+fi
+
+printf '\033[1mDo Not Disturb needs one shortcut, made by hand.\033[0m\n\n'
+printf 'In the Shortcuts app, which is opening now:\n\n'
+printf '  1. File > New Shortcut\n'
+printf '  2. Add the \033[1mSet Focus\033[0m action\n'
+printf '  3. Set it to \033[1mDo Not Disturb\033[0m, and change "Turn On" to \033[1mToggle\033[0m\n'
+printf '  4. Name it exactly: \033[1m%s\033[0m\n\n' "$shortcut"
+printf 'Then check it with: omacos toggle dnd status\n\n'
+printf '\033[2mWhy by hand: the shortcuts CLI can run and list but not create, and\n'
+printf 'the Shortcuts library is off limits without Full Disk Access. A toggle\n'
+printf 'inside the shortcut also avoids reading Focus state, which needs the\n'
+printf 'same permission.\033[0m\n'
+
+[[ ${OMACOS_DRY_RUN:-0} == 1 ]] || open -a Shortcuts >/dev/null 2>&1 || true

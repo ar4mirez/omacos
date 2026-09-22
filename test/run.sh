@@ -320,6 +320,28 @@ printf '#!/usr/bin/env bash\nexit 0\n' > "$shim/terminal-notifier"
 check "a posted banner stays quiet" \
   "test -z \"\$(env PATH=$shim:\$PATH OMACOS_DRY_RUN=0 omacos-cmd-notify T M 2>&1)\""
 
+# Focus has no public API outside Shortcuts, so the whole command is "is the
+# shortcut there, and does it run" — both halves shimmed, so a test run never
+# touches the real Shortcuts library or the machine's Focus state.
+printf '#!/usr/bin/env bash\ncase $1 in list) echo other-shortcut; echo omacos-dnd ;; run) exit 0 ;; esac\n' \
+  > "$shim/shortcuts"
+chmod +x "$shim/shortcuts"
+check "dnd status sees the shortcut" \
+  "env PATH=$shim:\$PATH omacos-toggle-dnd status | grep -q 'wired up'"
+check "dnd runs the shortcut" \
+  "env PATH=$shim:\$PATH OMACOS_DRY_RUN=1 omacos-toggle-dnd | grep -q 'would run shortcut: omacos-dnd'"
+printf '#!/usr/bin/env bash\ncase $1 in list) echo other-shortcut ;; esac\n' > "$shim/shortcuts"
+check "dnd says when it is not set up" \
+  "! env PATH=$shim:\$PATH omacos-toggle-dnd status >/dev/null 2>&1"
+check "dnd points at the setup command" \
+  "env PATH=$shim:\$PATH omacos-toggle-dnd 2>&1 | grep -q 'omacos setup dnd'"
+# A name that merely contains the shortcut's must not count as having it.
+printf '#!/usr/bin/env bash\ncase $1 in list) echo omacos-dnd-old ;; esac\n' > "$shim/shortcuts"
+check "dnd matches the whole name"  \
+  "! env PATH=$shim:\$PATH omacos-toggle-dnd status >/dev/null 2>&1"
+check "dnd setup installs nothing"  \
+  "! grep -qE 'brew install|curl ' $OMACOS_PATH/bin/omacos-setup-dnd"
+
 printf '\n\033[1mClipboard history\033[0m\n'
 mkdir -p "$OMACOS_STATE/clipboard"
 printf 'first thing'  > "$OMACOS_STATE/clipboard/entry-1000-a"

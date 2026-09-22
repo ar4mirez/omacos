@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# omacos:summary=Turn Do Not Disturb on or off
+# omacos:args=[status]
+# omacos:examples=omacos toggle dnd | omacos toggle dnd status
+#
+# macOS replaced Do Not Disturb with Focus in Big Sur and shipped no public API
+# for it: the `defaults -currentHost … doNotDisturb` key everyone still quotes
+# writes to a domain that no longer exists, and sindresorhus/do-not-disturb-cli
+# was archived pointing here. What Apple does provide is a first-party Set Focus
+# action in Shortcuts, so that is what this drives.
+#
+# The shortcut has to be made by hand once — `shortcuts` can run and list but
+# not create, and ~/Library/Shortcuts is off limits without Full Disk Access.
+# `omacos setup dnd` walks through it.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+shortcut=${OMACOS_DND_SHORTCUT:-omacos-dnd}
+
+# Read the list, then match. Piping into `grep -q` makes shortcuts take SIGPIPE
+# once grep exits, and pipefail turns that into a false "not installed".
+have_shortcut() {
+  local list
+  list=$(shortcuts list 2>/dev/null) || return 1
+  [[ $'\n'$list$'\n' == *$'\n'"$shortcut"$'\n'* ]]
+}
+
+if [[ ${1:-} == status ]]; then
+  # Focus state itself cannot be read without Full Disk Access, so the honest
+  # answer is whether the switch exists, not which way it is pointing.
+  if have_shortcut; then
+    printf 'Do Not Disturb is wired up (shortcut: %s).\n' "$shortcut"
+  else
+    printf 'Do Not Disturb is not set up. Run: omacos setup dnd\n'
+    exit 1
+  fi
+  exit 0
+fi
+
+if ! have_shortcut; then
+  printf '\033[33mNo "%s" shortcut yet.\033[0m\n' "$shortcut" >&2
+  printf 'macOS exposes Focus only through Shortcuts, and a shortcut cannot be\n' >&2
+  printf 'created from the command line. Set it up once with: omacos setup dnd\n' >&2
+  exit 1
+fi
+
+if [[ ${OMACOS_DRY_RUN:-0} == 1 ]]; then
+  printf 'would run shortcut: %s\n' "$shortcut"
+  exit 0
+fi
+
+if ! shortcuts run "$shortcut" >/dev/null 2>&1; then
+  printf 'omacos: the "%s" shortcut failed to run.\n' "$shortcut" >&2
+  printf 'omacos: open Shortcuts and check it still has a Set Focus action.\n' >&2
+  exit 1
+fi
+printf 'Do Not Disturb toggled.\n'

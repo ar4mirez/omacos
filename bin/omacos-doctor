@@ -132,6 +132,12 @@ fi
 
 # A reminder is a detached sleep, so it is worth saying out loud that some are
 # pending — they do not survive a reboot and nothing else shows them.
+if omacos-toggle-dnd status >/dev/null 2>&1; then
+  ok "Do Not Disturb wired up"
+else
+  note "Do Not Disturb not set up" "Focus needs a one-time shortcut: omacos setup dnd"
+fi
+
 pending=$(find "$OMACOS_STATE/reminders" -maxdepth 1 -type f 2>/dev/null | wc -l | tr -d ' ')
 ((pending > 0)) && note "$pending reminder(s) pending" "See them with: omacos reminder list"
 

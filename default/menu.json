@@ -30,6 +30,8 @@
   "toggles":             { "icon": "⇄", "label": "Toggles" },
   "toggles.idle":        { "icon": "☕", "label": "Keep the screen awake", "action": "omacos-toggle-idle", "checked": "omacos-toggle-idle status >/dev/null" },
   "toggles.bar":         { "icon": "▬", "label": "Hide the top bar", "action": "omacos-toggle-bar", "checked": "omacos-state check bar-hidden" },
+  "toggles.dnd":         { "icon": "\u25cc", "label": "Do Not Disturb", "action": "omacos-toggle-dnd", "when": "omacos-toggle-dnd status >/dev/null" },
+  "toggles.dnd-setup":   { "icon": "\u2699", "label": "Set up Do Not Disturb", "action": "omacos-setup-dnd; read -n 1 -s -r -p 'Press any key'", "when": "! omacos-toggle-dnd status >/dev/null" },
   "toggles.nightlight":  { "icon": "☾", "label": "Night Shift", "action": "omacos-toggle-nightlight" },
   "toggles.screensaver": { "icon": "▦", "label": "Start the screensaver", "action": "omacos-cmd-screensaver" },
 
