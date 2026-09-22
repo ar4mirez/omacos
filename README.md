@@ -143,6 +143,26 @@ opens the settings pane instead.
 
 Everything here is also under `alt-space`, in the menu.
 
+### What macOS will not let this do
+
+Omarchy binds a few things macOS keeps to itself. omacos does not ship a
+private-API binary or a UI-scripting hack to fake them — each one is a real
+limitation, not an oversight:
+
+| Omarchy | Why not here |
+|---|---|
+| Dismiss / replay a notification | Only reachable by UI-scripting Notification Center, which has changed in five macOS releases and fails silently. `alt-ctrl-shift-comma` opens the settings instead. |
+| Turn the built-in display off | No supported mechanism at all. |
+| Toggle display mirroring | Only the Cmd-Brightness-Down keystroke macOS already provides. |
+| Cycle monitor scaling | Needs `displayplacer`, which reports no display data on macOS 26, and a bad cycle can leave a screen unreadable. |
+| Screen zoom | macOS has its own, off by default — `omacos setup zoom` turns that on rather than adding a second pair of chords. |
+
+The window manager has limits of its own: AeroSpace is not Hyprland, so there
+is no scrolling layout, no pseudo-tiling, no sticky window that follows you
+between workspaces, and no mouse drag or resize of tiles. Stacking
+(`alt-comma`) is as close as it gets to Omarchy's window groups — the same
+"many windows, one slot", without a tab bar.
+
 ## One identity per organisation
 
 Repos live at `~/Work/<Org>/<Repo>`, and each organisation gets its own name,

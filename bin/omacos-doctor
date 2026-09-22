@@ -132,6 +132,21 @@ fi
 
 # A reminder is a detached sleep, so it is worth saying out loud that some are
 # pending — they do not survive a reboot and nothing else shows them.
+# bat falls back to its default when handed a theme name it does not have, so
+# a wrong value here is invisible until you notice bat looks unstyled.
+active_palette="$OMACOS_STATE/current/theme/colors.toml"
+if [[ -f $active_palette ]] && command -v bat >/dev/null 2>&1; then
+  want=$(sed -n 's/^bat_theme *= *"\(.*\)"/\1/p' "$active_palette")
+  known=$(bat --list-themes 2>/dev/null) || known=""
+  if [[ -z $want ]]; then
+    note "The active theme sets no bat_theme"
+  elif [[ $'\n'$known$'\n' == *$'\n'"$want"$'\n'* ]]; then
+    ok "bat theme: $want"
+  else
+    note "bat has no theme called '$want'" "bat is silently using its default: omacos theme set \$(omacos-theme-current)"
+  fi
+fi
+
 if omacos-toggle-dnd status >/dev/null 2>&1; then
   ok "Do Not Disturb wired up"
 else
@@ -180,6 +195,12 @@ else
   # after you installed sit in the shipped file and nowhere else. Nothing else
   # on the machine would ever mention them — you would just press a key that
   # does nothing.
+  if command -v SwitchAudioSource >/dev/null 2>&1; then
+    ok "Audio output switching available"
+  else
+    note "switchaudio-osx not installed" "alt-ctrl-shift-s needs it: omacos install feature desktop"
+  fi
+
   yours=$(grep -cE '^[a-z].*\|.*\|' "$OMACOS_CONFIG/keymap.conf" 2>/dev/null || echo 0)
   shipped=$(grep -cE '^[a-z].*\|.*\|' "$OMACOS_PATH/config/omacos/keymap.conf" 2>/dev/null || echo 0)
   if ((yours == 0)); then
