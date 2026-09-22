@@ -28,5 +28,16 @@ done
 omacos-hook post-install || true
 
 printf '\n\033[1;32m omacos is installed.\033[0m\n\n'
-printf '  Next: open a new terminal, then run \033[1momacos doctor\033[0m\n'
-printf '  Anything not yet set up is listed there with the command to fix it.\n\n'
+
+# This shell started before ~/.zshenv existed, so it has no ZDOTDIR and none of
+# the omacos PATH. Saying "open a new terminal" is easy to skip past; give the
+# command that fixes the shell you are already in.
+if ! command -v omacos >/dev/null 2>&1; then
+  printf '  \033[1mReload your shell first\033[0m — this one predates the install:\n\n'
+  printf '      \033[36mexec zsh -l\033[0m\n\n'
+  printf '  Then:\n\n'
+else
+  printf '  Next:\n\n'
+fi
+printf '      \033[36momacos doctor\033[0m    what is set up, and what still needs you\n'
+printf '      \033[36momacos\033[0m           every command, grouped\n\n'
