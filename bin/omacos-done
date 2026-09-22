@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# omacos:summary=One-shot completion markers for install steps
+# omacos:args=<check|mark|ensure> <name>
+# omacos:examples=omacos done check seed | omacos done ensure seed
+#
+# `ensure` is the interesting one: it succeeds (0) only the FIRST time, marking
+# as it goes, so a caller can write `omacos-done ensure seed && do_the_thing`.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+command=${1:-}; name=${2:-}
+[[ -n $command && -n $name ]] || { echo "usage: omacos done <check|mark|ensure> <name>" >&2; exit 1; }
+[[ $name == */* || $name == .* ]] && { echo "Invalid marker name: $name" >&2; exit 1; }
+
+done_dir="$OMACOS_STATE/done"
+mkdir -p "$done_dir"
+case $command in
+  check)  [[ -e $done_dir/$name ]] ;;
+  mark)   touch "$done_dir/$name" ;;
+  ensure) [[ -e $done_dir/$name ]] && exit 1; touch "$done_dir/$name" ;;
+  *)      echo "Unknown: $command" >&2; exit 1 ;;
+esac

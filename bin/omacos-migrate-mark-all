@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# omacos:summary=Mark every shipped migration as applied (used by fresh installs)
+# omacos:hidden=true
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+STATE_DIR="$OMACOS_STATE/migrations"
+mkdir -p "$STATE_DIR"
+count=0
+for file in "$OMACOS_PATH"/migrations/*.sh; do
+  [[ -f $file ]] || continue
+  touch "$STATE_DIR/$(basename "$file")"
+  ((count++)) || true
+done
+printf '\033[2mMarked %d shipped migration(s) as applied.\033[0m\n' "$count"

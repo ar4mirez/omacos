@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# omacos:summary=Set, clear, or check a persistent state flag
+# omacos:args=<set|clear|check> <name>
+# omacos:examples=omacos state set reboot-required | omacos state check reboot-required
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+command=${1:-}; name=${2:-}
+[[ -n $command && -n $name ]] || { echo "usage: omacos state <set|clear|check> <name>" >&2; exit 1; }
+# Reject traversal: a state name is one path segment.
+[[ $name == */* || $name == .* ]] && { echo "Invalid state name: $name" >&2; exit 1; }
+
+mkdir -p "$OMACOS_STATE"
+case $command in
+  set)   touch "$OMACOS_STATE/$name" ;;
+  clear) rm -f "$OMACOS_STATE/$name" ;;
+  check) [[ -e $OMACOS_STATE/$name ]] ;;
+  *)     echo "Unknown: $command" >&2; exit 1 ;;
+esac

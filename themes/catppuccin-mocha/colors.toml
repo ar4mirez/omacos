@@ -1,0 +1,39 @@
+# Catppuccin Mocha
+mode = "dark"
+
+accent            = "#89b4fa"
+selection         = "#313244"
+muted             = "#45475a"
+
+background        = "#1e1e2e"
+dark_background   = "#181825"
+darker_background = "#11111b"
+lighter_background = "#313244"
+
+foreground        = "#cdd6f4"
+dark_foreground   = "#6c7086"
+light_foreground  = "#bac2de"
+bright_foreground = "#cdd6f4"
+
+black   = "#45475a"
+red     = "#f38ba8"
+green   = "#a6e3a1"
+yellow  = "#f9e2af"
+blue    = "#89b4fa"
+magenta = "#cba6f7"
+cyan    = "#94e2d5"
+white   = "#bac2de"
+
+bright_black   = "#585b70"
+bright_red     = "#f38ba8"
+bright_green   = "#a6e3a1"
+bright_yellow  = "#f9e2af"
+bright_blue    = "#89b4fa"
+bright_magenta = "#cba6f7"
+bright_cyan    = "#94e2d5"
+bright_white   = "#a6adc8"
+
+bat_theme = "Catppuccin Mocha"
+nvim_plugin = "catppuccin/nvim"
+nvim_plugin_name = "catppuccin"
+nvim_colorscheme = "catppuccin-mocha"

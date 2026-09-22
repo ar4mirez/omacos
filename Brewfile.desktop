@@ -1,0 +1,12 @@
+# omacos desktop — tiling window manager, borders, status bar.
+#
+# Kept separate from the core Brewfile on purpose. These three are the least
+# settled part of the stack on a macOS release this new, and omacos is designed
+# to work without them. Installed only when the `desktop` feature is enabled.
+
+tap "nikitabobko/tap"
+tap "felixkratz/formulae"
+
+cask "nikitabobko/tap/aerospace"
+brew "felixkratz/formulae/sketchybar"
+brew "felixkratz/formulae/borders"

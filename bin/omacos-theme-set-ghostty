@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# omacos:summary=Repaint Ghostty with the active theme
+# omacos:hidden=true
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+# Ghostty reads ~/.config/ghostty/config, which includes the active theme file,
+# so the colours are already correct for any new window. Running instances need
+# a reload, which Ghostty exposes only as a keybinding.
+pgrep -qx ghostty 2>/dev/null || exit 0
+osascript <<'APPLESCRIPT' >/dev/null 2>&1 || true
+tell application "System Events"
+  if exists (process "Ghostty") then
+    tell process "Ghostty" to keystroke "," using {command down, shift down}
+  end if
+end tell
+APPLESCRIPT

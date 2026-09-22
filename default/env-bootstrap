@@ -1,0 +1,23 @@
+# omacos environment bootstrap — the single source of truth for OMACOS_PATH.
+#
+# Sourced by exactly three entry points:
+#   1. ~/.config/zsh/.zshrc        (interactive shells)
+#   2. install.sh                  (bootstrap)
+#   3. bin/omacos                  (so scripts invoked directly still work)
+#
+# Safe to source repeatedly.
+
+if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/omacos/path.conf" ]; then
+  # Written by `omacos dev link` to point at a working checkout.
+  . "${XDG_CONFIG_HOME:-$HOME/.config}/omacos/path.conf"
+fi
+: "${OMACOS_PATH:=$HOME/.local/share/omacos}"
+export OMACOS_PATH
+
+export OMACOS_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/omacos"
+export OMACOS_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/omacos"
+
+case ":$PATH:" in
+  *":${OMACOS_PATH%/}/bin:"*) ;;
+  *) PATH="${OMACOS_PATH%/}/bin${PATH:+:$PATH}"; export PATH ;;
+esac

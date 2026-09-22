@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# omacos:summary=Repaint SketchyBar with the active theme
+# omacos:hidden=true
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+theme_file="$OMACOS_STATE/current/theme/sketchybar.sh"
+[[ -f $theme_file ]] || exit 0
+
+command -v sketchybar >/dev/null || exit 0
+pgrep -qx sketchybar 2>/dev/null || exit 0
+sketchybar --reload

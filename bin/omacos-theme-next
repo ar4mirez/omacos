@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# omacos:summary=Cycle to the next theme
+# omacos:examples=omacos theme next
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+mapfile -t themes < <(omacos-theme-list --plain | sort -u)
+((${#themes[@]})) || { echo "No themes installed." >&2; exit 1; }
+
+current=$(cat "$OMACOS_STATE/current/theme.name" 2>/dev/null || echo "")
+index=0
+for i in "${!themes[@]}"; do
+  [[ ${themes[i]} == "$current" ]] && { index=$(((i + 1) % ${#themes[@]})); break; }
+done
+exec omacos-theme-set "${themes[index]}"

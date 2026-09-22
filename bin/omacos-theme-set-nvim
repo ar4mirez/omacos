@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# omacos:summary=Repaint Neovim with the active theme
+# omacos:hidden=true
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+theme_file="$OMACOS_STATE/current/theme/nvim.lua"
+[[ -f $theme_file ]] || exit 0
+
+# Neovim reads the generated spec at startup. Running instances keep the old
+# colours, so flag it rather than pretending the switch was live.
+pgrep -qx nvim 2>/dev/null && omacos-state set restart-nvim-required || true
+exit 0

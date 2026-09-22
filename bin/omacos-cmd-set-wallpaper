@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# omacos:summary=Set the desktop wallpaper
+# omacos:args=<absolute-path-to-image>
+# omacos:examples=omacos cmd set-wallpaper ~/Pictures/wall.jpg
+set -euo pipefail
+
+image=${1:-}
+[[ -n $image ]] || { echo "usage: omacos cmd set-wallpaper <image>" >&2; exit 1; }
+# AppleScript does not expand ~, so everything downstream needs a real path.
+image=$(cd "$(dirname "$image")" && printf '%s/%s' "$PWD" "$(basename "$image")")
+[[ -f $image ]] || { echo "No such image: $image" >&2; exit 1; }
+
+# System Events covers every desktop; the wallpaper CLI only does the active
+# Space, so it is the fallback rather than the first choice.
+if osascript -e "tell application \"System Events\" to set picture of every desktop to \"$image\"" >/dev/null 2>&1; then
+  exit 0
+fi
+if command -v wallpaper >/dev/null 2>&1 && wallpaper set "$image" >/dev/null 2>&1; then
+  exit 0
+fi
+echo "Could not set the wallpaper. Grant Terminal automation access to System Events." >&2
+exit 1

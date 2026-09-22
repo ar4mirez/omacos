@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# omacos:summary=Print the active theme name
+# omacos:examples=omacos theme current
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+cat "$OMACOS_STATE/current/theme.name" 2>/dev/null || { echo "No theme set." >&2; exit 1; }

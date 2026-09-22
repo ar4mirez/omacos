@@ -1,0 +1,57 @@
+# omacos git defaults — package-owned. Override in ~/.config/git/config.
+
+[init]
+	defaultBranch = main
+[pull]
+	rebase = true
+[push]
+	default = current
+	autoSetupRemote = true
+[fetch]
+	prune = true
+[rebase]
+	autoStash = true
+	autoSquash = true
+[diff]
+	algorithm = histogram
+	colorMoved = default
+[merge]
+	conflictStyle = zdiff3
+[column]
+	ui = auto
+[branch]
+	sort = -committerdate
+[help]
+	autocorrect = prompt
+
+# Signing with a key held in 1Password. Enabled only once you set user.signingkey,
+# so this block is inert on a machine that has not set that up.
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+	allowedSignersFile = ~/.ssh/allowed_signers
+
+[core]
+	excludesfile = ~/.config/git/ignore
+	pager = delta
+
+[interactive]
+	diffFilter = delta --color-only
+[delta]
+	navigate = true
+	line-numbers = true
+# Theme colours for delta. A missing include is ignored by git, so this is
+# inert until `omacos theme set` has run at least once.
+[include]
+	path = ~/.local/state/omacos/current/theme/delta.gitconfig
+
+[alias]
+	s = status --short --branch
+	l = log --oneline --graph --decorate -20
+	co = checkout
+	sw = switch
+	br = branch
+	unstage = restore --staged
+	last = log -1 --stat
+	amend = commit --amend --no-edit

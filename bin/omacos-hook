@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# omacos:summary=Run user hooks for an event
+# omacos:args=<event> [args...]
+# omacos:examples=omacos hook theme-set tokyo-night
+#
+# Runs ~/.config/omacos/hooks/<event> and every file in <event>.d/.
+# Files ending in .sample are skipped, so we can ship inert examples.
+# A failing hook is reported but never aborts the caller.
+set -uo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+event=${1:-}
+[[ -n $event ]] || { echo "usage: omacos hook <event> [args...]" >&2; exit 1; }
+shift
+
+hook="$OMACOS_CONFIG/hooks/$event"
+[[ -f $hook ]] && { bash "$hook" "$@" || echo "Hook failed: $hook" >&2; }
+
+for extra in "$hook.d"/*; do
+  [[ -f $extra ]] || continue
+  [[ $extra == *.sample ]] && continue
+  bash "$extra" "$@" || echo "Hook failed: $extra" >&2
+done
+exit 0

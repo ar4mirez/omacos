@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# omacos:summary=Repaint JankyBorders with the active theme
+# omacos:hidden=true
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+theme_file="$OMACOS_STATE/current/theme/borders.sh"
+[[ -f $theme_file ]] || exit 0
+
+command -v borders >/dev/null || exit 0
+# shellcheck source=/dev/null
+. "$theme_file"
+pgrep -qx borders 2>/dev/null || exit 0
+borders active_color="$BORDERS_ACTIVE_COLOR" inactive_color="$BORDERS_INACTIVE_COLOR" width="$BORDERS_WIDTH"

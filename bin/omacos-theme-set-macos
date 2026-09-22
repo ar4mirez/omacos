@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# omacos:summary=Apply the active theme's light/dark mode to macOS itself
+# omacos:hidden=true
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+macos_file="$OMACOS_STATE/current/theme/macos.sh"
+[[ -f $macos_file ]] || exit 0
+# shellcheck source=/dev/null
+. "$macos_file"
+
+case ${OMACOS_MACOS_MODE:-dark} in
+  light) want=false ;;
+  *)     want=true ;;
+esac
+
+# osascript, not `defaults write AppleInterfaceStyle`: the defaults key does not
+# reliably notify running apps, so half the desktop stays on the old appearance.
+osascript -e "tell application \"System Events\" to tell appearance preferences to set dark mode to $want" 2>/dev/null \
+  || echo "Could not switch appearance — grant automation access to System Events." >&2

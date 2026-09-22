@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# omacos:summary=Repaint running tmux sessions
+# omacos:hidden=true
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+theme_file="$OMACOS_STATE/current/theme/tmux.conf"
+[[ -f $theme_file ]] || exit 0
+command -v tmux >/dev/null || exit 0
+tmux list-sessions >/dev/null 2>&1 || exit 0   # nothing running
+tmux source-file "$theme_file"

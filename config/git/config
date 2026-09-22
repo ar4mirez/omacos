@@ -1,0 +1,11 @@
+# ~/.config/git/config — yours. omacos seeded it once.
+# `git config --global` writes here (since ~/.gitconfig does not exist).
+
+[include]
+	# omacos defaults: aliases, delta pager, sane behaviour.
+	# Loaded first, so anything below overrides it.
+	path = ~/.local/share/omacos/default/git/omacos.gitconfig
+
+# Work identity, applied only under your work directory.
+# [includeIf "gitdir:~/Work/"]
+# 	path = ~/.config/git/work

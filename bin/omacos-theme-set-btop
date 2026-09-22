@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# omacos:summary=Point btop at the active theme
+# omacos:hidden=true
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+theme_file="$OMACOS_STATE/current/theme/btop.theme"
+config="${XDG_CONFIG_HOME:-$HOME/.config}/btop/btop.conf"
+[[ -f $theme_file && -f $config ]] || exit 0
+
+# btop reads the theme at startup only, so this takes effect next launch.
+if grep -q '^color_theme' "$config"; then
+  sed -i '' "s|^color_theme.*|color_theme = \"$theme_file\"|" "$config"
+else
+  printf 'color_theme = "%s"\n' "$theme_file" >> "$config"
+fi

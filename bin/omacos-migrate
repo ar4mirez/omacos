@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# omacos:summary=Run pending migrations
+# omacos:args=[--pending]
+# omacos:examples=omacos migrate | omacos migrate --pending
+#
+# Migrations are migrations/<unix-timestamp>.sh, mode 0644, no shebang, run with
+# `bash -euo pipefail`, strictly ordered, and required to be idempotent. Each one
+# that completes gets a marker file; a migration that cannot finish must exit
+# non-zero, stay pending, and stop the queue.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+STATE_DIR="${OMACOS_MIGRATION_STATE:-$OMACOS_STATE/migrations}"
+MIGRATIONS_DIR="$OMACOS_PATH/migrations"
+mkdir -p "$STATE_DIR"
+
+# Emit: name \t file \t marker, ordered by timestamp.
+migration_entries() {
+  local file name
+  for file in "$MIGRATIONS_DIR"/*.sh; do
+    [[ -f $file ]] || continue
+    name=$(basename "$file")
+    printf '%s\t%s\t%s\n' "$name" "$file" "$STATE_DIR/$name"
+  done | sort -t. -k1,1n
+}
+
+if [[ ${1:-} == --pending ]]; then
+  pending=0
+  while IFS=$'\t' read -r name _ marker; do
+    [[ -f $marker ]] || { echo "${name%.sh}"; pending=1; }
+  done < <(migration_entries)
+  # Inverted on purpose, so this reads as a predicate: "are there pending?"
+  ((pending)) && exit 0 || exit 1
+fi
+
+ran=0
+while IFS=$'\t' read -r name file marker <&3; do
+  [[ -f $marker ]] && continue
+  printf '\033[32m\nRunning migration (%s)\033[0m\n' "${name%.sh}"
+  # fd 3 is closed for the child so a migration cannot consume its own queue.
+  OMACOS_PATH="$OMACOS_PATH" bash -euo pipefail "$file" 3<&-
+  touch "$marker"
+  ran=1
+done 3< <(migration_entries)
+
+((ran)) || printf '\033[2mNo pending migrations.\033[0m\n'

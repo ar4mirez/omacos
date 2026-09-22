@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# omacos:summary=Apply a theme everywhere
+# omacos:args=<theme-name>
+# omacos:examples=omacos theme list | omacos theme set tokyo-night
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+theme_name=${1:-}
+[[ -n $theme_name ]] || { echo "usage: omacos theme set <name>" >&2; exit 1; }
+
+shipped="$OMACOS_PATH/themes/$theme_name"
+user="$OMACOS_CONFIG/themes/$theme_name"
+[[ -d $shipped || -d $user ]] || {
+  echo "No such theme: $theme_name" >&2
+  echo "Available: $(omacos-theme-list --plain | tr '\n' ' ')" >&2
+  exit 1
+}
+
+current_dir="$OMACOS_STATE/current"
+staging="$current_dir/next-theme"
+lock="$OMACOS_STATE/theme-set.lock"
+mkdir -p "$current_dir"
+
+# macOS has no flock(1); mkdir is atomic and good enough to serialise switches.
+if ! mkdir "$lock" 2>/dev/null; then
+  echo "Another theme switch is in progress." >&2; exit 1
+fi
+trap 'rm -rf "$lock"' EXIT
+
+rm -rf "$staging"; mkdir -p "$staging"
+
+# ---------------------------------------------------------------- staging ---
+
+# A theme you wrote is staged in full: it's your machine and your file.
+# A theme with a .git directory came from a stranger, so only things that
+# describe colour survive. Installing someone's theme should change what your
+# desktop looks like, never what it runs.
+stage_dir() {
+  local src=$1 filtered=$2 entry base
+  [[ -d $src ]] || return 0
+  for entry in "$src"/* "$src"/.[!.]*; do
+    [[ -e $entry ]] || continue
+    base=$(basename "$entry")
+    [[ $base == .git ]] && continue
+    # Never follow symlinks: that is how an image becomes a copy of any file
+    # this session can read.
+    [[ -L $entry ]] && { printf '  dropped symlink: %s\n' "$base" >&2; continue; }
+    if [[ $filtered == true ]] && ! is_colour_only "$base"; then
+      printf '  dropped (untrusted theme may not ship executable content): %s\n' "$base" >&2
+      continue
+    fi
+    cp -R "$entry" "$staging/$base"
+  done
+}
+
+is_colour_only() {
+  case $1 in
+    colors.toml | *.png | *.jpg | *.jpeg | *.webp | backgrounds) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+stage_dir "$shipped" false
+if [[ -d $user ]]; then
+  if [[ -d $user/.git ]]; then stage_dir "$user" true; else stage_dir "$user" false; fi
+fi
+
+[[ -f $staging/colors.toml ]] || { echo "Theme $theme_name has no colors.toml" >&2; exit 1; }
+
+# Render every template that the theme did not hand-write itself.
+omacos-theme-render "$staging/colors.toml" "$staging"
+
+# ------------------------------------------------------------------- swap ---
+
+rm -rf "$current_dir/theme"
+mv "$staging" "$current_dir/theme"
+printf '%s\n' "$theme_name" > "$current_dir/theme.name"
+
+# ------------------------------------------------------------- background ---
+
+choose_background() {
+  local -a candidates=()
+  while IFS= read -r -d '' file; do candidates+=("$file"); done < <(
+    find -L "$current_dir/theme/backgrounds" "$OMACOS_CONFIG/backgrounds/$theme_name" \
+      -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.heic' \) \
+      -print0 2>/dev/null | sort -z
+  )
+  ((${#candidates[@]})) || return 1
+  printf '%s\n' "${candidates[0]}"
+}
+
+if background=$(choose_background); then
+  # macOS caches wallpapers by path, so writing the same path again is a silent
+  # no-op. Give every distinct image a distinct, stable filename.
+  cache="$OMACOS_STATE/wallpapers"
+  mkdir -p "$cache"
+  fingerprint=$(stat -f '%m-%z' "$background")
+  target="$cache/${theme_name}-${fingerprint}.${background##*.}"
+  [[ -f $target ]] || cp "$background" "$target"
+  ln -sfn "$target" "$current_dir/background"
+  omacos-cmd-set-wallpaper "$target" || true
+fi
+
+# --------------------------------------------------------------- fan out ---
+
+# Making a new app follow theme changes means adding one line here.
+post_theme_commands=(
+  omacos-theme-set-macos
+  omacos-theme-set-ghostty
+  omacos-theme-set-tmux
+  omacos-theme-set-nvim
+  omacos-theme-set-btop
+  omacos-theme-set-sketchybar
+  omacos-theme-set-borders
+)
+
+pids=()
+for command in "${post_theme_commands[@]}"; do
+  command -v "$command" >/dev/null 2>&1 || continue
+  "$command" >/dev/null 2>&1 &
+  pids+=($!)
+done
+for pid in "${pids[@]:-}"; do [[ -n $pid ]] && wait "$pid" || true; done
+
+omacos-hook theme-set "$theme_name" || true
+
+printf '\033[32mTheme set to \033[1m%s\033[0m\n' "$theme_name"

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# omacos:summary=Re-seed one shipped config into ~/.config (backs up yours first)
+# omacos:args=<relative-path>
+# omacos:examples=omacos refresh config ghostty/config | omacos refresh config zsh/.zshrc
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+config_file=${1:-}
+[[ -n $config_file ]] || { echo "usage: omacos refresh config <relative-path>" >&2; exit 1; }
+[[ $config_file == /* || $config_file == *..* ]] && { echo "Invalid path: $config_file" >&2; exit 1; }
+
+user_config="${XDG_CONFIG_HOME:-$HOME/.config}/$config_file"
+default_config="$OMACOS_PATH/config/$config_file"
+backup="$user_config.bak.$(date +%s)"
+
+[[ -f $default_config ]] || { echo "Not a shipped config: $config_file" >&2; exit 1; }
+mkdir -p "$(dirname "$user_config")"
+
+if [[ -f $user_config ]]; then
+  cp -f "$user_config" "$backup"
+  cp -f "$default_config" "$user_config"
+  if cmp -s "$user_config" "$backup"; then
+    # You had not customised it — no backup worth keeping, no noise.
+    rm -f "$backup"
+    printf '\033[2m%s unchanged\033[0m\n' "$config_file"
+  else
+    printf '\033[31mReplaced %s with the new omacos default.\033[0m\n' "$user_config"
+    printf 'Your version was saved as %s\n\n\033[32mWhat changed (yours > new):\033[0m\n' "$backup"
+    diff "$backup" "$user_config" || true
+  fi
+else
+  cp -f "$default_config" "$user_config"
+  printf '\033[32mSeeded %s\033[0m\n' "$user_config"
+fi

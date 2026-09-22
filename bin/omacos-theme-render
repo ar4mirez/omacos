@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# omacos:summary=Render theme templates from a palette into a directory
+# omacos:args=<colors.toml> <output-dir>
+# omacos:hidden=true
+#
+# Templates are plain files with {{ placeholders }}. Supported forms:
+#   {{ accent }}                       #7aa2f7
+#   {{ accent_strip }}                 7aa2f7          (Ghostty, hex-without-hash)
+#   {{ accent_rgb }}                   122,162,247     (AppleScript, CSS)
+#   {{ accent_0x }}                    0xff7aa2f7      (SketchyBar, borders)
+#   {{ mix background foreground 15% }}  blended hex
+#   {{ mix_strip a b 15% }} / {{ mix_0x a b 15% }}
+#
+# A template whose output already exists is skipped, so a hand-written file in a
+# theme always beats the generated one.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+palette=${1:?usage: omacos-theme-render <colors.toml> <output-dir>}
+outdir=${2:?usage: omacos-theme-render <colors.toml> <output-dir>}
+[[ -f $palette ]] || { echo "No palette: $palette" >&2; exit 1; }
+mkdir -p "$outdir"
+
+render_one() {
+  local template=$1 target=$2
+  awk -v palette="$palette" '
+    function trim(s) { gsub(/^[ \t"]+|[ \t"]+$/, "", s); return s }
+
+    function hex2int(h,   i, c, n, digits) {
+      digits = "0123456789abcdef"; n = 0
+      h = tolower(h)
+      for (i = 1; i <= length(h); i++) {
+        c = index(digits, substr(h, i, 1)) - 1
+        if (c < 0) c = 0
+        n = n * 16 + c
+      }
+      return n
+    }
+    function int2hex(n,   digits, out, d) {
+      digits = "0123456789abcdef"; out = ""
+      if (n < 0) n = 0; if (n > 255) n = 255
+      n = int(n + 0.5)
+      d = int(n / 16); out = substr(digits, d + 1, 1)
+      out = out substr(digits, (n % 16) + 1, 1)
+      return out
+    }
+    # Look up a key, tolerating a literal #rrggbb passed straight through.
+    function color(key) {
+      if (key ~ /^#/) return key
+      if (key in P && P[key] != "") return P[key]
+      printf("omacos-theme-render: unknown palette key \"%s\" in %s\n", key, TEMPLATE) > "/dev/stderr"
+      return "#000000"
+    }
+    function strip(c) { sub(/^#/, "", c); return c }
+    function to_rgb(c,   h) {
+      h = strip(c)
+      return hex2int(substr(h,1,2)) "," hex2int(substr(h,3,2)) "," hex2int(substr(h,5,2))
+    }
+    function to_0x(c) { return "0xff" strip(c) }
+    function mix(a, b, amount,   ha, hb, i, out, ca, cb) {
+      gsub(/%$/, "", amount)
+      amount = amount + 0
+      if (amount > 1) amount = amount / 100
+      ha = strip(color(a)); hb = strip(color(b)); out = "#"
+      for (i = 0; i < 3; i++) {
+        ca = hex2int(substr(ha, i*2+1, 2))
+        cb = hex2int(substr(hb, i*2+1, 2))
+        out = out int2hex(ca + (cb - ca) * amount)
+      }
+      return out
+    }
+
+    function evaluate(expr,   n, parts, fn) {
+      gsub(/^[ \t]+|[ \t]+$/, "", expr)
+      n = split(expr, parts, /[ \t]+/)
+      fn = parts[1]
+      if (n == 1) {
+        if (fn ~ /_strip$/) { sub(/_strip$/, "", fn); return strip(color(fn)) }
+        if (fn ~ /_rgb$/)   { sub(/_rgb$/, "", fn);   return to_rgb(color(fn)) }
+        if (fn ~ /_0x$/)    { sub(/_0x$/, "", fn);    return to_0x(color(fn)) }
+        return color(fn)
+      }
+      if (fn == "mix")       return mix(parts[2], parts[3], parts[4])
+      if (fn == "mix_strip") return strip(mix(parts[2], parts[3], parts[4]))
+      if (fn == "mix_rgb")   return to_rgb(mix(parts[2], parts[3], parts[4]))
+      if (fn == "mix_0x")    return to_0x(mix(parts[2], parts[3], parts[4]))
+      printf("omacos-theme-render: unknown helper \"%s\" in %s\n", fn, TEMPLATE) > "/dev/stderr"
+      return ""
+    }
+
+    BEGIN {
+      while ((getline line < palette) > 0) {
+        if (line ~ /^[ \t]*#/ || line !~ /=/) continue
+        split(line, kv, "=")
+        key = trim(kv[1])
+        val = kv[2]
+        # Quoted value: take what is inside the quotes. Only an unquoted value
+        # can have a trailing comment — stripping # first would eat #rrggbb.
+        if (val ~ /"/) { sub(/^[^"]*"/, "", val); sub(/".*$/, "", val) }
+        else           { sub(/#[ \t].*$/, "", val) }
+        P[key] = trim(val)
+      }
+      close(palette)
+    }
+
+    {
+      line = $0; out = ""
+      while (match(line, /\{\{[^}]*\}\}/)) {
+        out = out substr(line, 1, RSTART - 1)
+        expr = substr(line, RSTART + 2, RLENGTH - 4)
+        out = out evaluate(expr)
+        line = substr(line, RSTART + RLENGTH)
+      }
+      print out line
+    }
+  ' TEMPLATE="$template" "$template" > "$target"
+}
+
+rendered=0
+render_dir() {
+  local dir=$1 template base target
+  [[ -d $dir ]] || return 0
+  for template in "$dir"/*.tpl; do
+    [[ -f $template ]] || continue
+    base=$(basename "$template" .tpl)
+    target="$outdir/$base"
+    # Hand-written wins: a theme that ships the real file keeps it.
+    [[ -e $target ]] && continue
+    render_one "$template" "$target"
+    rendered=$((rendered + 1))
+  done
+}
+
+# User templates first, so they can claim a filename before the built-in does.
+render_dir "$OMACOS_CONFIG/themed"
+render_dir "$OMACOS_PATH/default/themed"
+
+printf '%d\n' "$rendered" >/dev/null

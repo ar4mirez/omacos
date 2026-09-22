@@ -1,0 +1,39 @@
+# Rosé Pine Dawn — the light theme, so the light/dark path stays exercised.
+mode = "light"
+
+accent            = "#286983"
+selection         = "#dfdad9"
+muted             = "#9893a5"
+
+background        = "#faf4ed"
+dark_background   = "#fffaf3"
+darker_background = "#f2e9e1"
+lighter_background = "#fffaf3"
+
+foreground        = "#575279"
+dark_foreground   = "#797593"
+light_foreground  = "#6e6a86"
+bright_foreground = "#575279"
+
+black   = "#f2e9e1"
+red     = "#b4637a"
+green   = "#286983"
+yellow  = "#ea9d34"
+blue    = "#56949f"
+magenta = "#907aa9"
+cyan    = "#56949f"
+white   = "#575279"
+
+bright_black   = "#9893a5"
+bright_red     = "#b4637a"
+bright_green   = "#286983"
+bright_yellow  = "#ea9d34"
+bright_blue    = "#56949f"
+bright_magenta = "#907aa9"
+bright_cyan    = "#56949f"
+bright_white   = "#575279"
+
+bat_theme = "rose-pine-dawn"
+nvim_plugin = "rose-pine/neovim"
+nvim_plugin_name = "rose-pine"
+nvim_colorscheme = "rose-pine-dawn"

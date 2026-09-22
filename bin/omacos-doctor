@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# omacos:summary=Check that this machine is set up the way omacos expects
+# omacos:args=[--quiet]
+# omacos:examples=omacos doctor
+#
+# Everything here is a read-only check. Nothing is repaired automatically: the
+# point is to tell you what is actually true on a machine, especially the three
+# things that cannot be scripted (Accessibility grants, 1Password's two toggles).
+set -uo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+quiet=false; [[ ${1:-} == --quiet ]] && quiet=true
+pass=0; warn=0; fail=0
+
+ok()   { ((pass++)); $quiet || printf '  \033[32m✓\033[0m %s\n' "$1"; }
+note() { ((warn++)); printf '  \033[33m!\033[0m %s\n' "$1"; [[ -n ${2:-} ]] && printf '      \033[2m%s\033[0m\n' "$2"; }
+bad()  { ((fail++)); printf '  \033[31m✗\033[0m %s\n' "$1"; [[ -n ${2:-} ]] && printf '      \033[2m%s\033[0m\n' "$2"; }
+section() { printf '\n\033[1m%s\033[0m\n' "$1"; }
+
+section "omacos"
+[[ -d $OMACOS_PATH ]] && ok "OMACOS_PATH  $OMACOS_PATH" || bad "OMACOS_PATH missing: $OMACOS_PATH"
+case ":$PATH:" in *":$OMACOS_PATH/bin:"*) ok "bin/ is on PATH" ;;
+  *) note "bin/ is not on PATH" "Open a new shell, or source ~/.config/zsh/.zshrc" ;; esac
+if command -v omacos >/dev/null; then ok "omacos resolves to $(command -v omacos)"; else bad "omacos not on PATH"; fi
+if omacos migrate --pending >/dev/null 2>&1; then
+  note "Migrations pending" "Run: omacos update"
+else ok "No pending migrations"; fi
+
+section "Platform"
+os=$(sw_vers -productVersion)
+case ${os%%.*} in
+  27) note "macOS $os is very new" "AeroSpace and SketchyBar have limited testing on 27" ;;
+  26) ok "macOS $os" ;;
+  *)  note "macOS $os is older than this project targets" ;;
+esac
+[[ $(uname -m) == arm64 ]] && ok "Apple silicon (arm64)" || bad "Unsupported architecture: $(uname -m)"
+if csrutil status 2>/dev/null | grep -q enabled; then ok "SIP enabled (AeroSpace needs no exception)"
+else note "SIP is disabled" "omacos does not require this"; fi
+
+section "Homebrew"
+if command -v brew >/dev/null; then
+  ok "brew $(brew --version | head -1 | awk '{print $2}')"
+  for tap in nikitabobko/tap felixkratz/formulae; do
+    if brew tap 2>/dev/null | grep -qix "$tap"; then ok "tap $tap"
+    else note "tap $tap missing" "Run: brew tap $tap"; fi
+  done
+  if [[ -f $OMACOS_PATH/Brewfile ]]; then
+    if brew bundle check --file "$OMACOS_PATH/Brewfile" >/dev/null 2>&1; then ok "Brewfile satisfied"
+    else note "Brewfile not fully installed" "Run: brew bundle install --file $OMACOS_PATH/Brewfile"; fi
+  fi
+else bad "Homebrew not installed"; fi
+
+section "Seeded config"
+if omacos done check seed 2>/dev/null; then ok "Config seeded"
+else note "Config not seeded yet" "Run: omacos-install or $OMACOS_PATH/install.sh"; fi
+for dir in "$OMACOS_CONFIG" "$OMACOS_STATE"; do
+  [[ -d $dir ]] && ok "$(printf '%s' "${dir/#$HOME/\~}")" || note "missing ${dir/#$HOME/\~}"
+done
+
+section "Identity"
+if git config --global user.email >/dev/null 2>&1; then
+  ok "git identity: $(git config --global user.name) <$(git config --global user.email)>"
+else note "No global git identity" "Set GIT_NAME/GIT_EMAIL in $OMACOS_CONFIG/local.env"; fi
+if command -v gh >/dev/null; then
+  if gh auth status >/dev/null 2>&1; then ok "gh authenticated"; else note "gh not authenticated" "Run: gh auth login"; fi
+fi
+
+section "1Password"
+op_sock="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+[[ -d /Applications/1Password.app ]] && ok "1Password app installed" || note "1Password app not installed"
+command -v op >/dev/null && ok "op CLI $(op --version 2>/dev/null)" \
+  || note "op CLI not installed" "brew install --cask 1password-cli"
+if [[ -S $op_sock ]]; then ok "SSH agent socket is live"
+else note "1Password SSH agent not running" "Enable: 1Password > Settings > Developer > Use the SSH agent"; fi
+
+section "Desktop"
+for svc in aerospace sketchybar borders; do
+  if ! command -v "$svc" >/dev/null && [[ ! -d /Applications/AeroSpace.app ]]; then
+    note "$svc not installed" "Not required yet — arrives in a later phase"
+  elif pgrep -qx "$svc" 2>/dev/null; then ok "$svc running"
+  else note "$svc installed but not running"; fi
+done
+
+printf '\n\033[1m%d passed\033[0m, \033[33m%d to look at\033[0m, \033[31m%d broken\033[0m\n' "$pass" "$warn" "$fail"
+((fail == 0))

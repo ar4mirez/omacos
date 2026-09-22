@@ -1,0 +1,49 @@
+# omacos core — the terminal environment.
+#
+# Everything here is safe on any macOS version and has no dependency on the
+# window manager or status bar. `brew bundle --file Brewfile` should leave you
+# with a working developer machine even if the desktop layer is off.
+
+# bash 5: macOS still ships 3.2, which has no associative arrays.
+brew "bash"
+brew "coreutils"
+
+# Shell surface
+brew "starship"
+brew "fzf"
+brew "zoxide"
+brew "atuin"
+brew "direnv"
+brew "mise"
+
+# Files and search
+brew "ripgrep"
+brew "fd"
+brew "eza"
+brew "bat"
+brew "tree"
+
+# Git
+brew "git"
+brew "gh"
+brew "lazygit"
+brew "git-delta"
+
+# Editor and multiplexing
+brew "neovim"
+brew "tmux"
+
+# System
+brew "btop"
+brew "wallpaper"   # sindresorhus/macos-wallpaper: the reliable wallpaper setter
+
+# Scripting toolkit — gum drives the omacos menu
+brew "gum"
+brew "jq"
+brew "yq"
+brew "mas"
+brew "shellcheck"
+
+cask "ghostty"
+cask "1password-cli"
+cask "font-jetbrains-mono-nerd-font"
