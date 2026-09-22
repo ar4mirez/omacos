@@ -40,7 +40,7 @@ omacos menu                  # everything, in one searchable menu
 
 omacos theme list|set|next|current
 omacos keymap show|build
-omacos feature enable desktop
+omacos feature enable desktop | apps
 omacos webapp install Linear https://linear.app
 omacos setup signing            # git commit signing via 1Password
 omacos git org add Acme         # per-org identity under ~/Work/Acme/
@@ -59,6 +59,10 @@ tmux, btop.
 
 **Desktop** (opt-in) — AeroSpace tiling, SketchyBar, JankyBorders, driven by a
 keymap that generates both the window manager config and its own cheatsheet.
+
+**Apps** (opt-in) — a small, editable set of GUI applications in
+`Brewfile.apps`, installed with one admin prompt for the whole batch rather
+than one per `.pkg` cask.
 
 **Themes** — one `colors.toml` per theme renders every app's colours, switches
 macOS between light and dark, and sets the wallpaper. Ships tokyo-night,
@@ -96,7 +100,7 @@ Ordered cheapest to most drastic. You should never have to fork.
 
 macOS 27 shipped a week before this project started, and AeroSpace and
 SketchyBar have barely been tested on it. So they sit behind
-`omacos feature enable desktop`, and nothing in the terminal layer depends on
+`omacos feature enable desktop | apps`, and nothing in the terminal layer depends on
 them. A broken status bar should cost you a status bar, not a working machine.
 
 ## Development

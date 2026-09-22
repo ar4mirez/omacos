@@ -7,7 +7,7 @@ set -euo pipefail
 
 feature=${1:?usage: omacos install feature <name>}
 case $feature in
-  desktop|statusbar|borders)
+  desktop)
     omacos-cmd-trust-tap nikitabobko/tap "AeroSpace" || true
     omacos-cmd-trust-tap felixkratz/formulae "SketchyBar and JankyBorders" || true
     brew bundle install --file "$OMACOS_PATH/Brewfile.desktop" --no-upgrade
@@ -15,6 +15,12 @@ case $feature in
     printf '\n\033[33mAeroSpace needs Accessibility permission.\033[0m\n'
     printf 'Grant it in System Settings > Privacy & Security > Accessibility, then run:\n'
     printf '  open -a AeroSpace\n'
+    ;;
+  apps)
+    # brew bundle cannot prompt for sudo without a terminal, and several of
+    # these are .pkg casks — so hand the list to the installer that knows.
+    mapfile -t casks < <(grep '^cask ' "$OMACOS_PATH/Brewfile.apps" | cut -d'"' -f2)
+    ((${#casks[@]})) && omacos-install-app "${casks[@]}"
     ;;
   hyper)
     brew install --cask karabiner-elements

@@ -39,6 +39,9 @@ brew bundle install --file "$OMACOS_PATH/Brewfile" --no-upgrade 2>&1 | sed 's/^/
 if omacos-feature check desktop 2>/dev/null; then
   brew bundle install --file "$OMACOS_PATH/Brewfile.desktop" --no-upgrade 2>&1 | sed 's/^/  /'
 fi
+if omacos-feature check apps 2>/dev/null; then
+  brew bundle install --file "$OMACOS_PATH/Brewfile.apps" --no-upgrade 2>&1 | sed 's/^/  /'
+fi
 
 step "Migrations"
 # Migrations ship with the code fetched above and are written against it, so

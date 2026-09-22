@@ -1,0 +1,12 @@
+# omacos apps — the GUI applications a working day needs.
+#
+# Separate from the core Brewfile because these are taste, not infrastructure:
+# the terminal environment is useful to everyone, a chat client is not. Enable
+# with `omacos feature enable apps`, or edit this file and make it yours.
+#
+# Several of these ship a .pkg and install under sudo, so a bootstrap that
+# includes them cannot be fully unattended — you will be asked once.
+
+cask "slack"
+cask "zoom"
+cask "microsoft-teams"

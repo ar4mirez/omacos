@@ -1,11 +1,41 @@
 #!/usr/bin/env bash
-# omacos:summary=Install a Homebrew cask and report what happened
+# omacos:summary=Install Homebrew casks, handling the ones that need admin
 # omacos:args=<cask> [more casks...]
-# omacos:examples=omacos install app visual-studio-code | omacos install app slack zoom
+# omacos:examples=omacos install app slack | omacos install app zoom microsoft-teams
+#
+# Some casks ship a .pkg and run `installer` under sudo. Those need a terminal
+# to prompt on, so running this from the menu or a keybinding — neither of which
+# has one — fails with "a terminal is required to read the password". This
+# relaunches itself in a window when that is the case.
 set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
 
 (($#)) || { echo "usage: omacos install app <cask> [...]" >&2; exit 1; }
 
+if [[ ! -t 0 ]]; then
+  exec omacos-launch-tui "omacos-install-app $*; echo; read -n 1 -s -r -p 'Press any key to close'"
+fi
+
+# Ask once for the whole batch rather than once per cask, and fail early if the
+# password is wrong instead of halfway through a queue.
+needs_admin=()
+for cask in "$@"; do
+  brew list --cask "$cask" >/dev/null 2>&1 && continue
+  if brew info --cask "$cask" 2>/dev/null | grep -qiE '\.pkg|requires (an )?admin|sudo'; then
+    needs_admin+=("$cask")
+  fi
+done
+
+if ((${#needs_admin[@]})); then
+  printf '\033[33mThese install a .pkg and need your admin password:\033[0m %s\n' "${needs_admin[*]}"
+  sudo -v || { echo "Admin rights are required for those casks." >&2; exit 1; }
+  # Keep the sudo timestamp alive for the whole run; brew may take a while.
+  while true; do sudo -n true; sleep 50; kill -0 "$$" 2>/dev/null || exit; done 2>/dev/null &
+  keepalive=$!
+  trap 'kill "$keepalive" 2>/dev/null || true' EXIT
+fi
+
+failed=()
 for cask in "$@"; do
   if brew list --cask "$cask" >/dev/null 2>&1; then
     printf '\033[2m· %s already installed\033[0m\n' "$cask"
@@ -16,5 +46,11 @@ for cask in "$@"; do
     printf '\033[32m✓\033[0m %s\n' "$cask"
   else
     printf '\033[31m✗\033[0m %s failed\n' "$cask" >&2
+    failed+=("$cask")
   fi
 done
+
+if ((${#failed[@]})); then
+  printf '\n\033[31mFailed:\033[0m %s\n' "${failed[*]}" >&2
+  exit 1
+fi

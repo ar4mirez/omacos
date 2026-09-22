@@ -154,6 +154,26 @@ check "root route lists rows" "omacos-menu --list | grep -q style"
 check "nested route resolves" "omacos-menu --list style | grep -q style.theme"
 check "shipped menu is valid JSON" "python3 -m json.tool < $OMACOS_PATH/default/menu.json"
 
+printf '\n\033[1mApp installs\033[0m\n'
+# The install path extracts cask names from this file, so every `cask` line
+# must yield one. Inline quoting for this is unreadable; use a function.
+apps_brewfile_parses() {
+  local lines names
+  lines=$(grep -c '^cask ' "$OMACOS_PATH/Brewfile.apps")
+  names=$(grep '^cask ' "$OMACOS_PATH/Brewfile.apps" | cut -d'"' -f2 | grep -c .)
+  [[ $lines -gt 0 && $lines -eq $names ]]
+}
+check "apps Brewfile parses into cask names" apps_brewfile_parses
+# Several casks ship a .pkg and run installer under sudo, which cannot prompt
+# without a terminal. install-app must relaunch rather than fail obscurely.
+check "install-app relaunches without a tty" \
+  "grep -q 'omacos-launch-tui' $OMACOS_PATH/bin/omacos-install-app"
+check "install-app reports failure"  "grep -q 'exit 1' $OMACOS_PATH/bin/omacos-install-app"
+check "every feature flag is checked somewhere" "
+  for f in \$(grep -oE 'KNOWN=\\(([a-z ]+)\\)' $OMACOS_PATH/bin/omacos-feature | tr -d 'KNOWN=()'); do
+    grep -rqE \"feature check \$f|\\| *\$f\\)|^  \$f\\)\" $OMACOS_PATH/bin $OMACOS_PATH/install || exit 1
+  done"
+
 printf '\n\033[1mWebapps\033[0m\n'
 mkdir -p "$HOME/Applications"
 check "creates an app bundle"      "omacos-webapp-install Demo https://example.com && test -x $HOME/Applications/Demo.app/Contents/MacOS/Demo"

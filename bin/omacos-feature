@@ -8,7 +8,10 @@
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
 
-KNOWN=(desktop statusbar borders hyper)
+# Only list flags something actually checks. statusbar and borders were
+# here and read by nothing, which promises granularity that does not exist:
+# they come with `desktop`.
+KNOWN=(desktop apps hyper)
 features_file="$OMACOS_CONFIG/features"
 
 command=${1:-list}; name=${2:-}
