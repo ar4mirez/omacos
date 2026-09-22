@@ -38,8 +38,8 @@ case $role in
   notes)     candidates=("${NOTES_APP:-}"    Obsidian Notes) ;;
   writing)   candidates=("${WRITING_APP:-}"  Typora "iA Writer" TextEdit) ;;
   password)  candidates=("${PASSWORD_APP:-}" 1Password) ;;
-  chat)      candidates=("${CHAT_APP:-}"     Signal) ;;
-  chat-alt)  candidates=("${CHAT_ALT_APP:-}" WhatsApp) ;;
+  chat)      candidates=("${CHAT_APP:-}"     Signal Telegram) ;;
+  chat-alt)  candidates=("${CHAT_ALT_APP:-}" WhatsApp "WhatsApp Web") ;;
   messages)  candidates=("${MESSAGES_APP:-}" Messages);        url="https://messages.google.com/web" ;;
   photos)    candidates=("${PHOTOS_APP:-}"   Photos);          url="https://photos.google.com" ;;
   maps)      candidates=("${MAPS_APP:-}"     Maps);            url="https://maps.google.com" ;;

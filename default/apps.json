@@ -197,6 +197,15 @@
     "package": "superwhisper",
     "app": "superwhisper"
   },
+  "ai.wispr-flow": {
+    "icon": "◇",
+    "label": "Wispr Flow",
+    "category": "ai",
+    "source": "cask",
+    "package": "wispr-flow",
+    "app": "Wispr Flow",
+    "bundle": "com.electron.wispr-flow"
+  },
   "agent.claude": {
     "icon": "◆",
     "label": "Claude Code",
@@ -279,6 +288,26 @@
     "source": "cask",
     "package": "signal",
     "app": "Signal",
+    "role": "chat"
+  },
+  "service.whatsapp": {
+    "icon": "◈",
+    "label": "WhatsApp",
+    "category": "service",
+    "source": "cask",
+    "package": "whatsapp",
+    "app": "WhatsApp",
+    "bundle": "net.whatsapp.WhatsApp",
+    "role": "chat-alt"
+  },
+  "service.telegram": {
+    "icon": "◈",
+    "label": "Telegram",
+    "category": "service",
+    "source": "cask",
+    "package": "telegram",
+    "app": "Telegram",
+    "bundle": "ru.keepcoder.Telegram",
     "role": "chat"
   },
   "service.tailscale": {
@@ -475,7 +504,7 @@
   },
   "webapp.whatsapp": {
     "icon": "◉",
-    "label": "WhatsApp",
+    "label": "WhatsApp Web",
     "category": "webapp",
     "source": "webapp",
     "url": "https://web.whatsapp.com/",
