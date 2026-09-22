@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# omacos:summary=Open the app you use for a given job
+# omacos:args=<role> [--has]
+# omacos:examples=omacos launch app music | omacos launch app notes --has
+#
+# The keymap says "Music", not "Spotify". Which app fills a role is taste and
+# changes per machine, so it belongs in ~/.config/omacos/local.env rather than
+# in a keybinding you would have to edit:
+#
+#   MUSIC_APP="Apple Music"
+#   NOTES_APP="Bear"
+#
+# Without an override, the first installed candidate wins, and a role with no
+# app but a website falls back to opening it in your browser.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+# shellcheck source=/dev/null
+[[ -f $OMACOS_CONFIG/local.env ]] && . "$OMACOS_CONFIG/local.env"
+
+role=${1:-}
+[[ -n $role ]] || { echo "usage: omacos launch app <role> [--has]" >&2; exit 1; }
+only_check=false
+[[ ${2:-} == --has ]] && only_check=true
+
+url=""
+case $role in
+  music)     candidates=("${MUSIC_APP:-}"    Spotify Music) ;;
+  ai)        candidates=("${AI_APP:-}"       ChatGPT Claude);  url="https://chatgpt.com" ;;
+  ai-alt)    candidates=("${AI_ALT_APP:-}"   Grok);            url="https://grok.com" ;;
+  calendar)  candidates=("${CALENDAR_APP:-}" Calendar) ;;
+  email)     candidates=("${EMAIL_APP:-}"    Mail) ;;
+  notes)     candidates=("${NOTES_APP:-}"    Obsidian Notes) ;;
+  writing)   candidates=("${WRITING_APP:-}"  Typora "iA Writer" TextEdit) ;;
+  password)  candidates=("${PASSWORD_APP:-}" 1Password) ;;
+  chat)      candidates=("${CHAT_APP:-}"     Signal) ;;
+  chat-alt)  candidates=("${CHAT_ALT_APP:-}" WhatsApp) ;;
+  messages)  candidates=("${MESSAGES_APP:-}" Messages);        url="https://messages.google.com/web" ;;
+  photos)    candidates=("${PHOTOS_APP:-}"   Photos);          url="https://photos.google.com" ;;
+  x)         candidates=("${X_APP:-}"        X);               url="https://x.com" ;;
+  x-compose) candidates=();                                    url="https://x.com/compose/post" ;;
+  youtube)   candidates=("${YOUTUBE_APP:-}"  YouTube);         url="https://www.youtube.com" ;;
+  *)
+    echo "No such role: $role" >&2
+    echo "Roles: music ai ai-alt calendar email notes writing password chat chat-alt messages photos x x-compose youtube" >&2
+    exit 1 ;;
+esac
+
+installed() { osascript -e "id of app \"$1\"" >/dev/null 2>&1; }
+
+found=""
+for candidate in "${candidates[@]}"; do
+  [[ -n $candidate ]] || continue
+  if installed "$candidate"; then found=$candidate; break; fi
+done
+
+if $only_check; then
+  [[ -n $found || -n $url ]]
+  exit $?
+fi
+
+if [[ -n $found ]]; then
+  exec open -a "$found"
+fi
+
+if [[ -n $url ]]; then
+  # No app for this role, but it has a home on the web. `omacos webapp install`
+  # turns that into a real window if you want one.
+  exec omacos-launch-browser "$url"
+fi
+
+omacos-cmd-notify "No app for $role" "Set ${role^^}_APP in local.env, or install one." || true
+printf 'Nothing installed for "%s".\n' "$role" >&2
+printf 'Tried: %s\n' "${candidates[*]}" >&2
+printf 'Set %s_APP in ~/.config/omacos/local.env, or: omacos install app <cask>\n' \
+  "$(printf '%s' "$role" | tr 'a-z-' 'A-Z_')" >&2
+exit 1

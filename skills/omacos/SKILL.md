@@ -122,7 +122,18 @@ Duplicate keys are invalid TOML — the builder warns and keeps the last.
 
 The ladder: `alt` window management, `alt-shift` move and launch, `alt-ctrl`
 system panels, capture and toggles, `alt-ctrl-shift` the other direction of the
-same thing, `alt-cmd` a variant of the plain `alt` action. `alt` stands in for
+same thing, `alt-cmd` a variant of the plain `alt` action — including its
+reverse, which is how `alt-backtick` cycles forward and `alt-cmd-backtick` back.
+
+Two things the builder does that are easy to break: an action starting with `[`
+is emitted as a TOML array verbatim (several commands in order), and a
+`gaps-off` state flag zeroes the `[gaps]` block in place — never append a second
+one. AeroSpace rejects a whole config over one bad line and keeps the previous
+one, so `omacos keymap build` must be allowed to report that and exit non-zero.
+
+Apps are bound by **role**, not by name: `omacos launch app music` resolves
+`MUSIC_APP` from `local.env`, then a list of candidates, then a website. Adding
+an app means a role in `bin/omacos-launch-app`, not a new command. `alt` stands in for
 Omarchy's Super; `omacos setup capslock option` puts it under the left pinky.
 A binding that runs a `gum` command needs no terminal, so those commands
 relaunch themselves through `omacos launch tui` when stdin is not a tty — see

@@ -1,17 +1,44 @@
 #!/usr/bin/env bash
 # omacos:summary=Open the default browser
-# omacos:args=[url]
-# omacos:examples=omacos launch browser | omacos launch browser https://github.com
+# omacos:args=[url] [--private]
+# omacos:examples=omacos launch browser | omacos launch browser --private
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
 
 # shellcheck source=/dev/null
 [[ -f $OMACOS_CONFIG/local.env ]] && . "$OMACOS_CONFIG/local.env"
 
-if [[ -n ${1:-} ]]; then
-  exec open "$1"                                   # honours the system default
-elif [[ -n ${DEFAULT_BROWSER:-} ]]; then
-  exec open -a "$DEFAULT_BROWSER"
-else
-  exec open -a Safari
+private=false
+url=""
+for argument in "$@"; do
+  case $argument in
+    --private | --incognito) private=true ;;
+    *) url=$argument ;;
+  esac
+done
+
+browser=${DEFAULT_BROWSER:-Safari}
+
+if $private; then
+  # Each family spells it differently, and Safari does not expose a private
+  # window to `open` at all — it only answers the keystroke.
+  case $browser in
+    Safari)
+      open -a Safari
+      osascript -e 'tell application "System Events" to keystroke "n" using {command down, shift down}' \
+        >/dev/null 2>&1 || {
+          echo "omacos: Safari needs Accessibility access to open a private window." >&2
+          exit 1; }
+      exit 0 ;;
+    *Firefox*) flag=--private-window ;;
+    *)         flag=--incognito ;;
+  esac
+  arguments=(--args "$flag")
+  if [[ -n $url ]]; then arguments+=("$url"); fi
+  exec open -na "$browser" "${arguments[@]}"
 fi
+
+if [[ -n $url ]]; then
+  exec open "$url"                                 # honours the system default
+fi
+exec open -a "$browser"

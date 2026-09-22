@@ -444,6 +444,29 @@ check "a theme with no images says so" \
   "! env XDG_STATE_HOME=$sandbox/empty-state omacos-theme-background list 2>/dev/null"
 unset OMACOS_DRY_RUN
 
+printf '\n\033[1mApp roles\033[0m\n'
+# osascript decides whether an app exists and open launches it; shim both, or
+# the suite starts opening applications on the machine running it.
+printf '#!/usr/bin/env bash\ncase "$*" in *TestApp*) echo com.test.app ;; *) exit 1 ;; esac\n' \
+  > "$shim/osascript"
+printf '#!/usr/bin/env bash\necho "open $*"\n' > "$shim/open"
+chmod +x "$shim/osascript" "$shim/open"
+printf 'MUSIC_APP="TestApp"\n' >> "$OMACOS_CONFIG/local.env"
+check "local.env names the app"    \
+  "env PATH=$shim:\$PATH omacos-launch-app music | grep -q 'open -a TestApp'"
+check "--has is a predicate"       "env PATH=$shim:\$PATH omacos-launch-app music --has"
+# Nothing installed for the role, but it has a website: open that instead.
+check "a web role falls back"      \
+  "env PATH=$shim:\$PATH omacos-launch-app youtube | grep -q youtube.com"
+# Nothing installed and no website: say which variable would fix it.
+check "a dead role names its variable" \
+  "! env PATH=$shim:\$PATH omacos-launch-app calendar 2>&1 | grep -q 'open -a'"
+check "a dead role is an error"    "! env PATH=$shim:\$PATH omacos-launch-app calendar >/dev/null 2>&1"
+check "--has fails for a dead role" "! env PATH=$shim:\$PATH omacos-launch-app calendar --has"
+check "an unknown role lists the roles" \
+  "! env PATH=$shim:\$PATH omacos-launch-app nonsense 2>&1 | grep -q 'open'"
+check "private browsing is offered" "grep -q 'incognito' $OMACOS_PATH/bin/omacos-launch-browser"
+
 printf '\n\033[1mReachability\033[0m\n'
 # A binding or a menu row that names a command which does not exist is a dead
 # key: nothing fails, nothing happens.

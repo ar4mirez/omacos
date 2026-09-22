@@ -52,6 +52,7 @@ omacos webapp install Linear https://linear.app
 omacos setup signing            # git commit signing via 1Password
 omacos git org add Acme         # per-org identity under ~/Work/Acme/
 omacos install app slack zoom
+omacos launch app music      # roles, set in local.env
 omacos update
 ```
 
@@ -69,6 +70,18 @@ tmux, btop.
 
 **Desktop** (opt-in) — AeroSpace tiling, SketchyBar, JankyBorders, driven by a
 keymap that generates both the window manager config and its own cheatsheet.
+108 bindings; `alt-ctrl-k` shows them all.
+
+**Apps** are bound by *role*, not by name — the keymap says Music, and
+`~/.config/omacos/local.env` says which one:
+
+```bash
+MUSIC_APP="Apple Music"     # alt-shift-m
+NOTES_APP="Bear"            # alt-shift-o
+```
+
+A role with no app but a website opens the website, so `alt-shift-y` works
+before you have installed anything.
 
 **Apps** (opt-in) — a small, editable set of GUI applications in
 `Brewfile.apps`, installed with one admin prompt for the whole batch rather
@@ -190,7 +203,7 @@ so you stay on the same update path as everyone else.
 ```bash
 git clone git@github.com:ar4mirez/omacos.git ~/Work/ar4mirez/omacos
 cd ~/Work/ar4mirez/omacos
-./test/run.sh    # 149 tests, sandboxed — cannot touch your real home
+./test/run.sh    # 157 tests, sandboxed — cannot touch your real home
 ./install.sh     # idempotent: a no-op on a configured machine
 
 omacos dev link ~/Work/ar4mirez/omacos   # iterate without push-then-update
