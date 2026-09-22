@@ -1,5 +1,7 @@
 # omacos
 
+[![CI](https://github.com/ar4mirez/omacos/actions/workflows/ci.yml/badge.svg)](https://github.com/ar4mirez/omacos/actions/workflows/ci.yml)
+
 An omakase developer environment for macOS, in the spirit of
 [Omarchy](https://github.com/omacom/omarchy).
 
@@ -83,7 +85,7 @@ them. A broken status bar should cost you a status bar, not a working machine.
 ## Development
 
 ```bash
-./test/run.sh    # 33 tests, sandboxed — cannot touch your real home
+./test/run.sh    # 51 tests, sandboxed — cannot touch your real home
 ./install.sh     # idempotent: a no-op on a configured machine
 ```
 
