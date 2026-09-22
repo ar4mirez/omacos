@@ -28,7 +28,9 @@ own dotfiles repo.
 omacos refresh config ghostty/config.ghostty   # take a newer default, with a diff
 ```
 
-See [docs/architecture.md](docs/architecture.md) for why it works this way.
+See [docs/architecture.md](docs/architecture.md) for why it works this way, and
+[docs/coming-from-macos.md](docs/coming-from-macos.md) for what changes on a Mac
+you already know how to use.
 
 ## Commands
 
@@ -45,7 +47,8 @@ omacos capture screenshot|screenrecording|text|color
 omacos clipboard history|clear
 omacos notice time|battery|weather
 omacos reminder 7 'Tea ready'
-omacos toggle idle|bar|gaps|dnd|nightlight|audio-output
+omacos toggle idle|bar|gaps|dnd|nightlight|audio-output|menubar
+omacos snapshot create|list|restore|delete   # Time Machine, without the disk
 omacos font list
 omacos feature enable desktop | apps
 omacos setup signing            # git commit signing via 1Password
@@ -77,7 +80,10 @@ tmux, btop.
 
 **Desktop** (opt-in) — AeroSpace tiling, SketchyBar, JankyBorders, driven by a
 keymap that generates both the window manager config and its own cheatsheet.
-108 bindings; `alt-ctrl-k` shows them all.
+`alt-ctrl-k` shows them all. No dock, no desktop icons, and a wallpaper that is
+no longer a button. Every item on the bar answers left, right and middle clicks
+from one table you can edit. `alt-w` closes a window; `alt-q` quits the app,
+because on macOS those are not the same thing.
 
 **Apps** are bound by *role*, not by name — the keymap says Music, and
 `~/.config/omacos/local.env` says which one:
@@ -169,6 +175,23 @@ macOS exposes neither to the command line, and Shortcuts' own *Set Focus* and
 walks through it. Dismissing notifications is not offered: it is Notification
 Center UI scripting that has broken in five macOS releases, so `alt-ctrl-shift-comma`
 opens the settings pane instead.
+
+**Snapshots** — Omarchy snapshots the system before it updates it, and macOS
+has had the same thing built in for years with nobody using it: an APFS local
+snapshot, copy-on-write, a second to take and no disk until the machine starts
+diverging from it. `omacos update` now takes one before it changes anything,
+which is what makes upgrading every package something you can walk back from.
+
+```bash
+omacos snapshot list              # the ones omacos took are marked
+omacos snapshot restore --mount   # read-only, to get one file back
+omacos snapshot restore           # the Recovery steps, for the whole disk
+```
+
+Rolling a whole volume back can only happen from macOS Recovery — it is the
+volume you booted from — so that one prints the steps rather than pretending.
+And a local snapshot is purgeable: a safety net for the next few hours, not a
+backup.
 
 Everything here is also under `alt-space`, in the menu.
 

@@ -1,4 +1,9 @@
 {
+  "keybindings": {
+    "icon": "⌘",
+    "label": "Keybindings",
+    "action": "omacos-keymap-show; read -n 1 -s -r -p 'Press any key'"
+  },
   "style": {
     "icon": "◐",
     "label": "Style"
@@ -420,6 +425,12 @@
     "label": "Night Shift",
     "action": "omacos-toggle-nightlight"
   },
+  "toggles.menubar": {
+    "icon": "▔",
+    "label": "Hide the macOS menu bar",
+    "action": "omacos-toggle-menubar",
+    "checked": "omacos-toggle-menubar status >/dev/null"
+  },
   "toggles.screensaver": {
     "icon": "▦",
     "label": "Start the screensaver",
@@ -556,6 +567,39 @@
     "icon": "▭",
     "label": "Displays",
     "action": "open 'x-apple.systempreferences:com.apple.Displays-Settings.extension'"
+  },
+  "system.snapshot": {
+    "icon": "⍜",
+    "label": "Snapshots",
+    "title": "Snapshots you can roll back to"
+  },
+  "system.snapshot.create": {
+    "icon": "⊕",
+    "label": "Take a snapshot now",
+    "action": "omacos-snapshot-create; read -n 1 -s -r -p 'Press any key'"
+  },
+  "system.snapshot.list": {
+    "icon": "≡",
+    "label": "See snapshots",
+    "action": "omacos-snapshot-list; read -n 1 -s -r -p 'Press any key'"
+  },
+  "system.snapshot.restore": {
+    "icon": "↺",
+    "label": "Roll back to one",
+    "action": "omacos-snapshot-restore; read -n 1 -s -r -p 'Press any key'",
+    "when": "omacos-snapshot-list --plain >/dev/null 2>&1"
+  },
+  "system.snapshot.mount": {
+    "icon": "◱",
+    "label": "Open the newest one read-only",
+    "action": "omacos-snapshot-restore --mount; read -n 1 -s -r -p 'Press any key'",
+    "when": "omacos-snapshot-list --plain >/dev/null 2>&1"
+  },
+  "system.snapshot.delete": {
+    "icon": "⌫",
+    "label": "Delete a snapshot",
+    "action": "omacos-snapshot-delete",
+    "when": "omacos-snapshot-list --plain >/dev/null 2>&1"
   },
   "power": {
     "icon": "⏻",

@@ -37,10 +37,23 @@ if omacos-feature check desktop 2>/dev/null; then
   set_default com.apple.dock mru-spaces bool 0
   set_default NSGlobalDomain NSAutomaticWindowAnimationsEnabled bool 0
   set_default NSGlobalDomain NSWindowResizeTime float 0.001
+
+  # "There is no dock and no desktop icons." The Dock already auto-hides
+  # above; this is the other half. Nothing is deleted — ~/Desktop is still a
+  # folder, and Finder still opens it — it just stops being a surface that
+  # sits behind every window collecting files.
+  set_default com.apple.finder CreateDesktop bool 0
+
+  # And stop the wallpaper from being a button. Clicking empty space to reveal
+  # the desktop shoves every tiled window off-screen, which with a tiling WM
+  # is a way to lose your layout by missing a window edge.
+  set_default com.apple.WindowManager EnableStandardClickToShowDesktop bool 0
 fi
 
-killall Dock Finder SystemUIServer 2>/dev/null || true
-ok "Restarted Dock, Finder and SystemUIServer"
+# WindowManager holds the click-to-show-desktop setting above and does not
+# reread it on its own.
+killall Dock Finder SystemUIServer WindowManager 2>/dev/null || true
+ok "Restarted Dock, Finder, SystemUIServer and WindowManager"
 
 # Caps Lock is the best-placed key on the board and does nothing useful. Remap
 # it when local.env says to; hidutil needs no driver, so this is safe to script.

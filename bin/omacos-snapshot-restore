@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# omacos:summary=Roll back to a snapshot, or mount one to pull a file out of it
+# omacos:args=[<date>] [--mount]
+# omacos:examples=omacos snapshot restore | omacos snapshot restore --mount
+#
+# Two different jobs wear the word "restore", and only one of them can be
+# scripted:
+#
+#   pulling a file back    mount the snapshot read-only and copy it out. That
+#                          is what --mount does, and it is the answer nine
+#                          times out of ten.
+#   rolling the whole disk back
+#                          only macOS Recovery can do this, because the volume
+#                          being replaced is the one you booted from. No flag
+#                          here can fake that, so this prints the steps.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+mount=false
+args=()
+for argument in "$@"; do
+  case $argument in
+    --mount) mount=true ;;
+    *) args+=("$argument") ;;
+  esac
+done
+
+date=${args[0]:-}
+if [[ -z $date ]]; then
+  mapfile -t dates < <(omacos-snapshot-list --plain) || true
+  ((${#dates[@]})) || { echo "No snapshots. Take one with: omacos snapshot create" >&2; exit 1; }
+  date=${dates[0]}
+fi
+
+snapshot="com.apple.TimeMachine.$date.local"
+pretty=$(omacos-snapshot-list --format "$date")
+
+if $mount; then
+  mountpoint="$OMACOS_STATE/snapshot-mount/$date"
+  mkdir -p "$mountpoint"
+  # Captured rather than piped into grep: under pipefail, grep matching early
+  # SIGPIPEs mount and the pipeline returns 141, so a mount that *is* there
+  # reads as one that is not.
+  mounted=$(mount) || mounted=""
+  if [[ $mounted == *" $mountpoint "* ]]; then
+    printf 'Already mounted at %s\n' "$mountpoint"
+  else
+    printf 'Mounting %s read-only. macOS will ask for your password.\n\n' "$pretty"
+    # /System/Volumes/Data, not /: the system volume is sealed and identical
+    # in every snapshot, so everything that actually changed — your home
+    # directory, /usr/local, Homebrew — lives on the data volume.
+    if ! sudo mount_apfs -s "$snapshot" -o ro /System/Volumes/Data "$mountpoint"; then
+      printf '\nCould not mount the snapshot.\n' >&2
+      exit 1
+    fi
+  fi
+  printf '\n\033[32mMounted:\033[0m %s\n\n' "$mountpoint"
+  printf '  Your home as it was then:\n'
+  printf '    \033[36m%s\033[0m\n\n' "$mountpoint/${HOME#/System/Volumes/Data/}"
+  printf '  When you are done:\n'
+  printf '    \033[36msudo umount %s\033[0m\n' "$mountpoint"
+  exit 0
+fi
+
+printf '\n\033[1mRolling the whole machine back to %s\033[0m\n\n' "$pretty"
+printf '  This replaces the volume you are booted from, so it cannot be done\n'
+printf '  from inside the running system. macOS Recovery does it:\n\n'
+printf '    1. Apple menu > Restart, and hold the power button until\n'
+printf '       "Loading startup options" appears.\n'
+printf '    2. Options > Continue.\n'
+printf '    3. "Restore From Time Machine" — local snapshots are listed there\n'
+printf '       even if you have never set up a Time Machine disk.\n'
+printf '    4. Pick %s.\n\n' "$pretty"
+printf '  \033[1mUsually you want less than that.\033[0m To get one file, or one config,\n'
+printf '  back out of the snapshot without touching anything else:\n\n'
+printf '    \033[36momacos snapshot restore %s --mount\033[0m\n\n' "$date"

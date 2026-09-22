@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# omacos:summary=Quit the focused app, not just close its window
+# omacos:examples=omacos cmd quit-app
+#
+# The one place where the Mac genuinely behaves differently from everything
+# Omarchy's manual describes. On Linux, closing the last window ends the
+# program. On macOS it does not: the app stays running with no window, still
+# owning the menu bar, and a tiling WM has nothing left to tile. So `alt-w`
+# closes a window and `alt-q` ends the app, which is the split Cmd-W and Cmd-Q
+# already make everywhere else on this machine.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+# AeroSpace knows which window is focused; System Events only knows which app
+# is frontmost. They agree almost always, and AeroSpace is right when they do
+# not — it is the thing that moved focus.
+bundle=""
+if command -v aerospace >/dev/null 2>&1; then
+  bundle=$(aerospace list-windows --focused --format '%{app-bundle-id}' 2>/dev/null | head -1) || bundle=""
+fi
+if [[ -z $bundle ]]; then
+  bundle=$(osascript -e 'tell application "System Events" to get bundle identifier of first application process whose frontmost is true' 2>/dev/null) || bundle=""
+fi
+
+[[ -n $bundle ]] || { echo "Nothing is focused." >&2; exit 1; }
+
+case $bundle in
+  # Finder relaunches itself the moment it is quit, and quitting the WM or the
+  # bar with a window-management key is never what was meant.
+  com.apple.finder)       echo "Finder does not quit."; exit 0 ;;
+  bobko.aerospace|com.felixkratz.*) echo "Refusing to quit $bundle." >&2; exit 1 ;;
+esac
+
+if ! osascript -e "tell application id \"$bundle\" to quit" 2>/dev/null; then
+  # Some apps answer no AppleScript at all. Saying so beats a key that looks
+  # broken, and Cmd-Q still works.
+  echo "$bundle would not quit on request. Try Cmd-Q." >&2
+  exit 1
+fi

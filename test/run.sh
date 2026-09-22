@@ -667,6 +667,87 @@ check "an unknown role lists the roles" \
   "! env PATH=$shim:\$PATH omacos-launch-app nonsense 2>&1 | grep -q 'open'"
 check "private browsing is offered" "grep -q 'incognito' $OMACOS_PATH/bin/omacos-launch-browser"
 
+printf '\n\033[1mSnapshots\033[0m\n'
+# tmutil talks to the real disk, so every check here goes through a shim. The
+# logic worth testing is the parsing and the bookkeeping, not whether Apple's
+# tool works.
+snapshot_shim="$sandbox/snapshot-shim"; mkdir -p "$snapshot_shim"
+cat > "$snapshot_shim/tmutil" <<'SHIM'
+#!/usr/bin/env bash
+case "$1" in
+  localsnapshot)
+    echo "NOTE: local snapshots are considered purgeable."
+    echo "Created local snapshot with date: 2026-09-22-185121" ;;
+  listlocalsnapshots)
+    for d in ${FAKE_SNAPSHOTS:-}; do echo "com.apple.TimeMachine.$d.local"; done ;;
+  deletelocalsnapshots)
+    echo "Deleted local snapshot '$2'" ;;
+esac
+SHIM
+chmod +x "$snapshot_shim/tmutil"
+# The fake snapshot list is the first argument, not an `env` prefix: `env`
+# runs a binary, and snap is a function, so a prefix would never reach it.
+snap() { local fake=$1; shift; env PATH="$snapshot_shim:$PATH" FAKE_SNAPSHOTS="$fake" "$@"; }
+
+# Pure string work, and the one thing every other command formats through.
+check "a date renders as a date" \
+  "omacos-snapshot-list --format 2026-09-22-185121 | grep -q '2026-09-22 18:51'"
+
+# The predicate half: no snapshots must be a non-zero exit, because the menu
+# hides its restore rows on exactly this.
+check "no snapshots exits non-zero" \
+  "! snap '' omacos-snapshot-list --plain"
+check "snapshots exit zero" \
+  "snap 2026-09-22-185121 omacos-snapshot-list --plain | grep -q 2026-09-22-185121"
+# Newest first, or `restore` with no argument picks the wrong one.
+check "newest snapshot is listed first" \
+  "snap '2026-09-20-100000 2026-09-22-185121' omacos-snapshot-list --plain | head -1 | grep -q 2026-09-22-185121"
+
+# macOS names every snapshot com.apple.TimeMachine.*, so the marker file is
+# the only way to tell one omacos took before an update from Time Machine's
+# own hourly ones.
+check "create records the snapshot as ours" \
+  "snap '' omacos-snapshot-create --quiet | grep -q 2026-09-22-185121 && test -e $OMACOS_STATE/snapshots/2026-09-22-185121"
+check "ours are marked in the listing" \
+  "snap 2026-09-22-185121 omacos-snapshot-list | grep -q 'taken by omacos'"
+check "delete forgets the marker" \
+  "snap '' omacos-snapshot-delete 2026-09-22-185121 >/dev/null && ! test -e $OMACOS_STATE/snapshots/2026-09-22-185121"
+
+# A snapshot taken after the machine changed is worth nothing, so the step has
+# to come before the pull and the upgrade.
+snapshot_runs_first() {
+  local order
+  order=$(grep -nE 'omacos-snapshot-create|^step "Fetching|brew upgrade' "$OMACOS_PATH/bin/omacos-update" | head -3)
+  [[ $(head -1 <<<"$order") == *omacos-snapshot-create* ]]
+}
+check "update snapshots before it changes anything" snapshot_runs_first
+check "update can skip the snapshot"  "grep -q '\-\-no-snapshot' $OMACOS_PATH/bin/omacos-update"
+# One package failing to build must not cost the migrations that follow it.
+check "a failed upgrade does not end the update" \
+  "grep -q 'did not upgrade' $OMACOS_PATH/bin/omacos-update"
+
+printf '\n\033[1mThe Mac differences\033[0m\n'
+# alt-w closes a window and alt-q ends the app: the one place macOS genuinely
+# differs from every window manager Omarchy's manual describes.
+check "alt-q is bound"       "grep -q '^alt-q |' $OMACOS_PATH/config/omacos/keymap.conf"
+check "alt-w is still close" "grep -q '^alt-w | Close window' $OMACOS_PATH/config/omacos/keymap.conf"
+# Quitting the window manager or the bar with a window-management key is never
+# what was meant.
+check "quit refuses the WM"  "grep -q 'bobko.aerospace' $OMACOS_PATH/bin/omacos-cmd-quit-app"
+check "quit spares Finder"   "grep -q 'com.apple.finder' $OMACOS_PATH/bin/omacos-cmd-quit-app"
+
+# "No dock and no desktop icons" — both only apply with the tiling layer on.
+check "desktop icons are turned off" \
+  "grep -q 'com.apple.finder CreateDesktop bool 0' $OMACOS_PATH/install/4-macos-defaults.sh"
+check "the wallpaper is not a button" \
+  "grep -q 'EnableStandardClickToShowDesktop bool 0' $OMACOS_PATH/install/4-macos-defaults.sh"
+# Hiding the macOS menu bar is a choice, not a default: plenty of Mac apps
+# keep the only copy of a command up there.
+check "the menu bar stays unless asked" \
+  "! grep -q '_HIHideMenuBar' $OMACOS_PATH/install/4-macos-defaults.sh"
+check "the menu bar is one command away" \
+  "omacos toggle menubar --help | grep -q 'menu bar'"
+
 printf '\n\033[1mReachability\033[0m\n'
 # A binding or a menu row that names a command which does not exist is a dead
 # key: nothing fails, nothing happens.
@@ -687,8 +768,30 @@ menu_commands_exist() {
            | awk '{print $1}' | tr -d ';' | sort -u)
   return 0
 }
+# The bar's click table is a third place that names commands, and a click
+# that runs nothing looks exactly like a bar that ignores the mouse.
+click_commands_exist() {
+  local cmd
+  while IFS= read -r cmd; do
+    [[ -x "$OMACOS_PATH/bin/$cmd" ]] || { echo "missing: $cmd"; return 1; }
+  done < <(grep -oE '\bomacos-[a-z-]+' "$OMACOS_PATH/config/sketchybar/plugins/click.sh" | sort -u)
+  return 0
+}
+# Every item the bar draws should answer the mouse; one that does not is a
+# dead patch of a bar where everything else is clickable.
+bar_items_are_clickable() {
+  local item
+  for item in front_app recording idle clock battery theme; do
+    grep -q "click.sh $item" "$OMACOS_PATH/config/sketchybar/sketchybarrc" \
+      || { echo "not clickable: $item"; return 1; }
+  done
+  return 0
+}
 check "every keybinding names a real command" keymap_commands_exist
 check "every menu row names a real command"   menu_commands_exist
+check "every bar click names a real command"  click_commands_exist
+check "every bar item takes clicks"           bar_items_are_clickable
+check "clicks distinguish the buttons"        "grep -q 'BUTTON' $OMACOS_PATH/config/sketchybar/plugins/click.sh"
 check "the capture menu has rows"             "omacos-menu --list capture | grep -q capture.text"
 check "the toggles menu has rows"             "omacos-menu --list toggles | grep -q toggles.idle"
 

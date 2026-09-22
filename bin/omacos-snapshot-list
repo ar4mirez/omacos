@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# omacos:summary=List the APFS snapshots this machine can roll back to
+# omacos:args=[--plain] [--format <date>]
+# omacos:examples=omacos snapshot list | omacos snapshot list --plain
+#
+# Exits non-zero when there are none, so it reads as a predicate: the menu and
+# the doctor both ask it whether there is anything to roll back to.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+# 2026-09-22-185121 -> "2026-09-22 18:51". Pure string surgery: `date -j` would
+# parse it, but it is a fixed-width field and this cannot fail on a locale.
+pretty() {
+  local d=$1
+  printf '%s %s:%s' "${d:0:10}" "${d:11:2}" "${d:13:2}"
+}
+
+# Just the dates, newest first.
+snapshot_dates() {
+  tmutil listlocalsnapshots / 2>/dev/null \
+    | sed -n 's/^com\.apple\.TimeMachine\.\(.*\)\.local$/\1/p' \
+    | sort -r
+}
+
+case ${1:-} in
+  --format)
+    # One date, formatted — so `omacos snapshot create` and the menu do not
+    # each reimplement the same substring arithmetic.
+    [[ -n ${2:-} ]] || { echo "usage: omacos snapshot list --format <date>" >&2; exit 1; }
+    pretty "$2"; printf '\n'; exit 0 ;;
+  --plain|"") ;;
+  *) echo "usage: omacos snapshot list [--plain] [--format <date>]" >&2; exit 1 ;;
+esac
+
+mapfile -t dates < <(snapshot_dates)
+if ((${#dates[@]} == 0)); then
+  [[ ${1:-} == --plain ]] || printf 'No snapshots. Take one with: omacos snapshot create\n'
+  exit 1
+fi
+
+if [[ ${1:-} == --plain ]]; then
+  printf '%s\n' "${dates[@]}"
+  exit 0
+fi
+
+for date in "${dates[@]}"; do
+  # A dot marks the ones omacos took, which are the ones taken deliberately
+  # before something changed. The rest are Time Machine's own hourly ones.
+  if [[ -e $OMACOS_STATE/snapshots/$date ]]; then
+    printf '  \033[32m•\033[0m %s  \033[2m%s\033[0m  \033[2mtaken by omacos\033[0m\n' \
+      "$(pretty "$date")" "$date"
+  else
+    printf '    %s  \033[2m%s\033[0m\n' "$(pretty "$date")" "$date"
+  fi
+done

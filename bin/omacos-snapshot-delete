@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# omacos:summary=Delete an APFS snapshot, or all of them
+# omacos:args=[<date>|--all]
+# omacos:examples=omacos snapshot delete | omacos snapshot delete --all
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+forget() { rm -f "$OMACOS_STATE/snapshots/$1"; }
+
+drop() {
+  local date=$1
+  # tmutil deletes a local snapshot without sudo — it is the mount and the
+  # full restore that need root, not this.
+  if tmutil deletelocalsnapshots "$date" >/dev/null 2>&1; then
+    forget "$date"
+    printf '  \033[32m✓\033[0m deleted %s\n' "$(omacos-snapshot-list --format "$date")"
+  else
+    printf '  \033[31m✗\033[0m could not delete %s\n' "$date" >&2
+    return 1
+  fi
+}
+
+case ${1:-} in
+  --all)
+    mapfile -t dates < <(omacos-snapshot-list --plain) || true
+    ((${#dates[@]})) || { echo "No snapshots to delete."; exit 0; }
+    failed=0
+    for date in "${dates[@]}"; do drop "$date" || failed=1; done
+    ((failed == 0))
+    ;;
+  "")
+    mapfile -t dates < <(omacos-snapshot-list --plain) || true
+    ((${#dates[@]})) || { echo "No snapshots to delete."; exit 0; }
+    # Without a terminal there is nowhere to draw a picker, and this is
+    # destructive enough that guessing which one to remove is not an option.
+    if [[ ! -t 0 ]]; then
+      exec omacos-launch-tui "omacos-snapshot-delete; read -n 1 -s -r -p 'Press any key'"
+    fi
+    command -v gum >/dev/null || { echo "usage: omacos snapshot delete <date>" >&2; exit 1; }
+    labels=()
+    for date in "${dates[@]}"; do
+      labels+=("$(omacos-snapshot-list --format "$date")  ($date)")
+    done
+    choice=$(printf '%s\n' "${labels[@]}" | gum choose --header "Delete which snapshot?") || exit 0
+    # The raw date is the part in brackets; the pretty half is only there so
+    # the list reads as dates and times rather than as identifiers.
+    picked=${choice##*(}; picked=${picked%)}
+    drop "$picked"
+    ;;
+  *)
+    drop "$1"
+    ;;
+esac

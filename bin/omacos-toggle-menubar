@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# omacos:summary=Auto-hide the macOS menu bar, leaving the omacos bar on top
+# omacos:args=[on|off|status]
+# omacos:examples=omacos toggle menubar
+#
+# Omarchy has one bar. macOS has two the moment you enable the desktop layer:
+# its own menu bar, and SketchyBar underneath it. This hides the first, which
+# is what makes the second read as *the* bar rather than a second one.
+#
+# Off by default: the menu bar is also where a good many Mac apps keep the only
+# copy of a command, so this is a choice rather than a default.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+key=_HIHideMenuBar
+
+hidden() {
+  [[ $(defaults read NSGlobalDomain "$key" 2>/dev/null) == 1 ]]
+}
+
+apply() {
+  local want=$1
+  defaults write NSGlobalDomain "$key" -bool "$want"
+  # The menu bar is drawn per-app, so nothing already running picks this up
+  # from a notification. Killing SystemUIServer is what makes it immediate.
+  killall SystemUIServer 2>/dev/null || true
+}
+
+case ${1:-toggle} in
+  status)
+    if hidden; then printf 'The macOS menu bar is hidden.\n'
+    else printf 'The macOS menu bar is shown.\n'; exit 1; fi
+    ;;
+  on)
+    apply true
+    printf '\033[32mThe macOS menu bar auto-hides.\033[0m Move the pointer to the top edge for it.\n'
+    ;;
+  off)
+    apply false
+    printf '\033[33mThe macOS menu bar is back.\033[0m\n'
+    ;;
+  toggle)
+    if hidden; then omacos-toggle-menubar off; else omacos-toggle-menubar on; fi
+    ;;
+  *) echo "usage: omacos toggle menubar [on|off|status]" >&2; exit 1 ;;
+esac

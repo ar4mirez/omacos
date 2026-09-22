@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
-# omacos:summary=Update omacos, run migrations, and refresh packages
-# omacos:args=[-y]
-# omacos:examples=omacos update | omacos update -y
+# omacos:summary=Snapshot, update omacos, run migrations, and upgrade packages
+# omacos:args=[-y] [--no-snapshot]
+# omacos:examples=omacos update | omacos update -y | omacos update --no-snapshot
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
 
-unattended=false; [[ ${1:-} == -y ]] && unattended=true
+unattended=false
+snapshot=true
+for argument in "$@"; do
+  case $argument in
+    -y) unattended=true ;;
+    --no-snapshot) snapshot=false ;;
+    *) echo "usage: omacos update [-y] [--no-snapshot]" >&2; exit 1 ;;
+  esac
+done
 
 lock="$OMACOS_STATE/update.lock"
 mkdir -p "$OMACOS_STATE"
@@ -18,7 +26,16 @@ step() { printf '\n\033[1;34m▸\033[0m \033[1m%s\033[0m\n' "$1"; }
 
 # -y is a promise not to ask anything, so it is also what CI and hooks pass.
 if ! $unattended && [[ -t 0 ]] && command -v gum >/dev/null; then
-  gum confirm "Update omacos and refresh packages?" || exit 0
+  gum confirm "Snapshot this machine, then update omacos and upgrade packages?" || exit 0
+fi
+
+# Before anything is changed, not after: the point of the snapshot is to
+# capture the machine that still worked. It is copy-on-write, so this costs a
+# second and no disk until the upgrade below starts diverging from it.
+if $snapshot; then
+  step "Snapshot"
+  omacos-snapshot-create 2>&1 | sed 's/^/  /' || \
+    echo "  Could not snapshot — continuing without one."
 fi
 
 step "Fetching omacos"
@@ -45,6 +62,26 @@ if omacos-feature check apps 2>/dev/null; then
   # installer knows to relaunch itself into one.
   mapfile -t app_casks < <(grep '^cask ' "$OMACOS_PATH/Brewfile.apps" | cut -d'"' -f2)
   ((${#app_casks[@]})) && omacos-install-app "${app_casks[@]}" 2>&1 | sed 's/^/  /'
+fi
+
+# `brew bundle install` above only installs what is missing. Omarchy's one
+# Update command also moves everything already installed forward, and now that
+# a snapshot precedes it, so does this one.
+#
+# Casks are held back when nobody is watching: a .pkg cask asks for sudo, and
+# an unattended run — CI, a hook, `omacos update -y` from a keybinding — has no
+# terminal for that prompt to appear in and would hang waiting on it.
+#
+# Neither upgrade is allowed to end the run. One package failing to build is a
+# normal Tuesday, and it must not cost you the migrations and the config
+# seeding that come after it — those are the parts that keep this machine
+# consistent with the code that was just pulled.
+brew update >/dev/null 2>&1 || true
+if $unattended || [[ ! -t 0 ]]; then
+  brew upgrade --formula 2>&1 | sed 's/^/  /' || echo "  Some formulae did not upgrade."
+  echo "  Casks skipped: upgrading them can need sudo. Run: brew upgrade --cask"
+else
+  brew upgrade 2>&1 | sed 's/^/  /' || echo "  Some packages did not upgrade."
 fi
 
 step "Migrations"

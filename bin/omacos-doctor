@@ -153,6 +153,15 @@ else
   note "Do Not Disturb not set up" "Focus needs a one-time shortcut: omacos setup dnd"
 fi
 
+# The snapshot is the one safety net nobody looks at until the day they need
+# it, so it is worth saying out loud whether there is one to fall back to.
+newest=$(omacos-snapshot-list --plain 2>/dev/null | head -1)
+if [[ -n $newest ]]; then
+  ok "Can roll back to $(omacos-snapshot-list --format "$newest")"
+else
+  note "No system snapshot" "omacos update takes one first; or now: omacos snapshot create"
+fi
+
 pending=$(find "$OMACOS_STATE/reminders" -maxdepth 1 -type f 2>/dev/null | wc -l | tr -d ' ')
 ((pending > 0)) && note "$pending reminder(s) pending" "See them with: omacos reminder list"
 

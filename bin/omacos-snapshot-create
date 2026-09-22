@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# omacos:summary=Take an APFS snapshot you can roll back to
+# omacos:args=[--quiet]
+# omacos:examples=omacos snapshot create | omacos snapshot create --quiet
+#
+# Omarchy snapshots the system before it updates it. macOS has the same thing
+# already built in and switched off in everybody's head: an APFS local
+# snapshot. It is copy-on-write, so taking one costs nothing at the moment it
+# is taken and grows only as the disk diverges from it, and `tmutil` will make
+# one whether or not Time Machine is configured.
+#
+# `omacos update` takes one first. That is what makes upgrading every package
+# on the machine something you can walk back from.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+quiet=false; [[ ${1:-} == --quiet ]] && quiet=true
+
+# Snapshots are an APFS feature. On anything else tmutil fails with a message
+# worth passing through rather than translating.
+if ! output=$(tmutil localsnapshot 2>&1); then
+  printf 'Could not take a snapshot.\n' >&2
+  printf '%s\n' "$output" | sed 's/^/  /' >&2
+  exit 1
+fi
+
+# tmutil prints one "Created local snapshot with date: <date>" per eligible
+# volume, plus a note about purgeability. The date is the handle for every
+# other command here.
+date=$(printf '%s\n' "$output" | sed -n 's/^Created local snapshot with date: //p' | tail -1)
+if [[ -z $date ]]; then
+  printf 'tmutil reported no snapshot date.\n' >&2
+  printf '%s\n' "$output" | sed 's/^/  /' >&2
+  exit 1
+fi
+
+# Which snapshots are ours. macOS names them all com.apple.TimeMachine.*, so
+# without this there is no way to tell one omacos took before an update from
+# one Time Machine took on its own hourly schedule.
+mkdir -p "$OMACOS_STATE/snapshots"
+: > "$OMACOS_STATE/snapshots/$date"
+
+$quiet && { printf '%s\n' "$date"; exit 0; }
+
+printf '\033[32mSnapshot taken:\033[0m %s\n' "$(omacos-snapshot-list --format "$date")"
+printf '  Roll back with: omacos snapshot restore %s\n' "$date"
+# Said out loud because it is the one surprising property: macOS reclaims
+# these on its own when the disk fills, so this is a safety net for the next
+# few hours, not an archive.
+printf '  \033[2mmacOS treats local snapshots as purgeable and thins them as the disk fills.\033[0m\n'

@@ -48,6 +48,7 @@ declare -A GROUP_DESCRIPTIONS=(
   [notice]="Time, battery and weather at a glance"
   [reminder]="Countdown reminders"
   [toggle]="Flip something on or off"
+  [snapshot]="System snapshots you can roll back to"
 )
 
 # ---------------------------------------------------------------- metadata ---

@@ -70,7 +70,7 @@ if true; then
                      icon.drawing=off \
                      background.color="$ITEM_BG_COLOR" \
                      background.drawing=off \
-                     click_script="aerospace workspace $workspace" \
+                     click_script="$PLUGIN_DIR/click.sh space $workspace" \
                      script="$PLUGIN_DIR/workspace.sh"
   done
 fi
@@ -78,6 +78,7 @@ fi
 sketchybar --add item front_app left \
            --set front_app updates=on \
                            script="$PLUGIN_DIR/front_app.sh" \
+                           click_script="$PLUGIN_DIR/click.sh front_app" \
                            icon.drawing=off \
                            label.color="$ACCENT_COLOR" \
                            label.font="$FONT:Bold:13.0" \
@@ -86,25 +87,32 @@ sketchybar --add item front_app left \
 # --- right side -------------------------------------------------------------
 # Both of these draw nothing unless the state they report is on. They are the
 # two things that are easy to leave running by accident.
+# Every item takes clicks — left, right and middle each do something, and
+# plugins/click.sh is the one table that says what. Clicking the thing is
+# almost always faster than remembering which chord opens it.
 sketchybar --add item recording right \
            --set recording updates=on drawing=off script="$PLUGIN_DIR/recording.sh" \
+                           click_script="$PLUGIN_DIR/click.sh recording" \
            --subscribe recording omacos_recording
 
 sketchybar --add item idle right \
            --set idle updates=on drawing=off script="$PLUGIN_DIR/idle.sh" \
+                      click_script="$PLUGIN_DIR/click.sh idle" \
            --subscribe idle omacos_idle
 
 sketchybar --add item clock right \
-           --set clock update_freq=10 script="$PLUGIN_DIR/clock.sh"
+           --set clock update_freq=10 script="$PLUGIN_DIR/clock.sh" \
+                       click_script="$PLUGIN_DIR/click.sh clock"
 
 sketchybar --add item battery right \
            --set battery update_freq=120 script="$PLUGIN_DIR/battery.sh" \
+                         click_script="$PLUGIN_DIR/click.sh battery" \
            --subscribe battery power_source_change
 
 sketchybar --add item theme right \
            --set theme icon="◐" \
                        label.drawing=off \
-                       click_script="omacos-theme-next" \
+                       click_script="$PLUGIN_DIR/click.sh theme" \
                        icon.color="$ACCENT_COLOR"
 
 sketchybar --update
