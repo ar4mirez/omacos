@@ -67,6 +67,18 @@ check "untrusted lua dropped"         "! grep -rq 'os.execute' $staged"
 check "symlink not followed"          "! test -e $staged/preview.png"
 check "colours still applied"         "grep -q '0xff7aa2f7' $staged/borders.sh"
 
+printf '\n\033[1mWallpaper\033[0m\n'
+export OMACOS_DRY_RUN=1
+check "generator produces a PNG" "omacos-dev-make-wallpaper tokyo-night >/dev/null && file $OMACOS_PATH/themes/tokyo-night/backgrounds/01-gradient.png | grep -q PNG"
+for _ in 1 2 3; do omacos-theme-set tokyo-night >/dev/null 2>&1; done
+omacos-theme-set catppuccin-mocha >/dev/null 2>&1
+omacos-theme-set tokyo-night >/dev/null 2>&1
+# Staging re-copies the image each switch, so an mtime-based fingerprint would
+# leak one cache entry per switch. Content hashing keeps it at one per theme.
+check "cache holds one file per theme" "test \$(ls -1 $OMACOS_STATE/wallpapers | wc -l) -eq 2"
+check "background symlink resolves"    "test -f \$(readlink $OMACOS_STATE/current/background)"
+unset OMACOS_DRY_RUN
+
 printf '\n\033[1mMigrations\033[0m\n'
 check "runner is idempotent" "omacos-migrate >/dev/null && omacos-migrate 2>&1 | grep -q 'No pending'"
 check "--pending is a predicate" "! omacos-migrate --pending >/dev/null"

@@ -10,6 +10,11 @@ image=${1:-}
 image=$(cd "$(dirname "$image")" && printf '%s/%s' "$PWD" "$(basename "$image")")
 [[ -f $image ]] || { echo "No such image: $image" >&2; exit 1; }
 
+if [[ ${OMACOS_DRY_RUN:-0} == 1 ]]; then
+  printf 'would set wallpaper: %s\n' "$image"
+  exit 0
+fi
+
 # System Events covers every desktop; the wallpaper CLI only does the active
 # Space, so it is the fallback rather than the first choice.
 if osascript -e "tell application \"System Events\" to set picture of every desktop to \"$image\"" >/dev/null 2>&1; then

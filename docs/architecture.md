@@ -53,6 +53,17 @@ from it via awk. `omacos theme set`:
 
 Adding an app to the theme system means one template plus one line in that list.
 
+Two environment escape hatches: `OMACOS_THEME_SKIP_BACKGROUND=1` leaves the
+wallpaper alone, and `OMACOS_DRY_RUN=1` makes the wallpaper setter report what
+it would do. The test suite uses both, which is how it exercises the full theme
+path without repainting the machine it runs on.
+
+Wallpapers are cached under `~/.local/state/omacos/wallpapers` under a
+content-hashed filename. macOS caches wallpapers *by path*, so reusing one path
+for changed content is a silent no-op — and hashing contents rather than mtime
+keeps staging (which re-copies the file every switch) from leaking a new cache
+entry each time.
+
 ### The trust rule
 
 A theme directory containing `.git` came from someone else. Staging then drops
