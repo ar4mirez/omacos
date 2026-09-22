@@ -42,8 +42,18 @@ sketchybar --default updates=when_shown \
 # with `sketchybar --trigger aerospace_workspace_change` (see aerospace.toml).
 sketchybar --add event aerospace_workspace_change
 
-if command -v aerospace >/dev/null 2>&1; then
-  for workspace in $(aerospace list-workspaces --all); do
+# AeroSpace's server is gated on Accessibility, so it may not answer yet.
+# Falling back to the workspaces the keymap defines keeps the bar complete
+# instead of silently dropping every workspace item.
+workspaces=$(aerospace list-workspaces --all 2>/dev/null) || workspaces=""
+if [[ -z $workspaces ]]; then
+  workspaces=$(grep -oE "^alt-[0-9]+ " "$HOME/.config/omacos/keymap.conf" 2>/dev/null \
+               | grep -oE '[0-9]+' | sort -un)
+fi
+[[ -z $workspaces ]] && workspaces=$(seq 1 6)
+
+if true; then
+  for workspace in $workspaces; do
     sketchybar --add item "space.$workspace" left \
                --subscribe "space.$workspace" aerospace_workspace_change \
                --set "space.$workspace" \

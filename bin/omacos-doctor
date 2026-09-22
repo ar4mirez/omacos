@@ -74,12 +74,36 @@ if [[ -S $op_sock ]]; then ok "SSH agent socket is live"
 else note "1Password SSH agent not running" "Enable: 1Password > Settings > Developer > Use the SSH agent"; fi
 
 section "Desktop"
-for svc in aerospace sketchybar borders; do
-  if ! command -v "$svc" >/dev/null && [[ ! -d /Applications/AeroSpace.app ]]; then
-    note "$svc not installed" "Not required yet — arrives in a later phase"
-  elif pgrep -qx "$svc" 2>/dev/null; then ok "$svc running"
-  else note "$svc installed but not running"; fi
-done
+if ! omacos-feature check desktop 2>/dev/null; then
+  ok "Desktop layer off (enable with: omacos feature enable desktop)"
+else
+  # Accessibility state lives in TCC.db, which is unreadable without Full Disk
+  # Access. Whether the server answers is the honest proxy.
+  if [[ ! -d /Applications/AeroSpace.app ]]; then
+    bad "AeroSpace not installed" "Run: omacos install feature desktop"
+  elif aerospace list-workspaces --all >/dev/null 2>&1; then
+    ok "AeroSpace running ($(aerospace list-workspaces --focused 2>/dev/null | head -1) focused)"
+  elif pgrep -qx AeroSpace 2>/dev/null; then
+    bad "AeroSpace is running but not responding" \
+        "Almost always a missing Accessibility grant: System Settings > Privacy & Security > Accessibility"
+  else
+    note "AeroSpace not running" "Run: open -a AeroSpace"
+  fi
+
+  for service in sketchybar borders; do
+    if ! command -v "$service" >/dev/null; then
+      bad "$service not installed" "Run: omacos install feature desktop"
+    elif pgrep -qx "$service" 2>/dev/null; then
+      ok "$service running"
+    else
+      note "$service not running" "It starts with AeroSpace, or run: $service &"
+    fi
+  done
+
+  [[ -f ${XDG_CONFIG_HOME:-$HOME/.config}/aerospace/aerospace.toml ]] \
+    && ok "aerospace.toml generated" \
+    || note "aerospace.toml missing" "Run: omacos keymap build"
+fi
 
 printf '\n\033[1m%d passed\033[0m, \033[33m%d to look at\033[0m, \033[31m%d broken\033[0m\n' "$pass" "$warn" "$fail"
 ((fail == 0))

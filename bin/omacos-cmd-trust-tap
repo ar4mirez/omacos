@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# omacos:summary=Trust a third-party Homebrew tap, explaining what that means
+# omacos:args=<tap> [reason]
+# omacos:examples=omacos cmd trust-tap felixkratz/formulae "SketchyBar and JankyBorders"
+#
+# Homebrew 7 refuses to load formulae from untrusted taps. Trusting one lets it
+# run that tap's install code, so this says out loud what is being trusted and
+# why, and asks first when there is someone there to answer.
+set -euo pipefail
+
+tap=${1:?usage: omacos cmd trust-tap <tap> [reason]}
+reason=${2:-}
+
+already_trusted() {
+  local file
+  for file in "${XDG_CONFIG_HOME:-$HOME/.config}/homebrew/trust.json" "$HOME/.homebrew/trust.json"; do
+    [[ -f $file ]] || continue
+    grep -qF "\"$tap\"" "$file" && return 0
+  done
+  return 1
+}
+
+already_trusted && exit 0
+
+printf '\n\033[33mHomebrew needs you to trust a third-party tap:\033[0m %s\n' "$tap"
+[[ -n $reason ]] && printf '  It provides: %s\n' "$reason"
+printf '  Trusting it lets Homebrew run that tap'"'"'s install code on this machine.\n'
+printf '  Source: https://github.com/%s\n\n' "${tap/\//\/homebrew-}"
+
+if [[ -t 0 ]] && command -v gum >/dev/null 2>&1; then
+  gum confirm "Trust $tap?" || { echo "Not trusted. Skipping." >&2; exit 1; }
+elif [[ -t 0 ]]; then
+  read -r -p "Trust $tap? [y/N] " answer
+  [[ $answer == [yY]* ]] || { echo "Not trusted. Skipping." >&2; exit 1; }
+fi
+
+brew trust --tap "$tap"

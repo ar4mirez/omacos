@@ -8,6 +8,8 @@ set -euo pipefail
 feature=${1:?usage: omacos install feature <name>}
 case $feature in
   desktop|statusbar|borders)
+    omacos-cmd-trust-tap nikitabobko/tap "AeroSpace" || true
+    omacos-cmd-trust-tap felixkratz/formulae "SketchyBar and JankyBorders" || true
     brew bundle install --file "$OMACOS_PATH/Brewfile.desktop" --no-upgrade
     omacos-keymap-build
     printf '\n\033[33mAeroSpace needs Accessibility permission.\033[0m\n'
