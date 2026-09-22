@@ -39,7 +39,13 @@ omacos doctor                # what is actually true on this machine
 omacos menu                  # everything, in one searchable menu
 
 omacos theme list|set|next|current
+omacos theme background         # cycle the wallpapers a theme ships
 omacos keymap show|build
+omacos capture screenshot|screenrecording|text|color
+omacos clipboard history|clear
+omacos notice time|battery|weather
+omacos reminder 7 'Tea ready'
+omacos toggle idle|bar|nightlight
 omacos feature enable desktop | apps
 omacos webapp install Linear https://linear.app
 omacos setup signing            # git commit signing via 1Password
@@ -47,6 +53,9 @@ omacos git org add Acme         # per-org identity under ~/Work/Acme/
 omacos install app slack zoom
 omacos update
 ```
+
+`omacos <group> <command> --help` documents one command; `omacos commands
+--check` proves every one of them still documents itself.
 
 Adding a command means adding a file to `bin/` with a `# omacos:summary=`
 comment. There is no registry to update.
@@ -68,6 +77,40 @@ which also gives `omacos webapp install` a real app window to work with.
 **Themes** — one `colors.toml` per theme renders every app's colours, switches
 macOS between light and dark, and sets the wallpaper. Ships tokyo-night,
 catppuccin-mocha, and rose-pine-dawn.
+
+## The basics, on a Mac
+
+Omarchy's everyday layer, done with what macOS already has rather than ported.
+
+**Capture** — `alt-shift-p` takes a region, `alt-ctrl-p` starts and stops a
+recording, `alt-ctrl-o` lifts text off the screen with OCR, and
+`alt-ctrl-shift-c` is the system eyedropper. The last two have no CLI on macOS,
+so omacos compiles a 40KB AppKit helper on demand rather than installing a
+second OCR engine. Screenshots land where `screencapture` already puts yours.
+
+**Clipboard history** — `alt-ctrl-v`. macOS already copies and pastes the same
+way in the terminal and everywhere else, which is the problem Omarchy's Super+C
+and Super+V exist to solve on Linux; history is the part macOS lacks. A login
+agent records text you copy and skips anything a password manager marks
+concealed. `omacos setup clipboard off` stops it, `omacos clipboard clear`
+forgets it.
+
+**Text extraction and dictation** — `alt-ctrl-o` selects a region and puts what
+it says on the clipboard, through Vision rather than a downloaded OCR engine.
+For dictation, macOS has its own — on-device, in any text field — so
+`omacos setup dictation` turns that on and points at the shortcut instead of
+shipping a second speech model.
+
+**Notices and reminders** — the time, the battery or the weather as a
+notification (`alt-ctrl-shift-t/b/w`), and `omacos reminder 7 'Tea ready'` on
+`alt-ctrl-r`.
+
+**Toggles** — hold off sleep (`alt-ctrl-i`), hide the top bar
+(`alt-shift-space`), start the screensaver, flip Night Shift. The status bar
+grows two indicators that draw nothing until they matter: a recording light and
+a coffee cup.
+
+Everything here is also under `alt-space`, in the menu.
 
 ## One identity per organisation
 
@@ -129,7 +172,7 @@ so you stay on the same update path as everyone else.
 ```bash
 git clone git@github.com:ar4mirez/omacos.git ~/Work/ar4mirez/omacos
 cd ~/Work/ar4mirez/omacos
-./test/run.sh    # 74 tests, sandboxed — cannot touch your real home
+./test/run.sh    # 131 tests, sandboxed — cannot touch your real home
 ./install.sh     # idempotent: a no-op on a configured machine
 
 omacos dev link ~/Work/ar4mirez/omacos   # iterate without push-then-update

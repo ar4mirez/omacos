@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# omacos:summary=Start the screensaver
+# omacos:examples=omacos cmd screensaver
+set -euo pipefail
+
+engine=/System/Library/CoreServices/ScreenSaverEngine.app
+[[ -d $engine ]] || { echo "No screensaver engine at $engine" >&2; exit 1; }
+# Starting the screensaver is not locking: whether it asks for a password is
+# the "Require password after screen saver begins" setting. `omacos menu` has
+# Lock under Power for when you mean the other thing.
+exec open -a "$engine"

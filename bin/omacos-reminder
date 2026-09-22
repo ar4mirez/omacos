@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# omacos:summary=Set a countdown reminder, or list and clear the ones you have
+# omacos:args=<minutes> <message> | list | clear
+# omacos:examples=omacos reminder 7 'Tea ready' | omacos reminder list
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+store="$OMACOS_STATE/reminders"
+mkdir -p "$store"
+
+# A reminder outlives the shell that set it: the hotkey's process is gone the
+# moment the key is released. Each one is a detached sleep with a file beside
+# it, so `list` and `clear` work across sessions and survive a logout of the
+# terminal but not of the machine — which is the honest lifetime for a timer
+# measured in minutes.
+schedule() {
+  local minutes=$1 message=$2 due file
+  [[ $minutes =~ ^[0-9]+$ && $minutes -gt 0 ]] || {
+    echo "Minutes must be a positive whole number." >&2; exit 1; }
+  due=$(( $(date +%s) + minutes * 60 ))
+  file="$store/$due.$$"
+
+  nohup bash -c '
+    sleep "$1"
+    omacos-cmd-notify "Reminder" "$2" || true
+    rm -f "$3"
+  ' _ "$((minutes * 60))" "$message" "$file" >/dev/null 2>&1 &
+
+  printf '%s\t%s\t%s\n' "$due" "$!" "$message" > "$file"
+  printf '\033[32mReminder set\033[0m for %s — %s\n' "$(date -r "$due" '+%H:%M')" "$message"
+}
+
+list() {
+  local found=0 file due pid message now
+  now=$(date +%s)
+  for file in "$store"/*; do
+    [[ -f $file ]] || continue
+    IFS=$'\t' read -r due pid message < "$file" || continue
+    # A reminder whose process is gone already fired, or was killed with the
+    # session. Either way it is not pending, so reap it rather than list it.
+    if ! kill -0 "$pid" 2>/dev/null; then rm -f "$file"; continue; fi
+    found=1
+    printf '  \033[36m%s\033[0m  \033[2m(in %d min)\033[0m  %s\n' \
+      "$(date -r "$due" '+%H:%M')" "$(( (due - now + 59) / 60 ))" "$message"
+  done
+  ((found)) || printf '  \033[2mNo reminders set.\033[0m\n'
+}
+
+clear_all() {
+  local file pid due message count=0
+  for file in "$store"/*; do
+    [[ -f $file ]] || continue
+    IFS=$'\t' read -r due pid message < "$file" || continue
+    kill "$pid" 2>/dev/null || true
+    rm -f "$file"
+    count=$((count + 1))
+  done
+  printf 'Cleared %d reminder(s).\n' "$count"
+}
+
+case ${1:-} in
+  list)  list ;;
+  clear) clear_all ;;
+  "")
+    # Bound to a hotkey, this arrives with no terminal and no arguments. Ask
+    # for the two things a reminder needs — in a window of its own, since gum
+    # cannot draw without a terminal.
+    if [[ ! -t 0 ]]; then
+      exec omacos-launch-tui "omacos-reminder"
+    fi
+    command -v gum >/dev/null 2>&1 || { echo "usage: omacos reminder <minutes> <message>" >&2; exit 1; }
+    minutes=$(gum input --placeholder "minutes" --prompt "In how long? ") || exit 0
+    [[ -n $minutes ]] || exit 0
+    message=$(gum input --placeholder "what to remind you of" --prompt "Remind you to… ") || exit 0
+    [[ -n $message ]] || exit 0
+    schedule "$minutes" "$message"
+    ;;
+  *)
+    minutes=$1; shift
+    (($#)) || { echo "usage: omacos reminder <minutes> <message>" >&2; exit 1; }
+    schedule "$minutes" "$*"
+    ;;
+esac

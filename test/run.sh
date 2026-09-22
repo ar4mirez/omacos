@@ -233,6 +233,118 @@ assert set(d['persistent-workspaces']) == bound, (d['persistent-workspaces'], bo
 check "cheatsheet renders"     "omacos-keymap-show --plain | grep -q 'Focus left'"
 check "every binding documented" "test \$(grep -cE '^[a-z].*\\|.*\\|' $OMACOS_CONFIG/keymap.conf) -eq \$(omacos-keymap-show --plain | grep -cE '^  [a-z]')"
 
+printf '\n\033[1mCLI surface\033[0m\n'
+# Omarchy's CLI is discoverable by design; --check is what keeps ours that way
+# as commands are added.
+check "commands --check passes"    "omacos commands --check"
+check "--all includes hidden"      "test \$(omacos commands --all | wc -l) -gt \$(omacos commands | wc -l)"
+check "per-command help"           "omacos theme set --help | grep -q 'Apply a theme everywhere'"
+check "per-command help has examples" "omacos reminder --help | grep -q 'Tea ready'"
+check "group help still lists"     "omacos capture --help | grep -q 'Take a screenshot'"
+
+printf '\n\033[1mNotices and reminders\033[0m\n'
+export OMACOS_DRY_RUN=1
+check "notify does not draw in tests" "omacos-cmd-notify T M | grep -q 'would notify'"
+check "time notice"                "omacos-notice time | grep -qE '[0-9]{2}:[0-9]{2}'"
+check "battery notice"             "omacos-notice battery | grep -q Battery"
+check "notice rejects unknown"     "! omacos-notice nonsense 2>/dev/null"
+check "reminder schedules"         "omacos-reminder 5 'Tea ready' | grep -q 'Reminder set'"
+check "reminder lists what is due" "omacos-reminder list | grep -q 'Tea ready'"
+check "reminder rejects bad input" "! omacos-reminder abc x 2>/dev/null"
+check "reminder clears"            "omacos-reminder clear | grep -q 'Cleared 1'"
+check "cleared means empty"        "omacos-reminder list | grep -q 'No reminders'"
+
+printf '\n\033[1mNotifications\033[0m\n'
+# terminal-notifier exits 0 even when macOS has refused it permission, so the
+# exit code cannot be trusted and the fallback has to key on what it printed.
+shim="$sandbox/shim"; mkdir -p "$shim"
+printf '#!/usr/bin/env bash\necho "Could not request notification permission" >&2\nexit 0\n' \
+  > "$shim/terminal-notifier"
+# The fallback is the point of the test, and the real fallback posts a real
+# banner. Shim osascript too, or running the suite spams the machine it runs on.
+printf '#!/usr/bin/env bash\nexit 0\n' > "$shim/osascript"
+chmod +x "$shim/terminal-notifier" "$shim/osascript"
+check "a refused banner is reported" \
+  "env PATH=$shim:\$PATH OMACOS_DRY_RUN=0 omacos-cmd-notify T M 2>&1 | grep -q 'could not post'"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$shim/terminal-notifier"
+check "a posted banner stays quiet" \
+  "test -z \"\$(env PATH=$shim:\$PATH OMACOS_DRY_RUN=0 omacos-cmd-notify T M 2>&1)\""
+
+printf '\n\033[1mClipboard history\033[0m\n'
+mkdir -p "$OMACOS_STATE/clipboard"
+printf 'first thing'  > "$OMACOS_STATE/clipboard/entry-1000-a"
+printf 'second thing' > "$OMACOS_STATE/clipboard/entry-2000-b"
+check "newest entry comes first"   "omacos-clipboard-history --plain | head -1 | grep -q 'second thing'"
+check "clear empties the store"    "omacos-clipboard-clear >/dev/null && test -z \"\$(ls -A $OMACOS_STATE/clipboard)\""
+# The one property that separates a clipboard history from a password log.
+check "concealed types are skipped" \
+  "grep -q 'org.nspasteboard.ConcealedType' $OMACOS_PATH/default/swift/omacos-helper.swift"
+check "watcher runs under a login agent" "grep -q 'com.omacos.clipboard' $OMACOS_PATH/bin/omacos-setup-clipboard"
+
+printf '\n\033[1mCapture\033[0m\n'
+check "screenshot rejects a bad mode"  "! omacos-capture-screenshot bogus 2>/dev/null"
+check "stopping nothing is not an error" \
+  "omacos-capture-screenrecording --stop | grep -q 'Nothing is recording'"
+# Compiles on the machine it runs on, so a broken helper fails here rather than
+# under a hotkey a week later.
+check "native helper builds"       "omacos-cmd-build-helper >/dev/null && test -x $OMACOS_STATE/bin/omacos-helper"
+check "helper reports its usage"   "! $OMACOS_STATE/bin/omacos-helper 2>/dev/null"
+check "helper rejects a missing image" "! $OMACOS_STATE/bin/omacos-helper ocr /nope.png 2>/dev/null"
+
+printf '\n\033[1mToggles\033[0m\n'
+check "idle status is a predicate" "! omacos-toggle-idle status >/dev/null"
+check "idle on then off"           "omacos-toggle-idle on >/dev/null && omacos-toggle-idle status >/dev/null && omacos-toggle-idle off >/dev/null && ! omacos-toggle-idle status >/dev/null"
+check "nightlight explains itself" "grep -q 'private' $OMACOS_PATH/bin/omacos-toggle-nightlight"
+# Reads the real user's preferences — `defaults` is per-user, not per-HOME —
+# so only the read-only branch is exercised here.
+check "dictation status reads"     "omacos-setup-dictation status | grep -q Dictation"
+# The point of using the built-in one is that nothing gets downloaded.
+check "dictation installs nothing"  "! grep -qE 'brew install|curl ' $OMACOS_PATH/bin/omacos-setup-dictation"
+
+printf '\n\033[1mBackgrounds\033[0m\n'
+omacos-theme-set tokyo-night >/dev/null 2>&1
+mkdir -p "$OMACOS_CONFIG/backgrounds/tokyo-night"
+printf 'a second, distinct image\n' > "$OMACOS_CONFIG/backgrounds/tokyo-night/extra.png"
+background_changes() {
+  local before after
+  before=$(readlink "$OMACOS_STATE/current/background")
+  omacos-theme-background next >/dev/null || return 1
+  after=$(readlink "$OMACOS_STATE/current/background")
+  [[ $before != "$after" ]]
+}
+check "list marks the active one"  "omacos-theme-background list | grep -q '[*]'"
+check "next moves to another image" background_changes
+# env-bootstrap derives OMACOS_STATE from XDG_STATE_HOME, so that is the knob
+# a caller actually has.
+check "a theme with no images says so" \
+  "! env XDG_STATE_HOME=$sandbox/empty-state omacos-theme-background list 2>/dev/null"
+unset OMACOS_DRY_RUN
+
+printf '\n\033[1mReachability\033[0m\n'
+# A binding or a menu row that names a command which does not exist is a dead
+# key: nothing fails, nothing happens.
+keymap_commands_exist() {
+  local cmd
+  while IFS= read -r cmd; do
+    [[ -x "$OMACOS_PATH/bin/$cmd" ]] || { echo "missing: $cmd"; return 1; }
+  done < <(grep -oE 'exec-and-forget omacos-[a-z-]+' "$OMACOS_PATH/config/omacos/keymap.conf" \
+           | awk '{print $2}' | sort -u)
+  return 0
+}
+menu_commands_exist() {
+  local cmd
+  while IFS= read -r cmd; do
+    [[ $cmd == omacos-* ]] || continue
+    [[ -x "$OMACOS_PATH/bin/$cmd" ]] || { echo "missing: $cmd"; return 1; }
+  done < <(jq -r '.[].action // empty' "$OMACOS_PATH/default/menu.json" \
+           | awk '{print $1}' | tr -d ';' | sort -u)
+  return 0
+}
+check "every keybinding names a real command" keymap_commands_exist
+check "every menu row names a real command"   menu_commands_exist
+check "the capture menu has rows"             "omacos-menu --list capture | grep -q capture.text"
+check "the toggles menu has rows"             "omacos-menu --list toggles | grep -q toggles.idle"
+
 printf '\n\033[1mDev link\033[0m\n'
 # The two-tree workflow rests on this pair of commands, so exercise the round
 # trip rather than trusting that writing one file is self-evidently correct.

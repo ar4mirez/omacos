@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# omacos:summary=Forget the clipboard history
+# omacos:examples=omacos clipboard clear
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+store="$OMACOS_STATE/clipboard"
+count=$(find "$store" -maxdepth 1 -type f -name 'entry-*' 2>/dev/null | wc -l | tr -d ' ')
+find "$store" -maxdepth 1 -type f -name 'entry-*' -delete 2>/dev/null || true
+# The pasteboard itself, not just the record of it — except under the dry run
+# the test suite uses, which would otherwise wipe the clipboard of whoever ran
+# the tests.
+if [[ ${OMACOS_DRY_RUN:-0} != 1 ]]; then
+  pbcopy < /dev/null
+fi
+printf 'Cleared %s entries and the clipboard.\n' "$count"

@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# omacos:summary=Take a screenshot
+# omacos:args=[region|window|fullscreen] [--copy] [--open]
+# omacos:examples=omacos capture screenshot | omacos capture screenshot window --copy
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+mode=region
+copy=false
+reveal=false
+for argument in "$@"; do
+  case $argument in
+    region | window | fullscreen) mode=$argument ;;
+    --copy)  copy=true ;;
+    --open)  reveal=true ;;
+    *) echo "usage: omacos capture screenshot [region|window|fullscreen] [--copy] [--open]" >&2; exit 1 ;;
+  esac
+done
+
+# Where macOS itself puts screenshots, so Cmd-Shift-4 and this agree.
+directory=${OMACOS_SCREENSHOT_DIR:-$(defaults read com.apple.screencapture location 2>/dev/null || echo "$HOME/Pictures/Screenshots")}
+directory=${directory/#\~/$HOME}
+mkdir -p "$directory"
+target="$directory/Screenshot $(date '+%Y-%m-%d at %H.%M.%S').png"
+
+# -x: no shutter sound. The interactive modes already show you what they took.
+flags=(-x)
+case $mode in
+  region)     flags+=(-i -s) ;;
+  window)     flags+=(-i -W -o) ;;   # -o drops the drop shadow
+  fullscreen) flags+=(-m) ;;
+esac
+if $copy; then flags+=(-c); fi
+
+if $copy; then
+  screencapture "${flags[@]}" || exit 0   # Escape during selection is a cancel
+  printf '\033[32mCopied to the clipboard.\033[0m\n'
+  exit 0
+fi
+
+screencapture "${flags[@]}" "$target" || exit 0
+# An interactive capture that was cancelled leaves no file behind, and there is
+# nothing to report when you chose not to take a picture.
+[[ -f $target ]] || exit 0
+
+# Both: the file for keeping, the clipboard for pasting into the next thing.
+osascript -e "set the clipboard to (read (POSIX file \"$target\") as «class PNGf»)" >/dev/null 2>&1 || true
+if $reveal; then open -R "$target"; fi
+printf '\033[32mSaved\033[0m %s\n' "${target/#$HOME/\~}"

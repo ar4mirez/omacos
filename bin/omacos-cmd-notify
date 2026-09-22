@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# omacos:summary=Show a desktop notification
+# omacos:args=<title> <message> [subtitle]
+# omacos:examples=omacos cmd notify "Timer" "Tea is ready"
+set -euo pipefail
+
+title=${1:-omacos}
+message=${2:-}
+subtitle=${3:-}
+[[ -n $message ]] || { echo "usage: omacos cmd notify <title> <message> [subtitle]" >&2; exit 1; }
+
+# The test suite and `omacos reminder` both need to exercise the path without
+# putting banners on a real screen.
+if [[ ${OMACOS_DRY_RUN:-0} == 1 ]]; then
+  printf 'would notify: %s | %s%s\n' "$title" "$message" "${subtitle:+ | $subtitle}"
+  exit 0
+fi
+
+# terminal-notifier posts under its own bundle id, so the banners can be
+# allowed, grouped and silenced as "omacos" in System Settings. osascript's
+# come from Script Editor, which is both confusing and easy to mute by
+# accident — hence a fallback rather than the first choice.
+if command -v terminal-notifier >/dev/null 2>&1; then
+  arguments=(-title "$title" -message "$message" -group omacos)
+  if [[ -n $subtitle ]]; then arguments+=(-subtitle "$subtitle"); fi
+
+  # It exits 0 even when macOS has refused it notification permission, and
+  # says so on stderr instead. Trusting the exit code here is the difference
+  # between a reminder and a reminder you never see, so the output is the
+  # signal: silence means it posted.
+  if complaint=$(terminal-notifier "${arguments[@]}" 2>&1) && [[ -z ${complaint//[[:space:]]/} ]]; then
+    exit 0
+  fi
+  printf 'omacos: terminal-notifier could not post: %s\n' "${complaint:-unknown error}" >&2
+  printf 'omacos: allow it once in System Settings > Notifications, then retry.\n' >&2
+fi
+
+escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
+script="display notification \"$(escape "$message")\" with title \"$(escape "$title")\""
+if [[ -n $subtitle ]]; then script+=" subtitle \"$(escape "$subtitle")\""; fi
+osascript -e "$script" >/dev/null 2>&1 || {
+  # Notifications can be denied outright. Falling back to stdout means a
+  # reminder still reaches you when you set it from a terminal.
+  printf '\033[1m%s\033[0m %s\n' "$title" "$message" >&2
+}

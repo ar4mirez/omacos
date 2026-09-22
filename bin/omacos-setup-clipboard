@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# omacos:summary=Start or stop the clipboard history watcher
+# omacos:args=[on|off|status]
+# omacos:examples=omacos setup clipboard | omacos setup clipboard off
+#
+# macOS already gives you one clipboard everywhere — Cmd-C and Cmd-V work the
+# same in Ghostty as in Safari, which is the problem Omarchy's Super+C/V exists
+# to solve on Linux. What macOS has no answer for is history, so that is what
+# this adds.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+AGENT_LABEL="com.omacos.clipboard"
+AGENT_PLIST="$HOME/Library/LaunchAgents/$AGENT_LABEL.plist"
+
+# Read first, then match. Piping into `grep -q` makes launchctl take SIGPIPE
+# once grep exits, and pipefail turns that into a false "not running".
+running() {
+  local loaded
+  loaded=$(launchctl list 2>/dev/null) || return 1
+  [[ $loaded == *"$AGENT_LABEL"* ]]
+}
+
+case ${1:-on} in
+  status)
+    if running; then
+      count=$(find "$OMACOS_STATE/clipboard" -maxdepth 1 -type f -name 'entry-*' 2>/dev/null | wc -l | tr -d ' ')
+      printf 'Clipboard history is \033[32mon\033[0m (%s entries kept).\n' "$count"
+    else
+      # Exit code as well as words: the menu uses this as a predicate.
+      printf 'Clipboard history is \033[2moff\033[0m. Start it with: omacos setup clipboard\n'
+      exit 1
+    fi
+    ;;
+
+  off)
+    launchctl bootout "gui/$UID/$AGENT_LABEL" 2>/dev/null || true
+    rm -f "$AGENT_PLIST"
+    printf '\033[33mClipboard history stopped.\033[0m\n'
+    printf '\033[2mWhat it already recorded is still there — drop it with: omacos clipboard clear\033[0m\n'
+    ;;
+
+  on)
+    # Build now rather than on first copy: a failure here is something you can
+    # read, one inside a login agent is a silent no-history.
+    omacos-cmd-build-helper >/dev/null
+
+    mkdir -p "$(dirname "$AGENT_PLIST")" "$OMACOS_STATE"
+    # The agent records the tree it was installed from. `omacos dev link` moves
+    # the tree, so the installer re-runs this — see migrations.
+    cat > "$AGENT_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$AGENT_LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>$OMACOS_PATH/bin/omacos-clipboard-watch</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardErrorPath</key><string>$OMACOS_STATE/clipboard-watch.log</string>
+</dict>
+</plist>
+PLIST
+    launchctl bootout "gui/$UID/$AGENT_LABEL" 2>/dev/null || true
+    launchctl bootstrap "gui/$UID" "$AGENT_PLIST" 2>/dev/null || true
+
+    printf '\033[32mClipboard history is on.\033[0m\n'
+    printf '\033[2mPick from it with alt-ctrl-v, or: omacos clipboard history\033[0m\n'
+    printf '\033[2mEntries marked concealed by a password manager are never recorded.\033[0m\n'
+    ;;
+
+  *)
+    echo "usage: omacos setup clipboard [on|off|status]" >&2
+    exit 1 ;;
+esac

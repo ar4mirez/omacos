@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# omacos:summary=Record pasteboard changes into the clipboard history
+# omacos:hidden=true
+#
+# Run by the com.omacos.clipboard login agent (see `omacos setup clipboard`).
+# The polling happens inside the native helper — NSPasteboard posts no change
+# notification, and a shell loop calling pbpaste twice a second is a process
+# per tick for something that is idle almost always.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+helper=$(omacos-cmd-build-helper)
+store="$OMACOS_STATE/clipboard"
+limit=${OMACOS_CLIPBOARD_HISTORY:-200}
+mkdir -p "$store"
+
+# Entries are files: one write is atomic enough, `ls` gives ordering for free,
+# and trimming is `rm`. A single history file would need locking between the
+# watcher and every picker that reads it.
+record() {
+  local text=$1 newest
+  newest=$(find "$store" -maxdepth 1 -type f -name 'entry-*' 2>/dev/null | sort | tail -1)
+  # Copying the same thing twice should not stack two identical entries.
+  if [[ -n $newest ]] && [[ $(cat "$newest") == "$text" ]]; then return 0; fi
+  # Zero-padded: the filenames are sorted as text, and a 3-digit suffix would
+  # otherwise sort above a 5-digit one copied a moment later.
+  printf '%s' "$text" > "$(printf '%s/entry-%s-%05d' "$store" "$(date +%s)" "$RANDOM")"
+}
+
+trim() {
+  local -a entries=()
+  while IFS= read -r file; do entries+=("$file"); done < <(
+    find "$store" -maxdepth 1 -type f -name 'entry-*' 2>/dev/null | sort)
+  local excess=$((${#entries[@]} - limit))
+  ((excess > 0)) || return 0
+  local i
+  for ((i = 0; i < excess; i++)); do rm -f "${entries[i]}"; done
+}
+
+while IFS= read -r -d '' entry; do
+  record "$entry"
+  trim
+done < <("$helper" clipboard)

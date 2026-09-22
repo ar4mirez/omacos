@@ -3,6 +3,10 @@
 # omacos:examples=omacos menu theme
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# From a hotkey there is no terminal, and gum cannot draw without one.
+if [[ ! -t 0 ]]; then
+  exec omacos-launch-tui "omacos-menu-theme"
+fi
 command -v gum >/dev/null || { echo "needs gum" >&2; exit 1; }
 
 current=$(omacos-theme-current 2>/dev/null || echo "")

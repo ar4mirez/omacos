@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# omacos:summary=Cycle or pick the wallpaper within the active theme
+# omacos:args=[next|list|<image>]
+# omacos:examples=omacos theme background | omacos theme background list
+#
+# A theme can ship several backgrounds; `omacos theme set` takes the first one.
+# This moves between them without changing the theme. Drop your own into
+# ~/.config/omacos/backgrounds/<theme>/ and they join the rotation.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=../default/lib/backgrounds.sh
+. "$OMACOS_PATH/default/lib/backgrounds.sh"
+
+theme=$(cat "$OMACOS_STATE/current/theme.name" 2>/dev/null || echo "")
+[[ -n $theme ]] || { echo "No theme is active. Run: omacos theme set <name>" >&2; exit 1; }
+
+candidates=()
+while IFS= read -r -d '' file; do candidates+=("$file"); done < <(background_candidates "$theme")
+((${#candidates[@]})) || {
+  echo "The $theme theme ships no backgrounds." >&2
+  echo "Add your own in ~/.config/omacos/backgrounds/$theme/" >&2
+  exit 1
+}
+
+# Which candidate is on screen: the cached wallpaper is named after the
+# contents it was copied from, so the fingerprint identifies it even though
+# the cached path bears no resemblance to the original.
+current_index() {
+  local active fingerprint index
+  active=$(readlink "$OMACOS_STATE/current/background" 2>/dev/null) || return 1
+  [[ -n $active && -f $active ]] || return 1
+  fingerprint=${active##*-}; fingerprint=${fingerprint%.*}
+  for index in "${!candidates[@]}"; do
+    if [[ $(background_fingerprint "${candidates[index]}") == "$fingerprint" ]]; then
+      printf '%s' "$index"; return 0
+    fi
+  done
+  return 1
+}
+
+case ${1:-next} in
+  list)
+    active=$(current_index) || active=-1
+    for index in "${!candidates[@]}"; do
+      if [[ $index == "$active" ]]; then marker='*'; else marker=' '; fi
+      printf ' %s %s\n' "$marker" "$(basename "${candidates[index]}")"
+    done
+    ;;
+  next)
+    index=$(current_index) || index=-1
+    next=$(( (index + 1) % ${#candidates[@]} ))
+    apply_background "$theme" "${candidates[next]}"
+    printf '\033[32mBackground\033[0m %s\n' "$(basename "${candidates[next]}")"
+    ;;
+  *)
+    image=$1
+    [[ -f $image ]] || { echo "No such image: $image" >&2; exit 1; }
+    apply_background "$theme" "$image"
+    printf '\033[32mBackground\033[0m %s\n' "$(basename "$image")"
+    ;;
+esac

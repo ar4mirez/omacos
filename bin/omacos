@@ -40,6 +40,11 @@ declare -A GROUP_DESCRIPTIONS=(
   [feature]="Enable or disable optional layers"
   [keymap]="Window manager keybindings"
   [launch]="Launch apps and TUIs"
+  [capture]="Screenshots, recording, OCR and colours"
+  [clipboard]="Clipboard history"
+  [notice]="Time, battery and weather at a glance"
+  [reminder]="Countdown reminders"
+  [toggle]="Flip something on or off"
 )
 
 # ---------------------------------------------------------------- metadata ---
@@ -95,8 +100,52 @@ usage_root() {
   while IFS= read -r group; do
     printf '  %-12s %s\n' "$group" "${GROUP_DESCRIPTIONS[$group]:-}"
   done < <(each_command | awk -F'\037' '$6!="true"{print $1}' | sort -u)
-  printf '\n%s\n' "$(dim 'omacos <group> --help   for commands in a group')"
-  printf '%s\n' "$(dim 'omacos commands --json   machine-readable command list')"
+  printf '\n%s\n' "$(dim 'omacos <group> --help          commands in a group')"
+  printf '%s\n' "$(dim 'omacos <group> <cmd> --help    what one command does')"
+  printf '%s\n' "$(dim 'omacos commands --json         machine-readable command list')"
+}
+
+# One command in full: what it takes, what it does, and how it is actually used.
+usage_command() {
+  local file=$1 group name
+  declare -A meta=()
+  read_metadata "$file" meta
+  IFS=$'\037' read -r group name < <(split_command_name "$(basename "$file")")
+  [[ $name == "$group" ]] && name=""
+  group=${meta[group]:-$group}
+  name=${meta[name]:-$name}
+
+  printf '%s %s\n' "$(bold "omacos $group${name:+ $name}")" "${meta[args]:-}"
+  [[ -n ${meta[summary]:-} ]] && printf '  %s\n' "${meta[summary]}"
+  if [[ -n ${meta[examples]:-} ]]; then
+    printf '\n%s\n' "$(bold 'EXAMPLES')"
+    # Examples are written on one metadata line, separated by " | ".
+    printf '%s\n' "${meta[examples]}" | tr '|' '\n' | sed 's/^ *//; s/ *$//; s/^/  /'
+  fi
+  printf '\n%s\n' "$(dim "${file/#$HOME/\~}")"
+}
+
+# A self-documenting CLI is only self-documenting while every command carries
+# its metadata. --check is what stops that from rotting silently.
+commands_check() {
+  local group name path summary problems=0
+  while IFS=$'\037' read -r group name path summary _ _; do
+    local label="omacos $group${name:+ $name}"
+    if [[ ! -x $path ]]; then
+      printf '%s: not executable\n' "$label"; problems=$((problems + 1)); continue
+    fi
+    if ! bash -n "$path" 2>/dev/null; then
+      printf '%s: does not parse\n' "$label"; problems=$((problems + 1)); continue
+    fi
+    if [[ -z $summary ]]; then
+      printf '%s: no `# omacos:summary=` line\n' "$label"; problems=$((problems + 1))
+    fi
+  done < <(each_command | sort)
+  if ((problems)); then
+    printf '\n%d problem(s).\n' "$problems"
+    return 1
+  fi
+  printf 'All commands are executable, parse, and document themselves.\n'
 }
 
 usage_group() {
@@ -155,14 +204,44 @@ main() {
   case $1 in
     --version | -v) cat "$OMACOS_PATH/version"; exit 0 ;;
     commands)
-      [[ ${2:-} == --json ]] && { commands_json; exit 0; }
-      each_command | awk -F'\037' '$6!="true"{print "omacos " $1 ($2 ? " " $2 : "")}' | sort
+      local include_hidden='$6!="true"'
+      shift
+      for argument in "$@"; do
+        case $argument in
+          --json)  commands_json; exit 0 ;;
+          --check) commands_check; exit $? ;;
+          --all)   include_hidden='1' ;;
+          *) printf 'usage: omacos commands [--all] [--json] [--check]\n' >&2; exit 1 ;;
+        esac
+      done
+      each_command | awk -F'\037' "$include_hidden"'{print "omacos " $1 ($2 ? " " $2 : "")}' | sort
       exit 0 ;;
   esac
 
-  # `omacos theme --help` lists the group.
+  # `omacos theme --help` lists the group. Where the group is also a command in
+  # its own right — `omacos reminder`, `omacos doctor` — document that first:
+  # asking for help on it and getting only a list of its siblings is a dead end.
   if (($# == 2)) && [[ $2 == --help || $2 == -h ]] && [[ -n ${GROUP_DESCRIPTIONS[$1]:-} ]]; then
+    local bare="$BIN_DIR/omacos-$1"
+    if [[ -x $bare ]]; then
+      usage_command "$bare"
+      # Only worth listing the group as well when it holds more than this one.
+      if (($(each_command | awk -F'\037' -v g="$1" '$1==g && $6!="true"' | wc -l) > 1)); then
+        printf '\n'; usage_group "$1"
+      fi
+      exit 0
+    fi
     usage_group "$1"; exit $?
+  fi
+
+  # `omacos theme set --help` documents that one command. It has to come after
+  # the group check above, so `omacos theme --help` still lists the group.
+  if (($# >= 2)) && [[ ${!#} == --help || ${!#} == -h ]]; then
+    local -a without_help=("${@:1:$#-1}")
+    local help_match
+    if IFS=$'\037' read -r help_match _ < <(resolve "${without_help[@]}"); then
+      usage_command "$help_match"; exit 0
+    fi
   fi
 
   local match consumed

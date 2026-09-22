@@ -77,6 +77,26 @@ read.
 
 CI fails if a new template is added without being classified.
 
+## The native helper
+
+OCR and the colour picker are a few lines of AppKit and have no CLI on macOS.
+The Xcode Command Line Tools are already a hard requirement of the install, so
+`default/swift/omacos-helper.swift` is compiled on demand into
+`~/.local/state/omacos/bin` rather than pulling a second OCR engine and its
+language data from Homebrew. It is rebuilt whenever the source is newer, which
+is what makes `omacos update` and `omacos dev link` pick up a change without
+anyone remembering to.
+
+The same binary watches the pasteboard. NSPasteboard posts no change
+notification, so watching it means polling — inside one long-lived process that
+costs a `changeCount` read twice a second, rather than a shell and an
+`osascript` per tick.
+
+It skips anything carrying `org.nspasteboard.ConcealedType` or its siblings,
+the convention password managers set for exactly this reason.
+
+> A clipboard history that records the concealed types is a password log.
+
 ## Keymap
 
 `~/.config/omacos/keymap.conf` is the source of truth; `aerospace.toml` is

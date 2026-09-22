@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# omacos:summary=Build the native helper and print its path
+# omacos:hidden=true
+#
+# Two things — OCR and the system eyedropper — have no CLI on macOS but are a
+# few lines of AppKit. The Command Line Tools are already a hard requirement of
+# the install, so compiling once beats a second OCR engine from Homebrew.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+source_file="$OMACOS_PATH/default/swift/omacos-helper.swift"
+binary="$OMACOS_STATE/bin/omacos-helper"
+
+[[ -f $source_file ]] || { echo "Missing helper source: $source_file" >&2; exit 1; }
+
+# Rebuilt when the source is newer, which is what makes `omacos update` and
+# `omacos dev link` pick up a changed helper without anyone remembering to.
+if [[ -x $binary && $binary -nt $source_file ]]; then
+  printf '%s\n' "$binary"
+  exit 0
+fi
+
+command -v swiftc >/dev/null 2>&1 || xcrun --find swiftc >/dev/null 2>&1 || {
+  echo "omacos: the native helper needs the Xcode Command Line Tools." >&2
+  echo "        Install them with: xcode-select --install" >&2
+  exit 1
+}
+
+mkdir -p "$(dirname "$binary")"
+tmp="$binary.$$"
+# No -O: an optimised build takes 45s against 4s, and the runtime here is
+# dominated by Vision and the window server either way.
+if ! swiftc -o "$tmp" "$source_file" 2>"$tmp.log"; then
+  echo "omacos: could not build the native helper." >&2
+  sed 's/^/        /' "$tmp.log" >&2
+  rm -f "$tmp" "$tmp.log"
+  exit 1
+fi
+rm -f "$tmp.log"
+mv "$tmp" "$binary"
+printf '%s\n' "$binary"

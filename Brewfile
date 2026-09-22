@@ -36,6 +36,9 @@ brew "tmux"
 
 # System
 brew "btop"
+# Notifications with their own bundle id, so reminders and notices can be
+# allowed or silenced as "omacos" rather than as Script Editor.
+brew "terminal-notifier"
 brew "wallpaper"   # sindresorhus/macos-wallpaper: the reliable wallpaper setter
 
 # Scripting toolkit — gum drives the omacos menu

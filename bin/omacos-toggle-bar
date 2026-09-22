@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# omacos:summary=Show or hide the status bar
+# omacos:examples=omacos toggle bar
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+command -v sketchybar >/dev/null 2>&1 || {
+  echo "SketchyBar is not installed. Enable the desktop layer: omacos feature enable desktop" >&2
+  exit 1
+}
+
+# sketchybar has no "toggle" for the bar, and querying it costs a round trip we
+# would have to parse. The flag is ours to remember.
+if omacos-state check bar-hidden; then
+  sketchybar --bar hidden=off
+  omacos-state clear bar-hidden
+  printf 'Status bar shown.\n'
+else
+  sketchybar --bar hidden=on
+  omacos-state set bar-hidden
+  printf 'Status bar hidden.\n'
+fi

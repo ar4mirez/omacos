@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# omacos:summary=Pick something you copied earlier back onto the clipboard
+# omacos:args=[--plain]
+# omacos:examples=omacos clipboard history
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+store="$OMACOS_STATE/clipboard"
+
+# From a hotkey there is no terminal, and gum cannot draw without one.
+if [[ ! -t 0 && ${1:-} != --plain ]]; then
+  exec omacos-launch-tui "omacos-clipboard-history"
+fi
+
+entries=()
+while IFS= read -r file; do entries+=("$file"); done < <(
+  find "$store" -maxdepth 1 -type f -name 'entry-*' 2>/dev/null | sort -r)
+
+if ((${#entries[@]} == 0)); then
+  printf 'Nothing in the clipboard history yet.\n'
+  if ! omacos-setup-clipboard status >/dev/null 2>&1; then
+    printf '\033[2mThe watcher is not running. Start it with: omacos setup clipboard\033[0m\n'
+  fi
+  exit 0
+fi
+
+# One line per entry, so a paragraph does not push the rest of the history off
+# the screen. The marker says there is more where this came from.
+label_for() {
+  local file=$1 first extra
+  IFS= read -r first < "$file" || true
+  extra=$(wc -l < "$file" | tr -d ' ')
+  if ((extra > 0)); then
+    printf '%s \033[2m↵ +%s\033[0m' "${first:0:120}" "$extra"
+  else
+    printf '%s' "${first:0:120}"
+  fi
+}
+
+if [[ ${1:-} == --plain ]]; then
+  for file in "${entries[@]}"; do label_for "$file"; printf '\n'; done
+  exit 0
+fi
+
+command -v gum >/dev/null || { echo "omacos clipboard history needs gum: brew install gum" >&2; exit 1; }
+
+labels=()
+for index in "${!entries[@]}"; do
+  labels+=("$(printf '%3d  %s' "$((index + 1))" "$(label_for "${entries[index]}")")")
+done
+
+choice=$(printf '%s\n' "${labels[@]}" | gum filter --placeholder "clipboard history" --height 14 --prompt "› ") || exit 0
+[[ -n $choice ]] || exit 0
+
+# The leading number is the index: matching on the label would pick the wrong
+# entry whenever two of them start with the same 120 characters.
+index=$(printf '%s' "$choice" | awk '{print $1}')
+[[ $index =~ ^[0-9]+$ ]] || exit 0
+selected=${entries[index - 1]:-}
+[[ -n $selected && -f $selected ]] || exit 0
+
+pbcopy < "$selected"
+printf '\033[32mOn the clipboard.\033[0m\n'

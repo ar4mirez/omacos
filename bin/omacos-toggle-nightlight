@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# omacos:summary=Turn Night Shift on or off
+# omacos:examples=omacos toggle nightlight
+#
+# Night Shift has no public API: every CLI that flips it talks to the private
+# CoreBrightness framework, which is exactly the kind of thing that breaks on
+# an OS upgrade. So omacos uses one if you have installed it, and otherwise
+# takes you to the setting rather than shipping a private-API binary of its own.
+set -euo pipefail
+
+if command -v nightlight >/dev/null 2>&1; then
+  if [[ $(nightlight status 2>/dev/null) == *on* ]]; then
+    nightlight off
+    printf 'Night Shift off.\n'
+  else
+    nightlight on
+    printf 'Night Shift on.\n'
+  fi
+  exit 0
+fi
+
+printf '\033[33mNo Night Shift CLI installed.\033[0m\n'
+printf 'macOS exposes Night Shift only through a private framework, so omacos will\n'
+printf 'not ship a binary that pokes at it. Two ways forward:\n\n'
+printf '  omacos cmd trust-tap smudge/smudge "the nightlight CLI"\n'
+printf '  brew install smudge/smudge/nightlight\n\n'
+printf 'or set a schedule once, in the pane opening now.\n'
+open 'x-apple.systempreferences:com.apple.Displays-Settings.extension' >/dev/null 2>&1 || true

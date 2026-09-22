@@ -78,33 +78,18 @@ printf '%s\n' "$theme_name" > "$current_dir/theme.name"
 
 # ------------------------------------------------------------- background ---
 
+# shellcheck source=../default/lib/backgrounds.sh
+. "$OMACOS_PATH/default/lib/backgrounds.sh"
+
 choose_background() {
   local -a candidates=()
-  while IFS= read -r -d '' file; do candidates+=("$file"); done < <(
-    find -L "$current_dir/theme/backgrounds" "$OMACOS_CONFIG/backgrounds/$theme_name" \
-      -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.heic' \) \
-      -print0 2>/dev/null | sort -z
-  )
+  while IFS= read -r -d '' file; do candidates+=("$file"); done < <(background_candidates "$theme_name")
   ((${#candidates[@]})) || return 1
   printf '%s\n' "${candidates[0]}"
 }
 
 if [[ ${OMACOS_THEME_SKIP_BACKGROUND:-0} != 1 ]] && background=$(choose_background); then
-  # macOS caches wallpapers by path, so writing the same path again is a silent
-  # no-op. Give every distinct image a distinct, stable filename.
-  cache="$OMACOS_STATE/wallpapers"
-  mkdir -p "$cache"
-  # Hash the contents, not the mtime: staging re-copies the file on every
-  # switch, so an mtime fingerprint would leak a new cache entry each time.
-  fingerprint=$(shasum -a 256 "$background" | cut -c1-12)
-  target="$cache/${theme_name}-${fingerprint}.${background##*.}"
-  if [[ ! -f $target ]]; then
-    cp "$background" "$target"
-    # Drop superseded wallpapers for this theme; the active one is kept.
-    find "$cache" -maxdepth 1 -name "${theme_name}-*" ! -name "$(basename "$target")" -delete 2>/dev/null || true
-  fi
-  ln -sfn "$target" "$current_dir/background"
-  omacos-cmd-set-wallpaper "$target" || true
+  apply_background "$theme_name" "$background" || true
 fi
 
 # --------------------------------------------------------------- fan out ---

@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# omacos:summary=Turn on macOS dictation, and say where its shortcut lives
+# omacos:args=[status|on]
+# omacos:examples=omacos setup dictation | omacos setup dictation status
+#
+# Omarchy installs Voxtype and a Whisper model for this. macOS has dictation
+# built in, on-device once a language pack is downloaded, and it works in any
+# text field — so omacos turns the built-in one on rather than shipping a
+# second speech model. What it cannot do is set the shortcut: that lives behind
+# a settings pane no script can drive, which is why this ends by opening it.
+set -euo pipefail
+
+DOMAIN=com.apple.assistant.support
+
+enabled() { [[ $(defaults read "$DOMAIN" "Dictation Enabled" 2>/dev/null || echo 0) == 1 ]]; }
+
+installed_languages() {
+  defaults export "$DOMAIN" - 2>/dev/null \
+    | plutil -convert json -o - - 2>/dev/null \
+    | jq -r '."Offline Dictation Status" // {} | to_entries[] | select(.value.Installed == 1) | .key' 2>/dev/null
+}
+
+report() {
+  if enabled; then
+    printf 'Dictation is \033[32mon\033[0m.\n'
+  else
+    printf 'Dictation is \033[2moff\033[0m.\n'
+  fi
+  local languages; languages=$(installed_languages | paste -sd' ' -)
+  if [[ -n ${languages// /} ]]; then
+    printf '\033[2mOn-device language packs: %s\033[0m\n' "$languages"
+  else
+    printf '\033[2mNo on-device language pack yet — the first use downloads one.\033[0m\n'
+  fi
+}
+
+case ${1:-on} in
+  status)
+    report
+    ;;
+
+  on)
+    if enabled; then
+      report
+      printf '\033[2mShortcut: System Settings > Keyboard > Dictation.\033[0m\n'
+      exit 0
+    fi
+
+    defaults write "$DOMAIN" "Dictation Enabled" -bool true 2>/dev/null || true
+    if enabled; then
+      printf '\033[32mDictation enabled.\033[0m\n'
+    else
+      # A meaningful fraction of widely-copied `defaults write` lines silently
+      # no-op on current macOS, and this domain is one macOS guards. Say so
+      # rather than reporting a success that is not there.
+      printf '\033[33mmacOS did not accept the write.\033[0m\n'
+      printf 'Turn it on in the pane opening now: Dictation > On.\n'
+    fi
+    printf '\n'
+    printf 'The shortcut is yours to choose in that same pane — macOS ships it on a\n'
+    printf 'double-press of a modifier, and nothing in the omacos keymap claims it.\n'
+    open 'x-apple.systempreferences:com.apple.Keyboard-Settings.extension' >/dev/null 2>&1 || true
+    ;;
+
+  *)
+    echo "usage: omacos setup dictation [status|on]" >&2
+    exit 1 ;;
+esac

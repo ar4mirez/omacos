@@ -102,6 +102,43 @@ else
   note "1Password SSH agent not running" "Enable: 1Password > Settings > Developer > Use the SSH agent"
 fi
 
+section "The basics"
+# The capture commands and the clipboard watcher both rest on the native
+# helper, and a machine without Command Line Tools fails all of them at once.
+if [[ -x $OMACOS_STATE/bin/omacos-helper ]]; then
+  ok "Native helper built (OCR, colour picker)"
+elif xcode-select -p >/dev/null 2>&1; then
+  note "Native helper not built yet" "Run: omacos cmd build-helper"
+else
+  bad "Xcode Command Line Tools missing" "OCR and the colour picker need them: xcode-select --install"
+fi
+
+if omacos-setup-clipboard status >/dev/null 2>&1; then
+  entries=$(find "$OMACOS_STATE/clipboard" -maxdepth 1 -type f -name 'entry-*' 2>/dev/null | wc -l | tr -d ' ')
+  ok "Clipboard history on ($entries entries)"
+else
+  note "Clipboard history off" "Start it with: omacos setup clipboard"
+fi
+
+if command -v terminal-notifier >/dev/null 2>&1; then
+  # Whether macOS actually lets it post lives in a protected ncprefs store, so
+  # there is nothing here to read. The first banner is the test, and omacos
+  # cmd notify says so out loud when it is refused.
+  ok "terminal-notifier installed"
+  $quiet || printf '      \033[2mIf banners never appear, allow it in System Settings > Notifications.\033[0m\n'
+else
+  note "terminal-notifier not installed" "Notices fall back to osascript: brew install terminal-notifier"
+fi
+
+# A reminder is a detached sleep, so it is worth saying out loud that some are
+# pending — they do not survive a reboot and nothing else shows them.
+pending=$(find "$OMACOS_STATE/reminders" -maxdepth 1 -type f 2>/dev/null | wc -l | tr -d ' ')
+((pending > 0)) && note "$pending reminder(s) pending" "See them with: omacos reminder list"
+
+if [[ -f $OMACOS_STATE/caffeinate.pid ]] && kill -0 "$(cat "$OMACOS_STATE/caffeinate.pid" 2>/dev/null)" 2>/dev/null; then
+  note "Idle sleep is held off" "This machine will not sleep: omacos toggle idle off"
+fi
+
 section "Desktop"
 if ! omacos-feature check desktop 2>/dev/null; then
   ok "Desktop layer off (enable with: omacos feature enable desktop)"

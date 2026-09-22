@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# omacos:summary=Pick a colour from the screen onto the clipboard
+# omacos:examples=omacos capture color
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+helper=$(omacos-cmd-build-helper)
+
+# The loupe is cancellable, and cancelling is not an error.
+hex=$("$helper" color) || exit 0
+[[ -n $hex ]] || exit 0
+
+printf '%s' "$hex" | pbcopy
+omacos-cmd-notify "Colour picked" "$hex is on the clipboard." || true
+printf '%s\n' "$hex"

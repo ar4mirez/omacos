@@ -45,6 +45,11 @@ sketchybar --default updates=when_shown \
 # with `sketchybar --trigger aerospace_workspace_change` (see aerospace.toml).
 sketchybar --add event aerospace_workspace_change
 
+# omacos pushes these when the state behind them changes, so the indicators
+# below cost nothing while nothing is happening.
+sketchybar --add event omacos_recording
+sketchybar --add event omacos_idle
+
 # AeroSpace's server is gated on Accessibility, so it may not answer yet.
 # Falling back to the workspaces the keymap defines keeps the bar complete
 # instead of silently dropping every workspace item.
@@ -79,6 +84,16 @@ sketchybar --add item front_app left \
            --subscribe front_app front_app_switched
 
 # --- right side -------------------------------------------------------------
+# Both of these draw nothing unless the state they report is on. They are the
+# two things that are easy to leave running by accident.
+sketchybar --add item recording right \
+           --set recording updates=on drawing=off script="$PLUGIN_DIR/recording.sh" \
+           --subscribe recording omacos_recording
+
+sketchybar --add item idle right \
+           --set idle updates=on drawing=off script="$PLUGIN_DIR/idle.sh" \
+           --subscribe idle omacos_idle
+
 sketchybar --add item clock right \
            --set clock update_freq=10 script="$PLUGIN_DIR/clock.sh"
 
@@ -93,6 +108,12 @@ sketchybar --add item theme right \
                        icon.color="$ACCENT_COLOR"
 
 sketchybar --update
+
+# Draw the state that already exists: a recording or a caffeinate started
+# before the bar was reloaded is still running, and an indicator that only
+# appears on the next change would miss it.
+sketchybar --trigger omacos_recording
+sketchybar --trigger omacos_idle
 
 # The workspace items only update on aerospace_workspace_change, so without
 # this they sit unstyled until you happen to switch workspaces. It has to come

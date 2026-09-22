@@ -1,6 +1,6 @@
 ---
 name: omacos
-description: Use when working on or with omacos — the omakase macOS developer environment installed at ~/.local/share/omacos. Covers its CLI, config boundary, theme engine, keymap, migrations, and install flow. Triggers on "omacos", "my dotfiles", "theme", "keybindings", "aerospace.toml", "sketchybar", or edits under an omacos checkout, ~/.local/share/omacos or ~/.config/omacos.
+description: Use when working on or with omacos — the omakase macOS developer environment installed at ~/.local/share/omacos. Covers its CLI, config boundary, theme engine, keymap, capture and clipboard history, migrations, and install flow. Triggers on "omacos", "my dotfiles", "theme", "keybindings", "aerospace.toml", "sketchybar", or edits under an omacos checkout, ~/.local/share/omacos or ~/.config/omacos.
 ---
 
 # omacos
@@ -9,7 +9,9 @@ An omakase developer environment for macOS. Discover the CLI rather than guessin
 
 ```bash
 omacos commands --json     # every command, machine-readable
+omacos commands --check    # every command parses and documents itself
 omacos <group> --help      # commands in one group
+omacos <group> <cmd> --help  # what one command takes and does
 omacos doctor              # what is actually true on this machine
 ```
 
@@ -79,6 +81,32 @@ from a stranger, so staging drops everything that can execute and regenerates it
 from the palette; symlinks are never followed. Installing someone's theme must
 change what the desktop looks like, never what it runs.
 
+## The native helper
+
+Two things — OCR and the system eyedropper — have no CLI on macOS and are a few
+lines of AppKit, so `default/swift/omacos-helper.swift` is compiled on demand
+into `~/.local/state/omacos/bin` by `omacos cmd build-helper`. It is rebuilt
+whenever the source is newer, so editing the swift file is enough. The Xcode
+Command Line Tools are already a hard install requirement, which is why this
+beats a second OCR engine from Homebrew.
+
+It backs `omacos capture text`, `omacos capture color`, and the clipboard
+watcher. Nothing in the terminal layer depends on it.
+
+## Clipboard history
+
+`omacos setup clipboard` installs the `com.omacos.clipboard` login agent, which
+runs `omacos-clipboard-watch`; entries are one file each under
+`~/.local/state/omacos/clipboard`, newest last, capped at
+`OMACOS_CLIPBOARD_HISTORY` (200).
+
+macOS already copies and pastes the same way everywhere — the problem Omarchy's
+Super+C/V solves on Linux does not exist here, so omacos adds only the part
+macOS lacks. **Do not weaken this:** the watcher skips anything carrying
+`org.nspasteboard.ConcealedType` and its siblings, which is what password
+managers set. That rule is the difference between a clipboard history and a
+password log.
+
 ## Keybindings
 
 `~/.config/omacos/keymap.conf` is the source of truth — `key | description | action`.
@@ -91,6 +119,14 @@ omacos keymap build    # regenerate aerospace.toml and reload AeroSpace
 
 Never hand-edit `~/.config/aerospace/aerospace.toml`; the next build overwrites it.
 Duplicate keys are invalid TOML — the builder warns and keeps the last.
+
+The ladder: `alt` window management, `alt-shift` move and launch, `alt-ctrl`
+system panels, capture and toggles, `alt-ctrl-shift` the other direction of the
+same thing, `alt-cmd` a variant of the plain `alt` action. `alt` stands in for
+Omarchy's Super; `omacos setup capslock option` puts it under the left pinky.
+A binding that runs a `gum` command needs no terminal, so those commands
+relaunch themselves through `omacos launch tui` when stdin is not a tty — see
+`bin/omacos-menu`.
 
 ## Migrations
 

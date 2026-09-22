@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# omacos:summary=Extract text from a region of the screen (OCR) to the clipboard
+# omacos:examples=omacos capture text
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+helper=$(omacos-cmd-build-helper)
+
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"' EXIT
+shot="$scratch/region.png"
+
+screencapture -x -i -s "$shot" || exit 0
+[[ -f $shot ]] || exit 0   # cancelled
+
+text=$("$helper" ocr "$shot")
+if [[ -z ${text//[[:space:]]/} ]]; then
+  omacos-cmd-notify "No text found" "Nothing recognisable in that selection." || true
+  exit 1
+fi
+
+printf '%s' "$text" | pbcopy
+lines=$(printf '%s\n' "$text" | wc -l | tr -d ' ')
+omacos-cmd-notify "Text extracted" "$lines line(s) on the clipboard." || true
+printf '%s\n' "$text"
