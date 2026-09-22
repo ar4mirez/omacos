@@ -17,15 +17,6 @@ if [[ $OMACOS_PATH == "$installed" ]]; then
     printf '\n\033[33m!\033[0m Ignoring a stale link to %s\n' "${stale//\'/}"
     printf '\033[2m  It no longer exists. Clear it with: omacos dev unlink\033[0m\n'
   fi
-  # Unlinked is the normal state, so this is where "where do I edit?" gets
-  # asked — by a person returning to the project, or by an agent reading it.
-  if [[ -r $OMACOS_STATE/dev-checkout ]]; then
-    checkout=$(head -1 "$OMACOS_STATE/dev-checkout")
-    if [[ -x $checkout/bin/omacos ]]; then
-      printf '\n\033[2mcheckout\033[0m  %s\n' "${checkout/#$HOME/\~}"
-      printf '\033[2mEdit there, not here. Iterate against it with: omacos dev link\033[0m\n'
-    fi
-  fi
 else
   printf '\033[33mlinked\033[0m  %s\n' "${OMACOS_PATH/#$HOME/\~}"
   printf '\033[2mA working checkout. Edits take effect immediately; `omacos dev unlink` returns to\033[0m\n'
@@ -40,6 +31,22 @@ if [[ -d $OMACOS_PATH/.git ]]; then
   [[ $dirty -gt 0 ]] && printf '  \033[33m%s uncommitted change(s)\033[0m\n' "$dirty"
 fi
 
-if [[ -d $installed/.git && $OMACOS_PATH != "$installed" ]]; then
-  printf '\n\033[2minstalled tree is at %s\033[0m\n' "$(git -C "$installed" log --oneline -1 2>/dev/null || echo '?')"
+# The branch/head above belongs to whichever tree is in use, so the other tree
+# gets named down here. Linked: say where the installed one is. Not linked: say
+# where the checkout is — that is the normal state, and the state from which
+# "where do I edit?" actually gets asked, by a person or by an agent.
+if [[ $OMACOS_PATH != "$installed" ]]; then
+  # A plain `cond && printf` here would be the last command of the last
+  # statement, so a missing installed tree would exit this script non-zero
+  # under `set -e` — a status report failing because it had less to report.
+  if [[ -d $installed/.git ]]; then
+    printf '\n\033[2minstalled tree is at %s\033[0m\n' "$(git -C "$installed" log --oneline -1 2>/dev/null || echo '?')"
+  fi
+elif [[ -r $OMACOS_STATE/dev-checkout ]]; then
+  checkout=$(head -1 "$OMACOS_STATE/dev-checkout")
+  if [[ -x $checkout/bin/omacos ]]; then
+    printf '\n\033[2mcheckout is %s, at %s\033[0m\n' "${checkout/#$HOME/\~}" \
+      "$(git -C "$checkout" log --oneline -1 2>/dev/null || echo '?')"
+    printf '\033[2mEdit there, not here. Iterate against it with: omacos dev link\033[0m\n'
+  fi
 fi

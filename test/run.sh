@@ -261,6 +261,13 @@ check "rejects an incomplete tree" "! omacos-dev-link $partial 2>/dev/null"
 check "link writes path.conf"      "omacos-dev-link $checkout >/dev/null 2>&1 && grep -q $checkout $OMACOS_CONFIG/path.conf"
 check "bootstrap follows the link" "test \"\$(link_resolves_to)\" = $checkout"
 check "status reports linked"      "omacos-dev-status 2>/dev/null | grep -q linked"
+# The grep for trailing conditionals only sees a script's last line, so it
+# misses a `cond && action` that ends the last *statement*. Exercise the exit
+# code directly, in the branch that has the least to report.
+bare="$sandbox/no-installed"; mkdir -p "$bare/.config/omacos" "$bare/.local/state/omacos"
+printf 'OMACOS_PATH=%q\n' "$checkout" > "$bare/.config/omacos/path.conf"
+check "status exits 0 with no installed tree" \
+  "env HOME=$bare XDG_CONFIG_HOME=$bare/.config XDG_STATE_HOME=$bare/.local/state omacos-dev-status"
 
 # The failure this pair is most likely to hit in real use: the checkout gets
 # renamed or deleted while still linked. Without a fallback, OMACOS_PATH points
