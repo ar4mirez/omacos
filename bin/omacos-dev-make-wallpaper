@@ -11,10 +11,13 @@ set -euo pipefail
 theme=${1:?usage: omacos dev make-wallpaper <theme> [w] [h]}
 width=${2:-2560}
 height=${3:-1600}
+# A shipped theme first, then one you imported into ~/.config — the generator
+# is useful for both, and `omacos theme import` relies on it for both.
 palette="$OMACOS_PATH/themes/$theme/colors.toml"
+[[ -f $palette ]] || palette="$OMACOS_CONFIG/themes/$theme/colors.toml"
 [[ -f $palette ]] || { echo "No such theme: $theme" >&2; exit 1; }
 
-out_dir="$OMACOS_PATH/themes/$theme/backgrounds"
+out_dir="$(dirname "$palette")/backgrounds"
 mkdir -p "$out_dir"
 
 python3 - "$palette" "$out_dir/01-gradient.png" "$width" "$height" <<'PY'

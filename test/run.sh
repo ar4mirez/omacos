@@ -65,6 +65,19 @@ check "strip modifier"         "grep -q 'background = 1a1b26' $out/ghostty.conf"
 check "rgb modifier"           "grep -q '122,162,247' $out/macos.sh"
 check "mix helper blends"      "grep -q 'minus-style = normal #4b2f3d' $out/delta.gitconfig"
 check "every theme renders"    "for t in $OMACOS_PATH/themes/*/colors.toml; do omacos-theme-render \$t \$(mktemp -d) || exit 1; done"
+# bat silently falls back to its default when handed a theme name it does not
+# have, so a typo here is invisible until you notice bat looks wrong.
+bat_themes_exist() {
+  local known theme file
+  known=$(bat --list-themes 2>/dev/null) || return 0   # no bat, nothing to check
+  for file in "$OMACOS_PATH"/themes/*/colors.toml; do
+    theme=$(sed -n 's/^bat_theme *= *"\(.*\)"/\1/p' "$file")
+    [[ -n $theme ]] || { echo "$file has no bat_theme"; return 1; }
+    [[ $'\n'$known$'\n' == *$'\n'"$theme"$'\n'* ]] || { echo "$file: bat has no theme '\''$theme'\''"; return 1; }
+  done
+  return 0
+}
+check "every bat_theme exists"  bat_themes_exist
 check "no unresolved braces"   "! grep -rq '{{' $out"
 
 printf '\n\033[1mTheme staging security\033[0m\n'

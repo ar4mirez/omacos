@@ -33,7 +33,7 @@ bright_magenta = "#907aa9"
 bright_cyan    = "#56949f"
 bright_white   = "#575279"
 
-bat_theme = "rose-pine-dawn"
+bat_theme = "ansi"
 nvim_plugin = "rose-pine/neovim"
 nvim_plugin_name = "rose-pine"
 nvim_colorscheme = "rose-pine-dawn"

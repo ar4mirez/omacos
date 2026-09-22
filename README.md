@@ -38,7 +38,7 @@ omacos commands --json       # machine-readable, for agents
 omacos doctor                # what is actually true on this machine
 omacos menu                  # everything, in one searchable menu
 
-omacos theme list|set|next|current
+omacos theme list|set|next|current|import
 omacos theme background         # cycle the wallpapers a theme ships
 omacos keymap show|build
 omacos capture screenshot|screenrecording|text|color
@@ -76,8 +76,17 @@ than one per `.pkg` cask. Ships Brave and sets it as the default browser,
 which also gives `omacos webapp install` a real app window to work with.
 
 **Themes** — one `colors.toml` per theme renders every app's colours, switches
-macOS between light and dark, and sets the wallpaper. Ships tokyo-night,
-catppuccin-mocha, and rose-pine-dawn.
+macOS between light and dark, and sets the wallpaper. Ships 22 of them, most
+ported from Omarchy with `omacos theme import`, which also takes any Omarchy
+theme you point it at:
+
+```bash
+omacos theme import gruvbox            # an Omarchy theme, by name
+omacos theme import ~/src/my-theme     # or a directory
+```
+
+Wallpapers are generated from the palette rather than copied — see
+[themes/ATTRIBUTION.md](themes/ATTRIBUTION.md).
 
 ## The basics, on a Mac
 
@@ -181,7 +190,7 @@ so you stay on the same update path as everyone else.
 ```bash
 git clone git@github.com:ar4mirez/omacos.git ~/Work/ar4mirez/omacos
 cd ~/Work/ar4mirez/omacos
-./test/run.sh    # 148 tests, sandboxed — cannot touch your real home
+./test/run.sh    # 149 tests, sandboxed — cannot touch your real home
 ./install.sh     # idempotent: a no-op on a configured machine
 
 omacos dev link ~/Work/ar4mirez/omacos   # iterate without push-then-update
