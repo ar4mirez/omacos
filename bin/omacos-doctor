@@ -169,6 +169,21 @@ else
   [[ -f ${XDG_CONFIG_HOME:-$HOME/.config}/aerospace/aerospace.toml ]] \
     && ok "aerospace.toml generated" \
     || note "aerospace.toml missing" "Run: omacos keymap build"
+
+  # The keymap is yours and is never rewritten, which means bindings added
+  # after you installed sit in the shipped file and nowhere else. Nothing else
+  # on the machine would ever mention them — you would just press a key that
+  # does nothing.
+  yours=$(grep -cE '^[a-z].*\|.*\|' "$OMACOS_CONFIG/keymap.conf" 2>/dev/null || echo 0)
+  shipped=$(grep -cE '^[a-z].*\|.*\|' "$OMACOS_PATH/config/omacos/keymap.conf" 2>/dev/null || echo 0)
+  if ((yours == 0)); then
+    note "No keymap at $(printf '%s' "${OMACOS_CONFIG/#$HOME/\~}")/keymap.conf" "Run: omacos update"
+  elif ((yours < shipped)); then
+    note "Your keymap has $yours bindings; omacos ships $shipped" \
+         "Take the new one (keeps a backup, shows a diff): omacos refresh config omacos/keymap.conf"
+  else
+    ok "Keymap has $yours bindings"
+  fi
 fi
 
 printf '\n\033[1m%d passed\033[0m, \033[33m%d to look at\033[0m, \033[31m%d broken\033[0m\n' "$pass" "$warn" "$fail"

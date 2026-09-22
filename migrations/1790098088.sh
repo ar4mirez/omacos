@@ -4,9 +4,20 @@ echo "Add capture, clipboard history, notices, reminders and toggles"
 # the helper is only compiled when its source is newer, and the watcher is only
 # started when it is not already loaded.
 
+keymap="${XDG_CONFIG_HOME:-$HOME/.config}/omacos/keymap.conf"
+
 if omacos-feature check desktop 2>/dev/null && command -v omacos-keymap-build >/dev/null; then
   omacos-keymap-build >/dev/null
-  echo "  keymap rebuilt (capture, clipboard, notices, reminders, toggles)"
+  # ~/.config is yours and is never rewritten, so a keymap seeded before this
+  # release cannot contain the bindings it adds — rebuilding only regenerates
+  # what is already in your file. Claiming the new keys work would be a lie you
+  # only discover by pressing one.
+  if [[ -f $keymap ]] && ! grep -q 'omacos-capture-screenshot' "$keymap"; then
+    echo "  your keymap predates the capture, clipboard, notice and toggle bindings"
+    echo "  take the new one with: omacos refresh config omacos/keymap.conf"
+  else
+    echo "  keymap rebuilt"
+  fi
 fi
 
 if command -v omacos-cmd-build-helper >/dev/null; then
@@ -22,12 +33,16 @@ if command -v omacos-setup-clipboard >/dev/null; then
     :
   elif omacos-setup-clipboard on >/dev/null 2>&1; then
     echo "  clipboard history started — off again with: omacos setup clipboard off"
+  else
+    # A watcher that failed to start is a hotkey that does nothing later, so
+    # the failure gets said out loud rather than swallowed by the branch.
+    echo "  could not start the clipboard watcher — run: omacos setup clipboard"
   fi
 fi
 
-# ~/.config is yours and is never rewritten, so the status bar keeps whatever
-# sketchybarrc it already has. Say what taking the new one would add rather
-# than reaching into a file the owner is someone else.
+# Same boundary as the keymap: the status bar keeps whatever sketchybarrc it
+# already has. Say what taking the new one would add rather than reaching into
+# a file whose owner is someone else.
 bar="${XDG_CONFIG_HOME:-$HOME/.config}/sketchybar/sketchybarrc"
 if [[ -f $bar ]] && ! grep -q omacos_recording "$bar"; then
   echo "  your sketchybarrc predates the recording and idle indicators"

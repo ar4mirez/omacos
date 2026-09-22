@@ -230,6 +230,29 @@ d = json.load(sys.stdin)
 bound = {v.split()[-1] for k,v in d['mode']['main']['binding'].items() if v.startswith('workspace ')}
 assert set(d['persistent-workspaces']) == bound, (d['persistent-workspaces'], bound)
 \""
+# AeroSpace refuses a config with one unknown key name, and refusing means
+# keeping the config it already had — so a typo like `escape` for `esc` leaves
+# every binding in the file inert while the build reports success. CI has no
+# AeroSpace to ask, so the key vocabulary is checked here.
+aerospace_key_names_valid() {
+  local named="esc enter space backspace tab delete equal minus slash comma
+               period semicolon quote backtick left down up right home end
+               pageUp pageDown"
+  local key last
+  while IFS='|' read -r key _; do
+    key=${key//[[:space:]]/}
+    [[ -n $key && $key != \#* ]] || continue
+    last=${key##*-}
+    [[ $last =~ ^[a-z0-9]$ ]] && continue
+    [[ $last =~ ^f[0-9]{1,2}$ ]] && continue
+    [[ " ${named//[$'\n'] / } " == *" $last "* ]] && continue
+    echo "unknown key name: $key"
+    return 1
+  done < <(grep -E '^[a-z].*\|.*\|' "$OMACOS_PATH/config/omacos/keymap.conf")
+  return 0
+}
+check "key names are ones AeroSpace knows" aerospace_key_names_valid
+check "build reports a rejected config"   "grep -q 'rejected the config' $OMACOS_PATH/bin/omacos-keymap-build"
 check "cheatsheet renders"     "omacos-keymap-show --plain | grep -q 'Focus left'"
 check "every binding documented" "test \$(grep -cE '^[a-z].*\\|.*\\|' $OMACOS_CONFIG/keymap.conf) -eq \$(omacos-keymap-show --plain | grep -cE '^  [a-z]')"
 

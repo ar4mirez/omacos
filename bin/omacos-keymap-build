@@ -91,7 +91,17 @@ printf '\033[32mWrote %s\033[0m \033[2m(%s bindings)\033[0m\n' "${target/#$HOME/
 # not aerospace, and it can be running yet unresponsive while it waits on its
 # Accessibility grant.
 if command -v aerospace >/dev/null && aerospace list-workspaces --all >/dev/null 2>&1; then
-  aerospace reload-config && printf '\033[2mAeroSpace reloaded.\033[0m\n'
+  # A rejected config is not a partial config: AeroSpace keeps the one it had,
+  # so every binding in the file just written is inert. Reporting that as a
+  # success — which `reload-config && printf` quietly did — means finding out
+  # by pressing a key that does nothing.
+  if aerospace reload-config; then
+    printf '\033[2mAeroSpace reloaded.\033[0m\n'
+  else
+    printf '\033[31mAeroSpace rejected the config above; the previous one is still in effect.\033[0m\n'
+    printf '\033[2mFix the named binding in ~/.config/omacos/keymap.conf and build again.\033[0m\n'
+    exit 1
+  fi
 elif [[ -d /Applications/AeroSpace.app ]]; then
   printf '\033[2mAeroSpace is not responding; it will pick this up on next start.\033[0m\n'
 fi
