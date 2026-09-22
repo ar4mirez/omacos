@@ -158,9 +158,11 @@ omacos snapshot restore     # what to do, both kinds
 omacos snapshot delete
 ```
 
-**`omacos update` now takes one before it changes anything**, which is what
-makes upgrading every package on the machine something you can walk back from.
-`omacos update --no-snapshot` skips it.
+**`omacos update` takes one before it changes anything**, which is what makes
+upgrading every package on the machine something you can walk back from. There
+is no flag to skip it: the update you would reach for that flag on is the one
+you most want to be able to undo. If a snapshot genuinely cannot be taken —
+not APFS, no space — the step says so and the update carries on.
 
 Two different jobs wear the word *restore*, and only one can be scripted:
 

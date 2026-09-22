@@ -721,7 +721,9 @@ snapshot_runs_first() {
   [[ $(head -1 <<<"$order") == *omacos-snapshot-create* ]]
 }
 check "update snapshots before it changes anything" snapshot_runs_first
-check "update can skip the snapshot"  "grep -q '\-\-no-snapshot' $OMACOS_PATH/bin/omacos-update"
+# No opt-out, on purpose: the hurried update is the one worth snapshotting.
+check "the snapshot cannot be skipped" "! grep -q '\-\-no-snapshot' $OMACOS_PATH/bin/omacos-update"
+check "update rejects unknown flags"   "! omacos-update --no-snapshot 2>/dev/null"
 # One package failing to build must not cost the migrations that follow it.
 check "a failed upgrade does not end the update" \
   "grep -q 'did not upgrade' $OMACOS_PATH/bin/omacos-update"

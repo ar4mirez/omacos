@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
 # omacos:summary=Snapshot, update omacos, run migrations, and upgrade packages
-# omacos:args=[-y] [--no-snapshot]
-# omacos:examples=omacos update | omacos update -y | omacos update --no-snapshot
+# omacos:args=[-y]
+# omacos:examples=omacos update | omacos update -y
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
 
 unattended=false
-snapshot=true
 for argument in "$@"; do
   case $argument in
     -y) unattended=true ;;
-    --no-snapshot) snapshot=false ;;
-    *) echo "usage: omacos update [-y] [--no-snapshot]" >&2; exit 1 ;;
+    *) echo "usage: omacos update [-y]" >&2; exit 1 ;;
   esac
 done
 
@@ -32,11 +30,15 @@ fi
 # Before anything is changed, not after: the point of the snapshot is to
 # capture the machine that still worked. It is copy-on-write, so this costs a
 # second and no disk until the upgrade below starts diverging from it.
-if $snapshot; then
-  step "Snapshot"
-  omacos-snapshot-create 2>&1 | sed 's/^/  /' || \
-    echo "  Could not snapshot — continuing without one."
-fi
+#
+# There is deliberately no way to skip this. A flag to turn it off would only
+# ever be reached for on the update you were in a hurry about, which is the
+# one you most want to be able to walk back from. Where a snapshot genuinely
+# cannot be taken — not APFS, no space — the step says so and the update
+# carries on, which covers the honest cases without offering a footgun.
+step "Snapshot"
+omacos-snapshot-create 2>&1 | sed 's/^/  /' || \
+  echo "  Could not snapshot — continuing without one."
 
 step "Fetching omacos"
 if [[ -d $OMACOS_PATH/.git ]]; then
