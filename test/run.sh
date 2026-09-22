@@ -79,6 +79,35 @@ check "cache holds one file per theme" "test \$(ls -1 $OMACOS_STATE/wallpapers |
 check "background symlink resolves"    "test -f \$(readlink $OMACOS_STATE/current/background)"
 unset OMACOS_DRY_RUN
 
+printf '\n\033[1mSeeding\033[0m\n'
+# The guarantee the whole design rests on: a file you have edited is never
+# rewritten, while a file that does not exist yet still arrives.
+seed_dir="$XDG_CONFIG_HOME"
+mkdir -p "$seed_dir/zsh"
+printf 'MINE\n' > "$seed_dir/zsh/.zshrc"
+rm -rf "$seed_dir/omacos/hooks"
+seed_one() {
+  while IFS= read -r -d '' src; do
+    rel=${src#"$OMACOS_PATH"/config/}
+    dst="$seed_dir/$rel"
+    [[ -e $dst ]] && continue
+    mkdir -p "$(dirname "$dst")"; cp "$src" "$dst"
+  done < <(find "$OMACOS_PATH/config" -type f -print0)
+}
+seed_one
+check "existing file left alone"   "test \"\$(cat $seed_dir/zsh/.zshrc)\" = MINE"
+check "missing file gets seeded"   "test -f $seed_dir/omacos/hooks/theme-set.d/notify.sample"
+check "refresh takes the new default" "omacos-refresh-config zsh/.zshrc >/dev/null && grep -q OMACOS_PATH $seed_dir/zsh/.zshrc"
+check "refresh keeps a backup"     "ls $seed_dir/zsh/.zshrc.bak.* >/dev/null"
+# An activated hook runs; the shipped .sample beside it must not.
+hook_dir="$seed_dir/omacos/hooks/theme-set.d"
+printf '#!/usr/bin/env bash\necho ACTIVE >> "$HOME/hook-ran"\n' > "$hook_dir/active"
+printf '#!/usr/bin/env bash\necho SAMPLE >> "$HOME/hook-ran"\n' > "$hook_dir/inert.sample"
+chmod +x "$hook_dir/active" "$hook_dir/inert.sample"
+omacos-hook theme-set test >/dev/null 2>&1
+check "activated hook runs"        "grep -q ACTIVE $HOME/hook-ran"
+check "shipped .sample stays inert" "! grep -q SAMPLE $HOME/hook-ran"
+
 printf '\n\033[1mMigrations\033[0m\n'
 check "runner is idempotent" "omacos-migrate >/dev/null && omacos-migrate 2>&1 | grep -q 'No pending'"
 check "--pending is a predicate" "! omacos-migrate --pending >/dev/null"
