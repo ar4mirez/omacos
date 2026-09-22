@@ -43,6 +43,7 @@ omacos keymap show|build
 omacos feature enable desktop
 omacos webapp install Linear https://linear.app
 omacos setup signing            # git commit signing via 1Password
+omacos git org add Acme         # per-org identity under ~/Work/Acme/
 omacos install app slack zoom
 omacos update
 ```
@@ -62,6 +63,22 @@ keymap that generates both the window manager config and its own cheatsheet.
 **Themes** — one `colors.toml` per theme renders every app's colours, switches
 macOS between light and dark, and sets the wallpaper. Ships tokyo-night,
 catppuccin-mocha, and rose-pine-dawn.
+
+## One identity per organisation
+
+Repos live at `~/Work/<Org>/<Repo>`, and each organisation gets its own name,
+email, signing key and **SSH key**, chosen by directory:
+
+```bash
+omacos git identity --key "GitHub"        # the default, everywhere else
+omacos git org add Acme --email me@acme.com --key "Acme"
+omacos git org list
+```
+
+The SSH key matters as much as the email. With several keys in the agent, ssh
+offers them in order and the server takes the first that works — so you
+silently push as whichever account happens to be first. Each identity pins its
+key with `IdentitiesOnly`, so the wrong one is never offered.
 
 ## Escape hatches
 

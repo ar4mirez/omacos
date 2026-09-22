@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# omacos:summary=Show every per-organisation git identity
+# omacos:examples=omacos git org list
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+printf '\033[1mDefault\033[0m\n'
+printf '  %s <%s>\n' "$(git config --global user.name || echo '?')" "$(git config --global user.email || echo '?')"
+
+found=0
+while IFS= read -r line; do
+  [[ -n $line ]] || continue
+  found=1
+  path=${line#includeif.gitdir/i:}; path=${path%%.path *}
+  config=${line##* }
+  printf '\n\033[1m%s\033[0m  \033[2m%s\033[0m\n' "$(basename "${path%/}")" "${path/#$HOME/\~}"
+  printf '  %s <%s>\n' \
+    "$(git config -f "$config" user.name 2>/dev/null || echo '?')" \
+    "$(git config -f "$config" user.email 2>/dev/null || echo '?')"
+  key=$(git config -f "$config" user.signingkey 2>/dev/null || true)
+  [[ -n $key ]] && printf '  signs with %s\n' "${key#* * }"
+done < <(git config --global --get-regexp '^includeif\.gitdir/i:' 2>/dev/null || true)
+
+((found)) || printf '\n\033[2mNo per-organisation identities yet. Add one: omacos git org add <Org>\033[0m\n'

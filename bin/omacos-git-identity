@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# omacos:summary=Set your default git identity, signing key and SSH key
+# omacos:args=[--name X] [--email Y] [--key KeyName]
+# omacos:examples=omacos git identity | omacos git identity --key "GitHub"
+#
+# The identity used everywhere outside ~/Work/<Org>/. Per-organisation
+# identities are set with `omacos git org add`.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/agent-keys.sh"
+
+name="" email="" key=""
+while (($#)); do
+  case $1 in
+    --name)  name=${2:?}; shift 2 ;;
+    --email) email=${2:?}; shift 2 ;;
+    --key)   key=${2:?}; shift 2 ;;
+    *) echo "Unknown option: $1" >&2; exit 1 ;;
+  esac
+done
+
+# shellcheck source=/dev/null
+[[ -f $OMACOS_CONFIG/local.env ]] && . "$OMACOS_CONFIG/local.env"
+name=${name:-${GIT_NAME:-$(git config --global user.name 2>/dev/null || true)}}
+email=${email:-${GIT_EMAIL:-$(git config --global user.email 2>/dev/null || true)}}
+[[ -n $name && -n $email ]] || { echo "Set GIT_NAME and GIT_EMAIL in $OMACOS_CONFIG/local.env, or pass --name/--email." >&2; exit 1; }
+
+git config --global user.name "$name"
+git config --global user.email "$email"
+printf '\033[32mDefault identity: \033[1m%s <%s>\033[0m\n' "$name" "$email"
+
+agent_require || exit 0
+
+key=${key:-${GIT_SIGNING_KEY:-}}
+if [[ -n $key ]]; then
+  public_key=$(resolve_agent_key "$key")
+else
+  public_key=$(choose_agent_key "Which key for your default identity?") || exit 0
+fi
+
+pubfile=$(export_public_key "$public_key")
+git config --global core.sshCommand "$(ssh_command_for "$pubfile")"
+printf '\033[32mDefault SSH key: \033[1m%s\033[0m\n' "$(key_name "$public_key")"
+printf '\033[2m  pinned via core.sshCommand, so the agent cannot offer another account first\033[0m\n'

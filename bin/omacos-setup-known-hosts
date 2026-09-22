@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# omacos:summary=Add GitHub's SSH host keys, verified against GitHub's published list
+# omacos:examples=omacos setup known-hosts
+#
+# A fresh machine has no known_hosts, so the first `git fetch` over SSH fails
+# with "Host key verification failed". The usual advice is to accept the key on
+# first connection, which trusts whatever happens to answer.
+#
+# Instead this scans the host keys and checks each one against the fingerprints
+# GitHub publishes at api.github.com/meta, fetched over TLS. Nothing is written
+# unless every scanned key matches. The list is fetched rather than hard-coded
+# because GitHub rotates these, and a stale constant fails closed on a machine
+# that is perfectly fine.
+set -euo pipefail
+
+known_hosts="$HOME/.ssh/known_hosts"
+mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
+touch "$known_hosts"; chmod 600 "$known_hosts"
+
+published=$(curl -fsS --max-time 15 https://api.github.com/meta 2>/dev/null \
+  | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin)["ssh_key_fingerprints"].values()))' 2>/dev/null) || {
+  echo "Could not fetch GitHub's published host key fingerprints." >&2
+  echo "Refusing to trust unverified host keys." >&2
+  exit 1
+}
+[[ -n $published ]] || { echo "GitHub returned no fingerprints." >&2; exit 1; }
+
+scanned=$(ssh-keyscan -t rsa,ecdsa,ed25519 github.com 2>/dev/null) || {
+  echo "Could not reach github.com to scan host keys." >&2; exit 1; }
+[[ -n $scanned ]] || { echo "github.com returned no host keys." >&2; exit 1; }
+
+added=0
+while IFS= read -r line; do
+  [[ -n $line && $line != \#* ]] || continue
+  # ssh-keygen prints "SHA256:xxx"; the published list omits the prefix.
+  fingerprint=$(printf '%s\n' "$line" | ssh-keygen -lf - 2>/dev/null | awk '{print $2}')
+  fingerprint=${fingerprint#SHA256:}
+
+  if ! grep -qxF "$fingerprint" <<<"$published"; then
+    echo "REFUSED: github.com offered a host key GitHub does not publish." >&2
+    printf '  got: SHA256:%s\n' "$fingerprint" >&2
+    echo "  Nothing was written. Do not trust this connection." >&2
+    exit 1
+  fi
+
+  grep -qxF "$line" "$known_hosts" && continue
+  printf '%s\n' "$line" >> "$known_hosts"
+  added=$((added + 1))
+done <<<"$scanned"
+
+if ((added)); then
+  printf '\033[32mAdded %d verified GitHub host key(s).\033[0m\n' "$added"
+else
+  printf '\033[2mGitHub host keys already present and verified.\033[0m\n'
+fi

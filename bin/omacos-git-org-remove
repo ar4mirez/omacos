@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# omacos:summary=Remove an organisation's git identity
+# omacos:args=<Org>
+# omacos:examples=omacos git org remove Acme
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+org=${1:?usage: omacos git org remove <Org>}
+[[ $org == */* || $org == .* ]] && { echo "Invalid organisation name: $org" >&2; exit 1; }
+
+# shellcheck source=/dev/null
+[[ -f $OMACOS_CONFIG/local.env ]] && . "$OMACOS_CONFIG/local.env"
+org_dir="${WORK_DIR:-$HOME/Work}/$org"
+org_config="${XDG_CONFIG_HOME:-$HOME/.config}/git/orgs/$org"
+
+git config --global --unset-all "includeIf.gitdir/i:$org_dir/.path" 2>/dev/null || true
+# The add may have registered a resolved path alongside the logical one.
+if [[ -d $org_dir ]]; then
+  physical_dir=$(cd "$org_dir" && pwd -P)
+  [[ $physical_dir != "$org_dir" ]] &&
+    git config --global --unset-all "includeIf.gitdir/i:$physical_dir/.path" 2>/dev/null || true
+fi
+rm -f "$org_config"
+# The working directory is the user's, not ours.
+printf '\033[33mRemoved the %s identity.\033[0m\n' "$org"
+printf '\033[2m%s was left alone.\033[0m\n' "${org_dir/#$HOME/\~}"

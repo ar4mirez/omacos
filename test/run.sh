@@ -123,6 +123,28 @@ omacos-hook theme-set test >/dev/null 2>&1
 check "activated hook runs"        "grep -q ACTIVE $HOME/hook-ran"
 check "shipped .sample stays inert" "! grep -q SAMPLE $HOME/hook-ran"
 
+printf '\n\033[1mGit identities\033[0m\n'
+export HOME="$sandbox"
+git config --global user.name "Default" >/dev/null 2>&1
+git config --global user.email "default@example.com" >/dev/null 2>&1
+mkdir -p "$sandbox/Work"
+printf 'WORK_DIR=%q\n' "$sandbox/Work" > "$OMACOS_CONFIG/local.env"
+
+check "org add writes a config" "omacos-git-org-add Acme --name A --email a@acme.com >/dev/null && test -f $XDG_CONFIG_HOME/git/orgs/Acme"
+check "org add registers includeIf" "git config --global --get-regexp '^includeif' | grep -q Acme"
+# macOS filesystems are case-insensitive by default, so a case-sensitive
+# gitdir would silently miss ~/work/acme.
+check "includeIf is case-insensitive" "git config --global --get-regexp '^includeif' | grep -q 'gitdir/i:'"
+mkdir -p "$sandbox/Work/Acme/repo" "$sandbox/elsewhere"
+git -C "$sandbox/Work/Acme/repo" init -q
+git -C "$sandbox/elsewhere" init -q
+check "identity applies inside the org"  "test \"\$(git -C $sandbox/Work/Acme/repo config user.email)\" = a@acme.com"
+check "identity does not leak outside"   "test \"\$(git -C $sandbox/elsewhere config user.email)\" = default@example.com"
+check "org list shows it"                "omacos-git-org-list | grep -q Acme"
+check "org remove unregisters it"        "omacos-git-org-remove Acme >/dev/null && ! git config --global --get-regexp '^includeif' | grep -q Acme"
+check "org remove keeps your directory"  "test -d $sandbox/Work/Acme"
+check "org name rejects traversal"       "! omacos-git-org-add ../evil --name A --email a@b.c 2>/dev/null"
+
 printf '\n\033[1mMigrations\033[0m\n'
 check "runner is idempotent" "omacos-migrate >/dev/null && omacos-migrate 2>&1 | grep -q 'No pending'"
 check "--pending is a predicate" "! omacos-migrate --pending >/dev/null"

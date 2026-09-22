@@ -31,6 +31,7 @@ declare -A GROUP_DESCRIPTIONS=(
   [setup]="One-time setup helpers"
   [state]="Read and write persistent state flags"
   [done]="One-shot completion markers"
+  [git]="Git identities, per organisation"
   [hook]="User extension points"
   [dev]="Contributor tooling"
   [finalize]="Per-user setup"
