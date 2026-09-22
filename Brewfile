@@ -31,6 +31,7 @@ brew "git-delta"
 
 # Editor and multiplexing
 brew "neovim"
+brew "tree-sitter-cli"   # LazyVim's treesitter needs the CLI to build parsers
 brew "tmux"
 
 # System
