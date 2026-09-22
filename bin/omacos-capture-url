@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# omacos:summary=Copy the frontmost browser's current URL
+# omacos:examples=omacos capture url
+#
+# Safari and the Chromium family expose this through their scripting
+# dictionaries — `URL of front document` and `URL of active tab of front
+# window`. That is a documented interface, not UI scripting, so it does not
+# break when a toolbar moves. It does need a one-time Automation grant for
+# whichever terminal runs it.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+frontmost=$(osascript -e 'tell application "System Events" to name of first application process whose frontmost is true' 2>/dev/null) || frontmost=""
+[[ -n $frontmost ]] || { echo "Could not tell which app is frontmost." >&2; exit 1; }
+
+case $frontmost in
+  Safari)
+    script='tell application "Safari" to get URL of front document' ;;
+  "Brave Browser" | "Google Chrome" | "Microsoft Edge" | Vivaldi | Chromium | Arc)
+    script="tell application \"$frontmost\" to get URL of active tab of front window" ;;
+  *)
+    echo "$frontmost is not a browser omacos knows how to ask." >&2
+    exit 1 ;;
+esac
+
+if ! url=$(osascript -e "$script" 2>&1); then
+  printf 'omacos: could not read the URL from %s.\n' "$frontmost" >&2
+  printf 'omacos: %s\n' "$url" >&2
+  printf 'omacos: this needs Automation access — System Settings > Privacy &\n' >&2
+  printf '        Security > Automation, for whichever terminal you are in.\n' >&2
+  exit 1
+fi
+
+[[ -n $url ]] || { echo "No URL — is a tab open?" >&2; exit 1; }
+printf '%s' "$url" | pbcopy
+omacos-cmd-notify "URL copied" "$url" || true
+printf '%s\n' "$url"

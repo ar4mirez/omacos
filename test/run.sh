@@ -373,6 +373,45 @@ check "dictation status reads"     "omacos-setup-dictation status | grep -q Dict
 # The point of using the built-in one is that nothing gets downloaded.
 check "dictation installs nothing"  "! grep -qE 'brew install|curl ' $OMACOS_PATH/bin/omacos-setup-dictation"
 
+printf '\n\033[1mSystem toggles\033[0m\n'
+gaps_round_trip() {
+  local toml="$XDG_CONFIG_HOME/aerospace/aerospace.toml"
+  omacos-toggle-gaps >/dev/null 2>&1 || return 1
+  omacos-state check gaps-off || return 1
+  # Zeroed in place. A second [gaps] table would be invalid TOML, so the test
+  # also asserts there is still exactly one.
+  [[ $(grep -c '^\[gaps\]' "$toml") -eq 1 ]] || return 1
+  grep -qE '^inner\.horizontal = 0' "$toml" || return 1
+  omacos-toggle-gaps >/dev/null 2>&1 || return 1
+  ! omacos-state check gaps-off || return 1
+  grep -qE '^inner\.horizontal = [1-9]' "$toml"
+}
+check "gaps toggle round trips"    gaps_round_trip
+check "font list returns families" "omacos-font-list | grep -q ."
+check "audio output names its dependency" \
+  "env PATH=/usr/bin:/bin $OMACOS_PATH/bin/omacos-toggle-audio-output 2>&1 | grep -q switchaudio-osx"
+
+# osascript and pbcopy both shimmed: the real ones would ask the frontmost app
+# for a URL and then overwrite the clipboard of whoever ran the tests.
+printf '#!/usr/bin/env bash\nexit 0\n' > "$shim/pbcopy"
+printf '#!/usr/bin/env bash\ncase "$*" in *frontmost*) echo Finder ;; esac\n' > "$shim/osascript"
+chmod +x "$shim/pbcopy" "$shim/osascript"
+check "url copy refuses a non-browser" \
+  "! env PATH=$shim:\$PATH omacos-capture-url 2>&1 | grep -q 'http'"
+check "url copy names the app it saw" \
+  "env PATH=$shim:\$PATH omacos-capture-url 2>&1 | grep -q Finder"
+printf '#!/usr/bin/env bash\ncase "$*" in *frontmost*) echo Safari ;; *) echo https://example.com ;; esac\n' \
+  > "$shim/osascript"
+check "url copy reads a browser"   \
+  "env PATH=$shim:\$PATH OMACOS_DRY_RUN=1 omacos-capture-url | grep -q 'https://example.com'"
+# Shortcuts is public API and must outrank the private-framework CLI.
+printf '#!/usr/bin/env bash\ncase $1 in list) echo omacos-nightlight ;; run) exit 0 ;; esac\n' \
+  > "$shim/shortcuts"
+check "nightlight prefers the shortcut" \
+  "env PATH=$shim:\$PATH OMACOS_DRY_RUN=1 omacos-toggle-nightlight | grep -q 'would run shortcut'"
+check "nightlight still explains the tap" \
+  "grep -q 'trust-tap smudge/smudge' $OMACOS_PATH/bin/omacos-toggle-nightlight"
+
 printf '\n\033[1mBackgrounds\033[0m\n'
 omacos-theme-set tokyo-night >/dev/null 2>&1
 mkdir -p "$OMACOS_CONFIG/backgrounds/tokyo-night"

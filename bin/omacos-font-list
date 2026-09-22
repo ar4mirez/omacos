@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# omacos:summary=List the font families installed on this machine
+# omacos:args=[--all]
+# omacos:examples=omacos font list | omacos font list --all
+#
+# atsutil, not system_profiler: SPFontsDataType is richer but takes about
+# thirteen seconds, which is far too slow to sit behind a menu row.
+set -euo pipefail
+
+if [[ ${1:-} == --all ]]; then
+  # Every face, PostScript names included.
+  atsutil fonts -list
+  exit 0
+fi
+
+# Just the families, which is what "what can I set my terminal to" means.
+atsutil fonts -list | awk '
+  /^System Families:/ { families = 1; next }
+  /^[A-Za-z].*:$/     { families = 0 }
+  families && NF      { sub(/^[ \t]+/, ""); print }
+' | sort -u

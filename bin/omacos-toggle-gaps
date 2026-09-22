@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# omacos:summary=Show or hide the gaps between windows
+# omacos:examples=omacos toggle gaps
+#
+# AeroSpace has no runtime gaps command — `aerospace config` is read-only and
+# only knows about modes — so this is a flag plus a rebuild. The flag lives in
+# state rather than in your aerospace.local.toml, so omacos never edits a file
+# you own and the setting survives the next `omacos keymap build`.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+if omacos-state check gaps-off; then
+  omacos-state clear gaps-off
+  printf 'Gaps on.\n'
+else
+  omacos-state set gaps-off
+  printf 'Gaps off.\n'
+fi
+exec omacos-keymap-build

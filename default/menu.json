@@ -11,6 +11,7 @@
   "capture.screen":      { "icon": "▣", "label": "Screenshot the screen", "action": "omacos-capture-screenshot fullscreen" },
   "capture.recording":   { "icon": "⏺", "label": "Start/stop a recording", "action": "omacos-capture-screenrecording region" },
   "capture.text":        { "icon": "⌸", "label": "Extract text (OCR)", "action": "omacos-capture-text" },
+  "capture.url":         { "icon": "\u26ad", "label": "Copy the browser's URL", "action": "omacos-capture-url" },
   "capture.color":       { "icon": "◉", "label": "Pick a colour", "action": "omacos-capture-color" },
 
   "clipboard":           { "icon": "⎘", "label": "Clipboard" },
@@ -32,12 +33,15 @@
   "toggles.bar":         { "icon": "▬", "label": "Hide the top bar", "action": "omacos-toggle-bar", "checked": "omacos-state check bar-hidden" },
   "toggles.dnd":         { "icon": "\u25cc", "label": "Do Not Disturb", "action": "omacos-toggle-dnd", "when": "omacos-toggle-dnd status >/dev/null" },
   "toggles.dnd-setup":   { "icon": "\u2699", "label": "Set up Do Not Disturb", "action": "omacos-setup-dnd; read -n 1 -s -r -p 'Press any key'", "when": "! omacos-toggle-dnd status >/dev/null" },
+  "toggles.gaps":        { "icon": "\u2637", "label": "Window gaps", "action": "omacos-toggle-gaps", "checked": "! omacos-state check gaps-off" },
+  "toggles.audio":       { "icon": "\u266a", "label": "Next audio output", "action": "omacos-toggle-audio-output", "when": "command -v SwitchAudioSource" },
   "toggles.nightlight":  { "icon": "☾", "label": "Night Shift", "action": "omacos-toggle-nightlight" },
   "toggles.screensaver": { "icon": "▦", "label": "Start the screensaver", "action": "omacos-cmd-screensaver" },
 
   "setup":               { "icon": "⚙", "label": "Setup" },
   "setup.keybindings":   { "icon": "⌘", "label": "Keybindings", "action": "omacos-keymap-show; read -n 1 -s -r -p 'Press any key'" },
   "setup.keymap-build":  { "icon": "↻", "label": "Rebuild keymap", "action": "omacos-keymap-build" },
+  "setup.zoom":          { "icon": "\u2315", "label": "Screen zoom", "action": "omacos-setup-zoom; read -n 1 -s -r -p 'Press any key'" },
   "setup.dictation":     { "icon": "◎", "label": "Dictation", "action": "omacos-setup-dictation" },
   "setup.clipboard":     { "icon": "⎘", "label": "Clipboard history", "action": "omacos-setup-clipboard status; read -n 1 -s -r -p 'Press any key'" },
   "setup.features":      { "icon": "⊞", "label": "Features", "action": "omacos-menu-feature" },
@@ -54,6 +58,7 @@
   "system.activity":     { "icon": "▤", "label": "Activity", "action": "btop" },
   "system.disk":         { "icon": "▦", "label": "Disk usage", "action": "df -h; read -n 1 -s -r -p 'Press any key'" },
   "system.wifi":         { "icon": "≋", "label": "Wi-Fi settings", "action": "open 'x-apple.systempreferences:com.apple.wifi-settings-extension'" },
+  "system.fonts":        { "icon": "\u0041", "label": "Fonts", "action": "omacos-font-list | less" },
   "system.displays":     { "icon": "▭", "label": "Displays", "action": "open 'x-apple.systempreferences:com.apple.Displays-Settings.extension'" },
 
   "power":               { "icon": "⏻", "label": "Power" },

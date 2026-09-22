@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# omacos:summary=Turn on macOS screen zoom and say what its keys are
+# omacos:examples=omacos setup zoom
+#
+# Omarchy binds zoom to Super+Ctrl+Z. macOS has screen zoom built in with its
+# own shortcuts, but they are off by default and fail silently when off — which
+# is worse than not having them. omacos does not rebind them: a second pair of
+# zoom chords one modifier away from alt-equal/alt-minus (resize window) is how
+# a keymap starts feeling untrustworthy.
+set -euo pipefail
+
+enabled=$(defaults read com.apple.universalaccess closeViewHotkeysEnabled 2>/dev/null || echo 0)
+
+if [[ $enabled == 1 ]]; then
+  printf '\033[32mScreen zoom is on.\033[0m\n'
+else
+  printf '\033[33mScreen zoom shortcuts are off.\033[0m\n'
+  printf 'Turn them on in the pane opening now:\n'
+  printf '  Accessibility > Zoom > "Use keyboard shortcuts to zoom"\n\n'
+  printf '\033[2mThe setting lives in a TCC-protected domain and is cached by a\n'
+  printf 'daemon, so writing it from a script does not take — hence the pane.\033[0m\n\n'
+  [[ ${OMACOS_DRY_RUN:-0} == 1 ]] || open 'x-apple.systempreferences:com.apple.Accessibility-Settings.extension?Seeing_Zoom' >/dev/null 2>&1 || true
+fi
+
+printf 'Once on:  \033[1mcmd-opt-8\033[0m toggle   \033[1mcmd-opt-=\033[0m in   \033[1mcmd-opt--\033[0m out\n'

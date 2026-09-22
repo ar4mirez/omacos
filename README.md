@@ -45,7 +45,8 @@ omacos capture screenshot|screenrecording|text|color
 omacos clipboard history|clear
 omacos notice time|battery|weather
 omacos reminder 7 'Tea ready'
-omacos toggle idle|bar|nightlight
+omacos toggle idle|bar|gaps|dnd|nightlight|audio-output
+omacos font list
 omacos feature enable desktop | apps
 omacos webapp install Linear https://linear.app
 omacos setup signing            # git commit signing via 1Password
@@ -106,9 +107,17 @@ notification (`alt-ctrl-shift-t/b/w`), and `omacos reminder 7 'Tea ready'` on
 `alt-ctrl-r`.
 
 **Toggles** — hold off sleep (`alt-ctrl-i`), hide the top bar
-(`alt-shift-space`), start the screensaver, flip Night Shift. The status bar
-grows two indicators that draw nothing until they matter: a recording light and
-a coffee cup.
+(`alt-shift-space`), drop the window gaps (`alt-ctrl-g`), silence notifications
+(`alt-ctrl-comma`), switch audio output, start the screensaver, flip Night
+Shift. The status bar grows two indicators that draw nothing until they matter:
+a recording light and a coffee cup.
+
+Do Not Disturb and Night Shift both run through a Shortcut you make once —
+macOS exposes neither to the command line, and Shortcuts' own *Set Focus* and
+*Set Night Shift* actions are the only public-API route. `omacos setup dnd`
+walks through it. Dismissing notifications is not offered: it is Notification
+Center UI scripting that has broken in five macOS releases, so `alt-ctrl-shift-comma`
+opens the settings pane instead.
 
 Everything here is also under `alt-space`, in the menu.
 
@@ -172,7 +181,7 @@ so you stay on the same update path as everyone else.
 ```bash
 git clone git@github.com:ar4mirez/omacos.git ~/Work/ar4mirez/omacos
 cd ~/Work/ar4mirez/omacos
-./test/run.sh    # 131 tests, sandboxed — cannot touch your real home
+./test/run.sh    # 148 tests, sandboxed — cannot touch your real home
 ./install.sh     # idempotent: a no-op on a configured machine
 
 omacos dev link ~/Work/ar4mirez/omacos   # iterate without push-then-update

@@ -2,11 +2,32 @@
 # omacos:summary=Turn Night Shift on or off
 # omacos:examples=omacos toggle nightlight
 #
-# Night Shift has no public API: every CLI that flips it talks to the private
-# CoreBrightness framework, which is exactly the kind of thing that breaks on
-# an OS upgrade. So omacos uses one if you have installed it, and otherwise
-# takes you to the setting rather than shipping a private-API binary of its own.
+# Three tiers, best first. Shortcuts ships a first-party Set Night Shift action,
+# which is public API and needs nothing installed. Failing that, the `nightlight`
+# CLI works but lives in a third-party tap and talks to the private
+# CoreBrightness framework — the kind of thing that breaks on an OS upgrade, so
+# omacos will use yours but will not install one for you.
 set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+shortcut=${OMACOS_NIGHTLIGHT_SHORTCUT:-omacos-nightlight}
+
+have_shortcut() {
+  local list
+  list=$(shortcuts list 2>/dev/null) || return 1
+  [[ $'\n'$list$'\n' == *$'\n'"$shortcut"$'\n'* ]]
+}
+
+if have_shortcut; then
+  if [[ ${OMACOS_DRY_RUN:-0} == 1 ]]; then
+    printf 'would run shortcut: %s\n' "$shortcut"
+    exit 0
+  fi
+  shortcuts run "$shortcut" >/dev/null 2>&1 || {
+    echo "omacos: the \"$shortcut\" shortcut failed to run." >&2; exit 1; }
+  printf 'Night Shift toggled.\n'
+  exit 0
+fi
 
 if command -v nightlight >/dev/null 2>&1; then
   if [[ $(nightlight status 2>/dev/null) == *on* ]]; then
@@ -19,10 +40,14 @@ if command -v nightlight >/dev/null 2>&1; then
   exit 0
 fi
 
-printf '\033[33mNo Night Shift CLI installed.\033[0m\n'
-printf 'macOS exposes Night Shift only through a private framework, so omacos will\n'
-printf 'not ship a binary that pokes at it. Two ways forward:\n\n'
-printf '  omacos cmd trust-tap smudge/smudge "the nightlight CLI"\n'
-printf '  brew install smudge/smudge/nightlight\n\n'
+printf '\033[33mNothing here can flip Night Shift yet.\033[0m\n'
+printf 'macOS exposes it only through a private framework, so omacos will not\n'
+printf 'ship a binary that pokes at it. Two ways forward:\n\n'
+printf '  \033[1mA shortcut\033[0m (public API, nothing to install)\n'
+printf '    Shortcuts > File > New Shortcut > Set Night Shift > Toggle\n'
+printf '    Name it exactly: %s\n\n' "$shortcut"
+printf '  \033[1mThe nightlight CLI\033[0m (third-party tap)\n'
+printf '    omacos cmd trust-tap smudge/smudge "the nightlight CLI"\n'
+printf '    brew install smudge/smudge/nightlight\n\n'
 printf 'or set a schedule once, in the pane opening now.\n'
-open 'x-apple.systempreferences:com.apple.Displays-Settings.extension' >/dev/null 2>&1 || true
+[[ ${OMACOS_DRY_RUN:-0} == 1 ]] || open 'x-apple.systempreferences:com.apple.Displays-Settings.extension' >/dev/null 2>&1 || true

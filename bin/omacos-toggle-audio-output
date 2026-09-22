@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# omacos:summary=Switch to the next audio output device
+# omacos:examples=omacos toggle audio-output
+#
+# macOS exposes this only by option-clicking the volume menu bar item. The
+# CoreAudio property behind it is public API — SwitchAudioSource is just the CLI
+# Apple never shipped, not a private-API hack.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+if ! command -v SwitchAudioSource >/dev/null 2>&1; then
+  echo "Switching outputs needs switchaudio-osx." >&2
+  echo "  brew install switchaudio-osx" >&2
+  echo "It ships with the desktop layer: omacos install feature desktop" >&2
+  exit 1
+fi
+
+SwitchAudioSource -n -t output >/dev/null
+now=$(SwitchAudioSource -c -t output)
+omacos-cmd-notify "Audio output" "$now" || true
+printf '\033[32mOutput\033[0m %s\n' "$now"

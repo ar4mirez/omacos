@@ -10,3 +10,7 @@ tap "felixkratz/formulae"
 cask "nikitabobko/tap/aerospace"
 brew "felixkratz/formulae/sketchybar"
 brew "felixkratz/formulae/borders"
+
+# Switching audio output has no built-in CLI, though the CoreAudio property
+# behind it is public API. Desktop-only because it is bound to a key.
+brew "switchaudio-osx"

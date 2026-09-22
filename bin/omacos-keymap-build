@@ -32,7 +32,19 @@ trap 'rm -f "$tmp"' EXIT
   [[ -n $workspaces ]] && echo "persistent-workspaces = [$workspaces]"
 
   echo
-  cat "$base"
+  # Gaps are a config value with no runtime command, so toggling them means
+  # regenerating. Zero the [gaps] block in place rather than appending a second
+  # one — two [gaps] tables is invalid TOML, which AeroSpace rejects wholesale.
+  if omacos-state check gaps-off 2>/dev/null; then
+    awk '
+      /^\[gaps\]/            { in_gaps = 1; print; next }
+      /^\[/ && !/^\[gaps\]/  { in_gaps = 0 }
+      in_gaps && /[a-z]+ *=/  { sub(/=.*/, "= 0"); print; next }
+      { print }
+    ' "$base"
+  else
+    cat "$base"
+  fi
   echo
   echo "[mode.main.binding]"
   awk -F'|' '
