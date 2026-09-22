@@ -191,7 +191,7 @@
   },
   "ai.superwhisper": {
     "icon": "◇",
-    "label": "Dictation",
+    "label": "Superwhisper",
     "category": "ai",
     "source": "cask",
     "package": "superwhisper",
