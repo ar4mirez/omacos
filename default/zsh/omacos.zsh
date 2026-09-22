@@ -71,6 +71,22 @@ if [[ ${OMACOS_ALIASES:-true} == true ]]; then
   (( $+commands[rg] ))  && alias grep='rg'
   (( $+commands[lazygit] )) && alias lg='lazygit'
   (( $+commands[nvim] )) && { alias vim='nvim'; alias vi='nvim'; export EDITOR=nvim VISUAL=nvim; }
+  # `omacos default editor` wins over the nvim default above. Read straight out
+  # of local.env rather than sourcing it: this runs in every interactive shell,
+  # and the one value wanted here does not justify running your whole file.
+  # A GUI editor never reaches $EDITOR — it has no command on PATH to match, so
+  # git will not open a window and block waiting for it mid-commit.
+  _omacos_local_env="${OMACOS_CONFIG:-$HOME/.config/omacos}/local.env"
+  if [[ -r $_omacos_local_env ]]; then
+    _omacos_editor=$(sed -n 's/^[[:space:]]*\(export[[:space:]]\{1,\}\)\{0,1\}DEFAULT_EDITOR=//p' \
+      "$_omacos_local_env" | head -1)
+    _omacos_editor=${_omacos_editor//[\"\']/}
+    if [[ -n $_omacos_editor ]] && (( $+commands[$_omacos_editor] )); then
+      export EDITOR=$_omacos_editor VISUAL=$_omacos_editor
+    fi
+    unset _omacos_editor
+  fi
+  unset _omacos_local_env
   alias g='git'
   alias ..='cd ..'
   alias ...='cd ../..'

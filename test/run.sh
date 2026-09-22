@@ -167,6 +167,129 @@ check "root route lists rows" "omacos-menu --list | grep -q style"
 check "nested route resolves" "omacos-menu --list style | grep -q style.theme"
 check "shipped menu is valid JSON" "python3 -m json.tool < $OMACOS_PATH/default/menu.json"
 
+# Shared fakes. `open` echoes rather than exiting silently: several checks
+# below are about which URL a command would have opened, and that is the only
+# place it shows.
+shim="$sandbox/shim"; mkdir -p "$shim"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$shim/osascript"
+printf '#!/usr/bin/env bash\necho "open $*"\n' > "$shim/open"
+chmod +x "$shim/osascript" "$shim/open"
+
+printf '\n\033[1mApp catalog\033[0m\n'
+check "shipped catalog is valid JSON" "python3 -m json.tool < $OMACOS_PATH/default/apps.json"
+# Every consumer reads these fields, so a missing one is a runtime failure in
+# the menu rather than anything the JSON parse would catch.
+catalog_entries_complete() {
+  python3 - "$OMACOS_PATH/default/apps.json" <<'PYCHK'
+import json, sys
+apps = json.load(open(sys.argv[1]))
+sources = {"cask", "formula", "mas", "mise", "webapp", "tui"}
+for key, entry in apps.items():
+    for field in ("icon", "label", "category", "source"):
+        assert entry.get(field), f"{key}: missing {field}"
+    assert entry["source"] in sources, f"{key}: unknown source {entry['source']}"
+    assert key.split(".")[0] == entry["category"], f"{key}: id prefix is not its category"
+    if entry["source"] == "webapp":
+        assert entry.get("url"), f"{key}: a webapp needs a url"
+    elif entry["source"] == "tui":
+        assert entry.get("command") and entry.get("window"), f"{key}: a tui needs command and window"
+        assert entry["window"] in ("float", "tile"), f"{key}: window must be float or tile"
+    else:
+        assert entry.get("package"), f"{key}: needs a package"
+PYCHK
+}
+check "every entry carries what its source needs" catalog_entries_complete
+# A role that omacos-launch-app does not accept silently never resolves.
+catalog_roles_exist() {
+  local role
+  for role in $(python3 -c "import json;print(' '.join({e['role'] for e in json.load(open('$OMACOS_PATH/default/apps.json')).values() if 'role' in e}))"); do
+    # browser, terminal, editor and agent are defaults roles, each with its own
+    # `omacos default <role>` command; everything else is an app role.
+    case $role in
+      browser|terminal|editor|agent)
+        [[ -x $OMACOS_PATH/bin/omacos-default-$role ]] || return 1 ;;
+      *)
+        grep -qE "^  $role\)" "$OMACOS_PATH/bin/omacos-launch-app" || return 1 ;;
+    esac
+  done
+}
+check "every catalog role is a real role" catalog_roles_exist
+# Brewfile.apps bootstraps the `apps` feature; the catalog is the browsable
+# superset. Nothing keeps them in step but this.
+check "every bootstrap cask is in the catalog" "
+  for c in \$(grep '^cask ' $OMACOS_PATH/Brewfile.apps | cut -d'\"' -f2); do
+    grep -q \"\\\"package\\\": \\\"\$c\\\"\" $OMACOS_PATH/default/apps.json || exit 1
+  done"
+check "app list prints id, label and state" "omacos-app-list browser | grep -qE '^browser\.brave\tBrave\t(installed|available)$'"
+check "app list --json is valid JSON"       "omacos-app-list browser --json | python3 -m json.tool"
+check "app list rejects an unknown category" "! omacos-app-list nonsense >/dev/null 2>&1"
+check "app present answers an unknown id with 2" \
+  "omacos-app-present nope.nope >/dev/null 2>&1; test \$? -eq 2"
+
+printf '\n\033[1mApp removal\033[0m\n'
+# ~/Applications is your tree. What keeps omacos out of the apps you put there
+# yourself is the marker in Info.plist, so that is what these check.
+make_bundle() {
+  local name=$1 identifier=$2
+  mkdir -p "$HOME/Applications/$name.app/Contents/MacOS"
+  cat > "$HOME/Applications/$name.app/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>$name</string>
+  <key>CFBundleIdentifier</key><string>$identifier</string>
+</dict>
+</plist>
+PLIST
+}
+make_bundle Marked com.omacos.webapp.marked
+make_bundle Theirs com.example.theirs
+check "removes a bundle it made" \
+  "omacos-remove-app Marked --yes >/dev/null && ! test -d $HOME/Applications/Marked.app"
+check "refuses a bundle it did not make" \
+  "! omacos-remove-app Theirs --yes >/dev/null 2>&1 && test -d $HOME/Applications/Theirs.app"
+check "says why it refused"  "omacos-remove-app Theirs --yes 2>&1 | grep -q 'not created by omacos'"
+check "refuses something it never installed" "! omacos-remove-app not-an-app --yes >/dev/null 2>&1"
+# The App Store has no uninstall, and deleting the bundle by hand leaves its
+# receipt behind — so this refuses rather than half-removing it.
+# Only reachable once the entry looks installed, so stage one: a bundle by the
+# name the catalog probes for, and a forced snapshot so it is seen.
+mkdir -p "$HOME/Applications/Xcode.app/Contents"
+omacos-app-present --refresh development.xcode >/dev/null 2>&1 || true
+check "refuses an App Store entry" \
+  "! omacos-remove-app development.xcode --yes >/dev/null 2>&1"
+check "points at Finder instead" \
+  "omacos-remove-app development.xcode --yes 2>&1 | grep -qi 'App Store'"
+rm -rf "$HOME/Applications/Xcode.app"
+check "remove feature leaves packages alone by default" \
+  "omacos-feature enable apps && omacos-remove-feature apps 2>&1 | grep -q 'still installed'"
+check "remove feature turns the flag off" "! omacos-feature check apps"
+
+printf '\n\033[1mDefaults and roles\033[0m\n'
+check "roles are listed in one place" "omacos-launch-app --roles | grep -qx music"
+check "default app lists every role"  "omacos-default-app | grep -q '^music'"
+check "default app rejects a bad role" "! omacos-default-app nonsense-role something 2>/dev/null"
+check "default app records a choice" \
+  "omacos-default-app music Spotify >/dev/null && grep -q '^MUSIC_APP=Spotify' $OMACOS_CONFIG/local.env"
+check "default app reads it back"     "test \"\$(omacos-default-app music)\" = Spotify"
+# This is the bug the upsert exists to fix: the old append left two lines and
+# let the stale one win on the next read.
+check "setting twice leaves one line" "
+  omacos-default-app music Music >/dev/null
+  test \$(grep -c '^MUSIC_APP=' $OMACOS_CONFIG/local.env) -eq 1"
+check "an unset default stays silent" "test -z \"\$(omacos-default-editor)\""
+check "a catalog label resolves to its app" "
+  omacos-default-app notes Obsidian >/dev/null
+  grep -q '^NOTES_APP=Obsidian' $OMACOS_CONFIG/local.env"
+check "an unknown browser is refused"  "! omacos-default-browser not-a-browser 2>/dev/null"
+check "the browser command names the choices" \
+  "omacos-default-browser not-a-browser 2>&1 | grep -q firefox"
+# The keymap must keep naming the job rather than the app, or local.env stops
+# being the place that decides.
+check "launch-app resolves an override" "
+  env MUSIC_APP=Spotify PATH=$sandbox/shim:\$PATH omacos-launch-app music --has"
+
 printf '\n\033[1mApp installs\033[0m\n'
 # The install path extracts cask names from this file, so every `cask` line
 # must yield one. Inline quoting for this is unreadable; use a function.
@@ -221,6 +344,83 @@ check "removes what it created"    "omacos-webapp-remove Demo && ! test -d $HOME
 mkdir -p "$HOME/Applications/Foreign.app/Contents"
 echo '<plist></plist>' > "$HOME/Applications/Foreign.app/Contents/Info.plist"
 check "refuses foreign bundles"    "! omacos-webapp-remove Foreign 2>/dev/null && test -d $HOME/Applications/Foreign.app"
+# A bare domain is what people type; the URL is also what `webapp list` reads
+# back, so it has to be recorded, not just baked into the launcher.
+check "normalises a bare domain"   "omacos-webapp-install Bare example.org && grep -q 'https://example.org' $HOME/Applications/Bare.app/Contents/Info.plist"
+check "list round-trips the url"   "omacos-webapp-list | grep -qE '^Bare\thttps://example.org$'"
+check "list --json is valid JSON"  "omacos-webapp-list --json | python3 -m json.tool"
+check "list ignores foreign apps"  "! omacos-webapp-list | grep -q Foreign"
+check "--all removes only ours"    "omacos-webapp-remove --all --yes >/dev/null && test -d $HOME/Applications/Foreign.app && ! test -d $HOME/Applications/Bare.app"
+
+printf '\n\033[1mTerminal apps\033[0m\n'
+check "creates a bundle"          "omacos-tui-install Demo lazydocker tile && test -x '$HOME/Applications/Demo.app/Contents/MacOS/Demo'"
+check "Info.plist is valid"       "plutil -lint $HOME/Applications/Demo.app/Contents/Info.plist"
+# Float and tile are decided by the window title alone — base.toml floats a
+# Ghostty window whose title contains "omacos". Nothing else would catch this
+# until a window tiled wrongly on someone's machine.
+check "a tiling app avoids the float title" "! grep -q 'OMACOS_TUI_TITLE=omacos' $HOME/Applications/Demo.app/Contents/MacOS/Demo"
+check "a floating app asks for it" "
+  omacos-tui-install Floaty btop float >/dev/null
+  grep -q 'OMACOS_TUI_TITLE=omacos' '$HOME/Applications/Floaty.app/Contents/MacOS/Floaty'"
+check "the float rule still matches that title" \
+  "grep -q \"window-title-regex-substring = 'omacos'\" $OMACOS_PATH/default/aerospace/base.toml"
+check "rejects a bad window style" "! omacos-tui-install Bad cmd sideways 2>/dev/null"
+check "rejects path traversal"     "! omacos-tui-install ../evil cmd tile 2>/dev/null"
+check "will not remove a web app as a TUI" "
+  omacos-webapp-install Mixed https://example.com >/dev/null
+  ! omacos-tui-remove Mixed 2>/dev/null && test -d $HOME/Applications/Mixed.app"
+check "removes what it created"    "omacos-tui-remove --all --yes >/dev/null && ! test -d $HOME/Applications/Demo.app"
+omacos-webapp-remove --all --yes >/dev/null 2>&1 || true
+
+printf '\n\033[1mPreinstalls\033[0m\n'
+# The catalog is the only list, so the two commands cannot drift apart the way
+# a hand-kept list in each of them would.
+check "the preinstall set comes from the catalog" "
+  grep -q 'preinstall' $OMACOS_PATH/bin/omacos-remove-preinstalls &&
+  grep -q 'preinstall' $OMACOS_PATH/bin/omacos-install-preinstalls"
+check "something is actually flagged" "grep -q '\"preinstall\": true' $OMACOS_PATH/default/apps.json"
+# Real removal would reach the machine running the suite, so the remover is
+# shimmed and only what it was asked to remove is checked.
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" >> "$HOME/removed.log"\n' > "$shim/omacos-remove-app"
+chmod +x "$shim/omacos-remove-app"
+omacos-webapp-install Doomed https://example.com >/dev/null 2>&1
+omacos-tui-install Doomed2 btop float >/dev/null 2>&1
+check "removal takes the web apps and TUIs with it" "
+  env PATH=$shim:\$PATH omacos-remove-preinstalls --yes >/dev/null 2>&1
+  ! test -d $HOME/Applications/Doomed.app && ! test -d $HOME/Applications/Doomed2.app"
+check "it marks the machine as opted out" "omacos-state check preinstalls-removed"
+check "it never removes something not flagged" "
+  ! grep -q 'browser.firefox' $HOME/removed.log 2>/dev/null"
+# The marker is what flips the two menu rows, in both directions.
+check "restoring is offered once removed"  "omacos-menu --list install | grep -q install.preinstalls"
+check "removing is not offered twice"      "! omacos-menu --list remove | grep -q remove.preinstalls"
+omacos-state clear preinstalls-removed
+check "removing is offered again once back" "omacos-menu --list remove | grep -q remove.preinstalls"
+check "restoring is not offered when nothing was removed" "! omacos-menu --list install | grep -q install.preinstalls"
+rm -f "$shim/omacos-remove-app" "$HOME/removed.log"
+
+printf '\n\033[1mURL handlers\033[0m\n'
+# macOS hands a URL to an app as an Apple Event, never as an argument, so these
+# translations live in a script and an AppleScript applet calls it.
+check "hey rewrites mailto"  "env PATH=$sandbox/shim:\$PATH omacos-webapp-handler-hey 'mailto:a@b.com' 2>&1 | grep -q 'messages/new?to=a@b.com'"
+check "hey without a link"   "env PATH=$sandbox/shim:\$PATH omacos-webapp-handler-hey 2>&1 | grep -q 'app.hey.com'"
+check "zoom joins a meeting" "env PATH=$sandbox/shim:\$PATH omacos-webapp-handler-zoom 'zoommtg://zoom.us/join?confno=123&pwd=xy' 2>&1 | grep -q 'wc/join/123?pwd=xy'"
+check "zoom without a link"  "env PATH=$sandbox/shim:\$PATH omacos-webapp-handler-zoom 2>&1 | grep -q 'wc/home'"
+
+printf '\n\033[1mMenu guards and providers\033[0m\n'
+# A row that is already true stays listed and goes unselectable, so Install
+# reads as what you have rather than shrinking as you use it.
+check "a disabled row is ticked"     "omacos-menu --list install.browser | grep -q '✓'"
+check "a disabled row has no action" "test -z \"\$(omacos-menu --list install.browser | awk -F'\t' '/✓/ {print \$3}')\""
+check "a checked row keeps its action" "omacos-menu --list setup.defaults.browser | awk -F'\t' '/✓/ {exit (\$3 == \"\")}'"
+check "provider rows reach --list"   "omacos-menu --list install.editor | grep -q install.editor.zed"
+# A submenu's action column is empty; read it with IFS=tab and bash eats it,
+# because a tab is IFS whitespace and runs of it collapse.
+check "an empty action stays empty"  "test -z \"\$(omacos-menu --list | awk -F'\t' '\$1 == \"install\" {print \$3}')\""
+check "every provider names a real command" "
+  for provider in \$(jq -r '.[].provider // empty' $OMACOS_PATH/default/menu.json | awk '{print \$1}' | sort -u); do
+    case \$provider in omacos-*) test -x $OMACOS_PATH/bin/\$provider || exit 1 ;; esac
+  done"
 
 printf '\n\033[1mKeymap\033[0m\n'
 cp "$OMACOS_PATH/config/omacos/keymap.conf" "$OMACOS_CONFIG/keymap.conf"

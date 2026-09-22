@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# omacos:summary=Remove a terminal command installed as an app
+# omacos:args=[name] [--all] [--yes]
+# omacos:examples=omacos tui remove Docker | omacos tui remove --all
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/bundles.sh"
+
+all=false
+assume_yes=false
+names=()
+for arg in "$@"; do
+  case $arg in
+    --all) all=true ;;
+    --yes|-y) assume_yes=true ;;
+    -*) echo "usage: omacos tui remove [name] [--all] [--yes]" >&2; exit 1 ;;
+    *)  names+=("$arg") ;;
+  esac
+done
+
+if $all; then
+  mapfile -t names < <(bundle_names tui)
+  ((${#names[@]})) || { echo "No terminal apps to remove."; exit 0; }
+  if ! $assume_yes && [[ -t 0 ]] && command -v gum >/dev/null; then
+    gum confirm "Remove all ${#names[@]} terminal apps?" || exit 0
+  fi
+elif ((${#names[@]} == 0)); then
+  mapfile -t available < <(bundle_names tui)
+  ((${#available[@]})) || { echo "No terminal apps to remove."; exit 1; }
+  command -v gum >/dev/null || { echo "usage: omacos tui remove <name>" >&2; exit 1; }
+  choice=$(printf '%s\n' "${available[@]}" | sort | gum filter --placeholder "Remove which terminal app?") || exit 0
+  [[ -n $choice ]] || exit 0
+  names=("$choice")
+fi
+
+for name in "${names[@]}"; do
+  [[ $name == */* || $name == .* ]] && { echo "Invalid name: $name" >&2; exit 1; }
+done
+
+failed=()
+for name in "${names[@]}"; do
+  if bundle_remove "$name" tui; then
+    printf '\033[32m✓\033[0m removed %s\n' "$name"
+    [[ ${OMACOS_REMOVE_NOTIFY:-true} == true ]] && { omacos-cmd-notify "Terminal app removed" "$name" >/dev/null 2>&1 || true; }
+  else
+    failed+=("$name")
+  fi
+done
+
+((${#failed[@]} == 0)) || exit 1

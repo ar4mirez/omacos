@@ -104,6 +104,55 @@ generated from it. AeroSpace's TOML cannot carry descriptions, so a keymap
 written directly into it cannot produce a cheatsheet. Writing it once, in a
 format that carries a description per binding, gives both.
 
+## The app catalog
+
+`default/apps.json` is one file with five readers: the Install menu, the Remove
+menu, presence checks, `omacos default <role>`, and the preinstall set. Omarchy
+writes its equivalent out by hand — around 130 menu rows, plus a preinstall
+list duplicated across two scripts with a comment warning that the two must
+track each other. One data file avoids all of that, and a dotted id whose
+prefix *is* its category means a new entry needs no menu row at all.
+
+Two consequences shaped the design:
+
+**Nothing is generated into `OMACOS_PATH`.** That rules out compiling catalog
+entries into `default/menu.json`, which is why `bin/omacos-menu` grew a
+`provider` field instead: a submenu can name a command that prints its rows.
+Install, Remove, Defaults and the installed-apps list all use one.
+
+**Presence has to be answered in bulk.** The menu forks a shell per guard, and
+`osascript -e 'id of app "X"'` costs about 80ms — sixty rows across Install and
+Remove would take seconds to draw. So `catalog_present_all` answers every id
+from one `brew list --cask`, one `brew list --formula`, one scan of the
+application directories and one `command -v` sweep, cached for a minute in
+`~/.local/state/omacos/apps/present`. A catalog entry's `bundle` id is
+deliberately *not* a presence probe — an `mdfind` per missing entry is exactly
+the per-row cost this avoids — it is there for `duti`, which needs one to
+register a URL handler.
+
+## Bundles omacos writes
+
+`omacos webapp install` and `omacos tui install` both build a real `.app` in
+`~/Applications`, because that is the only place a bundle can live and still
+exist for Launch Services. That is your directory, so the boundary is a marker:
+every bundle omacos writes carries a `CFBundleIdentifier` of
+`com.omacos.webapp.<slug>` or `com.omacos.tui.<slug>`, and nothing without one
+is ever removed.
+
+Two things macOS does differently from the `.desktop` files Omarchy generates:
+
+**A URL scheme cannot reach a shell script.** macOS delivers a URL to an app as
+a `GURL` Apple Event, not as an argument, so a script bundle never sees it. A
+web app that claims a scheme is therefore built with `osacompile` as an
+AppleScript applet whose `on open location` handler shells out to a normal
+script — which is how a `mailto:` link reaches HEY's compose URL.
+
+**Window rules match a title, not an app.** A terminal app floats or tiles by
+whether its window title contains `omacos`, which is what `default/aerospace/
+base.toml` matches on and what `omacos launch tui` sets. Web apps get no such
+rule: a Chromium `--app=` window belongs to the browser's bundle id and its
+title is the page title, so there is nothing stable to match.
+
 ## Migrations
 
 `migrations/<unix-timestamp>.sh`, mode `0644`, no shebang, run with

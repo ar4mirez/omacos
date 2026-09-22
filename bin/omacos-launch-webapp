@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# omacos:summary=Open a web app, or a URL in a web-app window
+# omacos:args=<name|url>
+# omacos:examples=omacos launch webapp Linear | omacos launch webapp https://linear.app
+#
+# Given the name of an installed web app it brings that one forward; given a
+# URL it opens a frameless window on it, which is what the URL-scheme handlers
+# use.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/bundles.sh"
+
+target=${1:-}
+[[ -n $target ]] || { echo "usage: omacos launch webapp <name|url>" >&2; exit 1; }
+
+if [[ $target == http://* || $target == https://* ]]; then
+  browser=""
+  # shellcheck source=/dev/null
+  [[ -f $OMACOS_CONFIG/local.env ]] && . "$OMACOS_CONFIG/local.env"
+  for candidate in "${DEFAULT_BROWSER:-}" "Google Chrome" "Brave Browser" "Microsoft Edge" "Chromium" "Arc"; do
+    [[ -n $candidate ]] || continue
+    case $candidate in Safari|Firefox|Zen) continue ;; esac
+    if [[ -d "/Applications/$candidate.app" || -d "$HOME/Applications/$candidate.app" ]]; then
+      browser=$candidate; break
+    fi
+  done
+  if [[ -n $browser ]]; then
+    exec open -na "$browser" --args --app="$target"
+  fi
+  exec open "$target"
+fi
+
+dir=$(bundle_path "$target")
+[[ -d $dir ]] || { echo "No web app called $target. See: omacos webapp list" >&2; exit 1; }
+
+# A web app's window belongs to the browser, not to the bundle, so `open` alone
+# may raise the browser rather than this window. Match the title when AeroSpace
+# is here to ask.
+if omacos-feature check desktop 2>/dev/null && command -v aerospace >/dev/null 2>&1; then
+  window=$(aerospace list-windows --all --format '%{window-id}|%{window-title}' 2>/dev/null \
+           | awk -F'|' -v t="$target" 'index($2, t) { print $1; exit }')
+  [[ -n ${window:-} ]] && exec aerospace focus --window-id "$window"
+fi
+
+exec open "$dir"

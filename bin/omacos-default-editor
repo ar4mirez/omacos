@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# omacos:summary=Set the editor omacos opens files in
+# omacos:args=[editor]
+# omacos:examples=omacos default editor | omacos default editor zed
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/defaults.sh"
+
+value=${1:-}
+[[ -n $value ]] || { default_show DEFAULT_EDITOR; exit 0; }
+
+default_resolve editor editor "$value"
+default_ensure_installed editor "$value"
+local_env_set DEFAULT_EDITOR "$DEFAULT_TARGET"
+
+default_announce "$DEFAULT_TARGET" "$DEFAULT_TARGET is now the default editor"

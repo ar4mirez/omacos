@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# omacos:summary=List the websites installed as apps
+# omacos:args=[--json]
+# omacos:examples=omacos webapp list | omacos webapp list --json
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/bundles.sh"
+
+as_json=false
+[[ ${1:-} == --json ]] && as_json=true
+
+if $as_json; then
+  printf '[\n'
+  first=true
+  while IFS= read -r name; do
+    [[ -n $name ]] || continue
+    $first || printf ',\n'
+    first=false
+    jq -nc --arg name "$name" --arg url "$(bundle_url "$name")" \
+           --arg path "$(bundle_path "$name")" '{name:$name,url:$url,path:$path}'
+  done < <(bundle_names webapp)
+  printf '\n]\n'
+  exit 0
+fi
+
+while IFS= read -r name; do
+  [[ -n $name ]] || continue
+  printf '%s\t%s\n' "$name" "$(bundle_url "$name")"
+done < <(bundle_names webapp)

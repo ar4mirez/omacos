@@ -40,7 +40,11 @@ if omacos-feature check desktop 2>/dev/null; then
   brew bundle install --file "$OMACOS_PATH/Brewfile.desktop" --no-upgrade 2>&1 | sed 's/^/  /'
 fi
 if omacos-feature check apps 2>/dev/null; then
-  brew bundle install --file "$OMACOS_PATH/Brewfile.apps" --no-upgrade 2>&1 | sed 's/^/  /'
+  # Not `brew bundle`: several of these are .pkg casks that need a terminal to
+  # prompt for sudo on, and an unattended `omacos update -y` has none. The
+  # installer knows to relaunch itself into one.
+  mapfile -t app_casks < <(grep '^cask ' "$OMACOS_PATH/Brewfile.apps" | cut -d'"' -f2)
+  ((${#app_casks[@]})) && omacos-install-app "${app_casks[@]}" 2>&1 | sed 's/^/  /'
 fi
 
 step "Migrations"

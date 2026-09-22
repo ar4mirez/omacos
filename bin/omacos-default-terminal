@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# omacos:summary=Set the terminal omacos opens TUIs in
+# omacos:args=[terminal]
+# omacos:examples=omacos default terminal | omacos default terminal kitty
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/defaults.sh"
+
+value=${1:-}
+[[ -n $value ]] || { default_show DEFAULT_TERMINAL; exit 0; }
+
+default_resolve terminal terminal "$value"
+default_ensure_installed terminal "$value"
+local_env_set DEFAULT_TERMINAL "$DEFAULT_TARGET"
+
+default_announce "$DEFAULT_TARGET" "$DEFAULT_TARGET is now the default terminal"

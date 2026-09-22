@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-# omacos:summary=Install Homebrew casks, handling the ones that need admin
-# omacos:args=<cask> [more casks...]
-# omacos:examples=omacos install app slack | omacos install app zoom microsoft-teams
+# omacos:summary=Install apps from the catalog, or any Homebrew cask
+# omacos:args=<id|cask> [more...] [--launch]
+# omacos:examples=omacos install app slack | omacos install app editor.zed --launch
+#
+# An argument is a catalog id when it names one (`omacos app list`), and a raw
+# Homebrew cask otherwise — so the old `omacos install app slack zoom` still
+# means what it always did.
 #
 # Some casks ship a .pkg and run `installer` under sudo. Those need a terminal
 # to prompt on, so running this from the menu or a keybinding — neither of which
@@ -9,16 +13,49 @@
 # relaunches itself in a window when that is the case.
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
 
-(($#)) || { echo "usage: omacos install app <cask> [...]" >&2; exit 1; }
+launch_after=false
+args=()
+for arg in "$@"; do
+  case $arg in
+    --launch) launch_after=true ;;
+    *)        args+=("$arg") ;;
+  esac
+done
+((${#args[@]})) || { echo "usage: omacos install app <id|cask> [...] [--launch]" >&2; exit 1; }
+
+# Resolve every argument up front, so a typo is caught before anything installs.
+ids=(); sources=(); packages=(); labels=()
+for arg in "${args[@]}"; do
+  if catalog_resolve "$arg" >/dev/null; then
+    ids+=("$arg")
+    sources+=("$(catalog_field "$arg" source)")
+    packages+=("$(catalog_field "$arg" package)")
+    labels+=("$(catalog_field "$arg" label)")
+  else
+    ids+=(""); sources+=("cask"); packages+=("$arg"); labels+=("$arg")
+  fi
+done
+
+installed() {
+  local i=$1
+  if [[ -n ${ids[i]} ]]; then
+    catalog_present "${ids[i]}"
+  else
+    brew list --cask "${packages[i]}" >/dev/null 2>&1
+  fi
+}
 
 # Which of these will run installer under sudo? Only those force a terminal.
 needs_admin=()
-for cask in "$@"; do
-  brew list --cask "$cask" >/dev/null 2>&1 && continue
-  info=$(brew info --cask "$cask" 2>/dev/null) || info=""
+for i in "${!packages[@]}"; do
+  [[ ${sources[i]} == cask ]] || continue
+  installed "$i" && continue
+  info=$(brew info --cask "${packages[i]}" 2>/dev/null) || info=""
   if grep -qiE '\.pkg|requires (an )?admin|sudo' <<<"$info"; then
-    needs_admin+=("$cask")
+    needs_admin+=("${packages[i]}")
   fi
 done
 
@@ -37,20 +74,74 @@ if ((${#needs_admin[@]})); then
   trap 'kill "$keepalive" 2>/dev/null || true' EXIT
 fi
 
+install_one() {
+  local i=$1
+  case ${sources[i]} in
+    cask)    brew install --cask "${packages[i]}" ;;
+    formula) brew install "${packages[i]}" ;;
+    mise)
+      command -v mise >/dev/null || { echo "mise is not installed" >&2; return 1; }
+      mise use -g "${packages[i]}" ;;
+    mas)
+      command -v mas >/dev/null || { echo "mas is not installed: brew install mas" >&2; return 1; }
+      # `mas install` on a signed-out machine fails with a bare error code.
+      if ! mas account >/dev/null 2>&1; then
+        echo "Sign in to the App Store first — ${labels[i]} comes from there." >&2
+        return 1
+      fi
+      mas install "${packages[i]}" ;;
+    webapp)
+      local scheme handler; scheme=$(catalog_field "${ids[i]}" scheme)
+      handler=$(catalog_field "${ids[i]}" handler)
+      [[ -n $handler ]] && handler="$OMACOS_PATH/bin/$handler"
+      omacos-webapp-install "${labels[i]}" "$(catalog_field "${ids[i]}" url)" "" \
+        ${scheme:+--scheme "$scheme"} ${handler:+--handler "$handler"} ;;
+    tui)
+      local requires; requires=${packages[i]}
+      [[ -n $requires ]] && ! command -v "${requires%% *}" >/dev/null && brew install "$requires"
+      omacos-tui-install "${labels[i]}" "$(catalog_field "${ids[i]}" command)" \
+                         "$(catalog_field "${ids[i]}" window)" ;;
+    *) echo "Unknown source: ${sources[i]}" >&2; return 1 ;;
+  esac
+}
+
 failed=()
-for cask in "$@"; do
-  if brew list --cask "$cask" >/dev/null 2>&1; then
-    printf '\033[2m· %s already installed\033[0m\n' "$cask"
+for i in "${!packages[@]}"; do
+  if installed "$i"; then
+    printf '\033[2m· %s already installed\033[0m\n' "${labels[i]}"
     continue
   fi
-  printf '\033[34m▸\033[0m Installing %s…\n' "$cask"
-  if brew install --cask "$cask"; then
-    printf '\033[32m✓\033[0m %s\n' "$cask"
+  printf '\033[34m▸\033[0m Installing %s…\n' "${labels[i]}"
+  if install_one "$i"; then
+    printf '\033[32m✓\033[0m %s\n' "${labels[i]}"
+    if [[ -n ${ids[i]} ]]; then
+      post=$(catalog_field "${ids[i]}" post)
+      [[ -n $post ]] && { $post || printf '\033[33m!\033[0m %s finished, but %s did not\n' "${labels[i]}" "$post"; }
+    fi
   else
-    printf '\033[31m✗\033[0m %s failed\n' "$cask" >&2
-    failed+=("$cask")
+    printf '\033[31m✗\033[0m %s failed\n' "${labels[i]}" >&2
+    failed+=("${labels[i]}")
   fi
 done
+
+# The snapshot the menu reads is now stale by exactly what we just installed.
+catalog_present_all --refresh >/dev/null 2>&1 || true
+
+if $launch_after; then
+  for i in "${!packages[@]}"; do
+    app=""
+    [[ -n ${ids[i]} ]] && app=$(catalog_field "${ids[i]}" launch)
+    [[ -z $app && -n ${ids[i]} ]] && app=$(catalog_field "${ids[i]}" app)
+    [[ -z $app ]] && continue
+    # Never launch what did not install.
+    skip=false
+    for bad in ${failed[@]+"${failed[@]}"}; do
+      [[ $bad == "${labels[i]}" ]] && { skip=true; break; }
+    done
+    $skip && continue
+    open -a "$app" 2>/dev/null || true
+  done
+fi
 
 if ((${#failed[@]})); then
   printf '\n\033[31mFailed:\033[0m %s\n' "${failed[*]}" >&2

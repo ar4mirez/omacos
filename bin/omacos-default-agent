@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# omacos:summary=Set the coding agent omacos launches
+# omacos:args=[agent]
+# omacos:examples=omacos default agent | omacos default agent claude
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/defaults.sh"
+
+value=${1:-}
+[[ -n $value ]] || { default_show DEFAULT_AGENT; exit 0; }
+
+default_resolve agent agent "$value"
+default_ensure_installed agent "$value"
+local_env_set DEFAULT_AGENT "$DEFAULT_TARGET"
+
+default_announce "$DEFAULT_TARGET" "$DEFAULT_TARGET is now the default agent"

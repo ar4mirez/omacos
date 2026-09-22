@@ -60,6 +60,11 @@ run = 'layout floating'
 
 # omacos TUI windows (the menu, the keybinding cheatsheet) are transient, so
 # they float instead of rearranging your tiles every time you open one.
+#
+# The substring is a contract, not a coincidence: `omacos launch tui` puts it
+# in the title, and `omacos tui install` decides float or tile by whether it
+# asks for a title carrying it. A tiling TUI is simply one whose title does
+# not, so it falls through to the default layout.
 [[on-window-detected]]
 if.app-id = 'com.mitchellh.ghostty'
 if.window-title-regex-substring = 'omacos'

@@ -139,6 +139,33 @@ A binding that runs a `gum` command needs no terminal, so those commands
 relaunch themselves through `omacos launch tui` when stdin is not a tty — see
 `bin/omacos-menu`.
 
+## Apps
+
+`default/apps.json` is the catalog — one entry per app, keyed by a dotted id
+whose prefix is its category (`browser.brave`, `editor.zed`, `webapp.hey`).
+Install, Remove, presence checks, `omacos default` and the preinstall set all
+read it.
+
+**Adding an app is a catalog entry, not a command and not a menu row.** The
+Install and Remove menus build their rows from the catalog through
+`bin/omacos-menu-apps`, so a new entry appears in both with nothing else
+edited. Required fields are `icon`, `label`, `category` and `source`; `source`
+is one of `cask formula mas mise webapp tui`, and what else the entry needs
+follows from it (a `webapp` needs `url`, a `tui` needs `command` and `window`).
+`test/run.sh` checks all of that.
+
+Give an entry a `role` only when the app should also answer one of the launcher
+roles in `bin/omacos-launch-app` — that is what earns it a keybinding, and it
+is still the role that gets bound, never the app.
+
+Presence is answered in bulk from a cached snapshot (`catalog_present_all` in
+`default/lib/catalog.sh`). Never add a per-row `osascript` probe to a menu
+guard; it costs ~80ms and the menu draws one per row.
+
+Bundles omacos writes into `~/Applications` — web apps and terminal apps —
+carry a `com.omacos.webapp.*` or `com.omacos.tui.*` identifier. That marker is
+the only reason omacos may delete them. Anything without it is the user's.
+
 ## Migrations
 
 Needed whenever an update must change something that already exists on a user's

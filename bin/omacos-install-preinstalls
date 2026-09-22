@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# omacos:summary=Put the apps omacos preinstalls back
+# omacos:args=[--yes]
+# omacos:examples=omacos install preinstalls
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+
+assume_yes=false
+[[ ${1:-} == --yes || ${1:-} == -y ]] && assume_yes=true
+
+if ! $assume_yes && [[ -t 0 ]] && command -v gum >/dev/null; then
+  gum confirm "Reinstall every preinstalled app?" || exit 0
+fi
+
+echo "Restoring the preinstalled apps…"
+
+ids=()
+while IFS= read -r id; do
+  [[ -n $id ]] || continue
+  [[ $(catalog_field "$id" preinstall) == true ]] || continue
+  ids+=("$id")
+done < <(catalog_ids)
+
+if ((${#ids[@]})) && ! omacos-install-app "${ids[@]}"; then
+  echo "Still marked as removed. Fix the errors above and try again." >&2
+  exit 1
+fi
+
+# Last, so a failure above leaves the opt-out intact rather than claiming a
+# restore that did not happen.
+omacos-state clear preinstalls-removed

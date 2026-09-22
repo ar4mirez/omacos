@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# omacos:summary=Install a catalog app if it is missing, then open it
+# omacos:args=<id>
+# omacos:examples=omacos install launch editor.zed | omacos install launch service.spotify
+#
+# What a hotkey wants: press it once, and either the app comes up or its
+# install starts. It never opens something whose install just failed.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+
+id=${1:-}
+[[ -n $id ]] || { echo "usage: omacos install launch <id>" >&2; exit 1; }
+catalog_resolve "$id" >/dev/null || { echo "No such app: $id" >&2; exit 1; }
+
+open_it() {
+  local app source
+  source=$(catalog_field "$id" source)
+  case $source in
+    webapp|tui) app=$(catalog_field "$id" label) ;;
+    *)          app=$(catalog_field "$id" launch); [[ -n $app ]] || app=$(catalog_field "$id" app) ;;
+  esac
+  [[ -n $app ]] || { echo "${id} has no app to open." >&2; return 1; }
+  if [[ -d "$HOME/Applications/$app.app" ]]; then
+    open "$HOME/Applications/$app.app"
+  else
+    open -a "$app"
+  fi
+}
+
+if catalog_present "$id"; then
+  exec_status=0
+  open_it || exec_status=$?
+  exit $exec_status
+fi
+
+omacos-install-app "$id"
+open_it

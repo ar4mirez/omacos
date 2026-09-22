@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# omacos:summary=List the app catalog and what is already installed
+# omacos:args=[category] [--json] [--refresh]
+# omacos:examples=omacos app list | omacos app list browser | omacos app list --json
+#
+# The catalog is one shipped file, default/apps.json, overlaid by your own
+# ~/.config/omacos/extensions/omacos-apps.jsonc. Everything that installs,
+# removes, or offers an app reads it through here.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+
+command -v jq >/dev/null || { echo "omacos app list needs jq: brew install jq" >&2; exit 1; }
+
+category=""
+as_json=false
+refresh=()
+for arg in "$@"; do
+  case $arg in
+    --json)    as_json=true ;;
+    --refresh) refresh=(--refresh) ;;
+    -*)        echo "usage: omacos app list [category] [--json] [--refresh]" >&2; exit 1 ;;
+    *)         category=$arg ;;
+  esac
+done
+
+if [[ -n $category ]]; then
+  # A typo should say so rather than print an empty list that reads like
+  # "nothing available in this category".
+  known=$(catalog_categories)
+  if [[ $'\n'$known$'\n' != *$'\n'"$category"$'\n'* ]]; then
+    echo "No such category: $category" >&2
+    printf 'Categories: %s\n' "$(printf '%s ' $known)" >&2
+    exit 1
+  fi
+fi
+
+present=$(catalog_present_all "${refresh[@]}")
+
+# One jq pass for the rows, one join against the snapshot. Per-row `jq` calls
+# are what made this slow enough to notice in the menu.
+rows=$(catalog_json | jq -r --arg c "$category" '
+  to_entries[]
+  | select($c == "" or .value.category == $c)
+  | [ .key, (.value.label // .key), (.value.category // ""), (.value.source // "") ]
+  | @tsv')
+
+if $as_json; then
+  jq -Rsn --arg rows "$rows" --arg present "$present" '
+    ($present | split("\n") | map(select(length > 0) | split("\t")) | map({(.[0]): .[1]}) | add // {}) as $state
+    | $rows | split("\n") | map(select(length > 0) | split("\t"))
+    | map({ id: .[0], label: .[1], category: .[2], source: .[3],
+            installed: (($state[.[0]] // "0") == "1") })'
+  exit 0
+fi
+
+awk -F'\t' '
+  NR == FNR { state[$1] = $2; next }
+  { printf "%s\t%s\t%s\n", $1, $2, (state[$1] == "1" ? "installed" : "available") }
+' <(printf '%s\n' "$present") <(printf '%s\n' "$rows")

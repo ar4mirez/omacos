@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+# omacos:summary=Remove an app omacos installed
+# omacos:args=[id|name...] [--zap] [--yes]
+# omacos:examples=omacos remove app editor.zed | omacos remove app Linear --yes
+#
+# With no arguments this asks which one. It removes what it can attribute — a
+# catalog entry, or a bundle carrying the omacos marker — and refuses anything
+# else rather than guessing at an app you installed yourself.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/bundles.sh"
+
+zap=false
+assume_yes=false
+targets=()
+for arg in "$@"; do
+  case $arg in
+    --zap) zap=true ;;
+    --yes|-y) assume_yes=true ;;
+    -*) echo "usage: omacos remove app [id|name...] [--zap] [--yes]" >&2; exit 1 ;;
+    *)  targets+=("$arg") ;;
+  esac
+done
+
+removable() {
+  # Catalog entries that are actually here, plus every bundle omacos wrote.
+  omacos-app-list | awk -F'\t' '$3 == "installed" { print $1 "\t" $2 }'
+  local name kind
+  while IFS= read -r name; do
+    [[ -n $name ]] || continue
+    kind=$(bundle_kind "$(bundle_path "$name")") || continue
+    printf '%s\t%s (%s)\n' "$name" "$name" "$kind"
+  done < <(bundle_names)
+}
+
+if ((${#targets[@]} == 0)); then
+  command -v gum >/dev/null || { echo "omacos remove app needs gum: brew install gum" >&2; exit 1; }
+  list=$(removable | sort -u -t$'\t' -k1,1)
+  [[ -n $list ]] || { echo "Nothing installed that omacos can remove." >&2; exit 1; }
+  choice=$(awk -F'\t' '{print $2}' <<<"$list" | gum filter --placeholder "Remove which app?" --height 14) || exit 0
+  [[ -n $choice ]] || exit 0
+  targets=("$(awk -F'\t' -v c="$choice" '$2 == c { print $1; exit }' <<<"$list")")
+fi
+
+confirm() {
+  $assume_yes && return 0
+  [[ -t 0 ]] || return 0
+  command -v gum >/dev/null || return 0
+  gum confirm "Remove $1?"
+}
+
+remove_catalog_entry() {
+  local id=$1 source package label
+  source=$(catalog_field "$id" source)
+  package=$(catalog_field "$id" package)
+  label=$(catalog_field "$id" label)
+  case $source in
+    cask)
+      if $zap; then brew uninstall --zap --cask "$package"; else brew uninstall --cask "$package"; fi ;;
+    formula) brew uninstall "$package" ;;
+    mise)    mise uninstall "$package" ;;
+    webapp)  bundle_remove "$label" webapp ;;
+    tui)     bundle_remove "$label" tui ;;
+    mas)
+      # The App Store has no uninstall, and an App Store bundle is not ours to
+      # delete: removing it by hand leaves its receipt behind and the Store
+      # still believing it is installed.
+      echo "$label came from the App Store, which has no uninstall." >&2
+      echo "Remove it from Finder: open /Applications and drag it to the Trash." >&2
+      return 1 ;;
+    *) echo "Don't know how to remove a $source entry" >&2; return 1 ;;
+  esac
+}
+
+failed=()
+for target in "${targets[@]}"; do
+  # A bundle omacos wrote answers first: its name is what the picker shows and
+  # what the user typed, and it routes without needing a catalog entry at all.
+  dir=$(bundle_path "$target")
+  if kind=$(bundle_kind "$dir" 2>/dev/null); then
+    confirm "$target" || continue
+    if bundle_remove "$target" "$kind"; then
+      printf '\033[32m✓\033[0m removed %s\n' "$target"
+    else
+      failed+=("$target")
+    fi
+    continue
+  fi
+
+  # An app sitting in ~/Applications with no marker is one you put there. Say
+  # that, rather than falling through to the generic "omacos did not install".
+  if [[ -d $dir ]]; then
+    echo "$target was not created by omacos — refusing to remove it" >&2
+    failed+=("$target")
+    continue
+  fi
+
+  if catalog_resolve "$target" >/dev/null; then
+    label=$(catalog_field "$target" label)
+    if ! catalog_present "$target"; then
+      printf '\033[2m· %s is not installed\033[0m\n' "$label"
+      continue
+    fi
+    confirm "$label" || continue
+    if remove_catalog_entry "$target"; then
+      printf '\033[32m✓\033[0m removed %s\n' "$label"
+    else
+      failed+=("$label")
+    fi
+    continue
+  fi
+
+  # A raw Homebrew cask, the way `omacos install app <cask>` accepts one.
+  if brew list --cask "$target" >/dev/null 2>&1; then
+    confirm "$target" || continue
+    if { $zap && brew uninstall --zap --cask "$target"; } || { ! $zap && brew uninstall --cask "$target"; }; then
+      printf '\033[32m✓\033[0m removed %s\n' "$target"
+    else
+      failed+=("$target")
+    fi
+    continue
+  fi
+
+  echo "omacos did not install $target, so it will not remove it." >&2
+  echo "Catalog ids come from \`omacos app list\`." >&2
+  failed+=("$target")
+done
+
+catalog_present_all --refresh >/dev/null 2>&1 || true
+
+if ((${#failed[@]})); then
+  printf '\n\033[31mNot removed:\033[0m %s\n' "${failed[*]}" >&2
+  exit 1
+fi

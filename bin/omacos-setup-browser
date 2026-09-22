@@ -15,6 +15,8 @@
 # back, so this reports what it set rather than pretending to verify it.
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/defaults.sh"
 
 command -v duti >/dev/null || { echo "Needs duti: brew install duti" >&2; exit 1; }
 
@@ -60,7 +62,9 @@ done
 
 printf '\033[32mDefault browser: \033[1m%s\033[0m \033[2m(%s)\033[0m\n' "$wanted" "$bundle_id"
 
-if [[ -z ${DEFAULT_BROWSER:-} && -f $OMACOS_CONFIG/local.env ]]; then
-  printf '\nDEFAULT_BROWSER=%q\n' "$wanted" >> "$OMACOS_CONFIG/local.env"
+# An upsert, not an append: this used to add a second DEFAULT_BROWSER= line
+# every time you chose a different browser, and the last one silently won.
+if [[ $(local_env_get DEFAULT_BROWSER) != "$wanted" ]]; then
+  local_env_set DEFAULT_BROWSER "$wanted"
   printf '\033[2mRecorded in local.env — future machines will not ask.\033[0m\n'
 fi

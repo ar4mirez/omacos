@@ -1,14 +1,55 @@
 #!/usr/bin/env bash
-# omacos:summary=Remove a webapp
-# omacos:args=<name>
-# omacos:examples=omacos webapp remove Linear
+# omacos:summary=Remove a website installed as an app
+# omacos:args=[name] [--all] [--yes]
+# omacos:examples=omacos webapp remove Linear | omacos webapp remove --all
+#
+# Only removes bundles omacos made. Anything in ~/Applications without the
+# marker is yours, and is left alone.
 set -euo pipefail
-name=${1:?usage: omacos webapp remove <name>}
-[[ $name == */* || $name == .* ]] && { echo "Invalid name: $name" >&2; exit 1; }
-app_dir="$HOME/Applications/$name.app"
-[[ -d $app_dir ]] || { echo "No such webapp: $name" >&2; exit 1; }
-# Only ever remove bundles omacos created.
-grep -q 'com.omacos.webapp' "$app_dir/Contents/Info.plist" 2>/dev/null \
-  || { echo "$name was not created by omacos — refusing to remove it" >&2; exit 1; }
-rm -rf "$app_dir"
-printf '\033[33mRemoved %s\033[0m\n' "$name"
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/bundles.sh"
+
+all=false
+assume_yes=false
+names=()
+for arg in "$@"; do
+  case $arg in
+    --all) all=true ;;
+    --yes|-y) assume_yes=true ;;
+    -*) echo "usage: omacos webapp remove [name] [--all] [--yes]" >&2; exit 1 ;;
+    *)  names+=("$arg") ;;
+  esac
+done
+
+if $all; then
+  mapfile -t names < <(bundle_names webapp)
+  ((${#names[@]})) || { echo "No web apps to remove."; exit 0; }
+  if ! $assume_yes && [[ -t 0 ]] && command -v gum >/dev/null; then
+    gum confirm "Remove all ${#names[@]} web apps?" || exit 0
+  fi
+elif ((${#names[@]} == 0)); then
+  mapfile -t available < <(bundle_names webapp)
+  ((${#available[@]})) || { echo "No web apps to remove."; exit 1; }
+  command -v gum >/dev/null || { echo "usage: omacos webapp remove <name>" >&2; exit 1; }
+  choice=$(printf '%s\n' "${available[@]}" | sort | gum filter --placeholder "Remove which web app?") || exit 0
+  [[ -n $choice ]] || exit 0
+  names=("$choice")
+fi
+
+# A name becomes a path, the same way it did on the way in.
+for name in "${names[@]}"; do
+  [[ $name == */* || $name == .* ]] && { echo "Invalid name: $name" >&2; exit 1; }
+done
+
+failed=()
+for name in "${names[@]}"; do
+  if bundle_remove "$name" webapp; then
+    printf '\033[32m✓\033[0m removed %s\n' "$name"
+    [[ ${OMACOS_REMOVE_NOTIFY:-true} == true ]] && { omacos-cmd-notify "Web app removed" "$name" >/dev/null 2>&1 || true; }
+  else
+    failed+=("$name")
+  fi
+done
+
+((${#failed[@]} == 0)) || exit 1

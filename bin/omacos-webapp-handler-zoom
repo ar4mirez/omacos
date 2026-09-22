@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# omacos:summary=Open Zoom's web client, joining the meeting a zoommtg: link names
+# omacos:args=[url]
+# omacos:hidden=true
+#
+# Only reachable when the Zoom app is not installed: its cask claims these
+# schemes, and macOS will not reliably hand them to a second app.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+url=${1:-}
+target="https://app.zoom.us/wc/home"
+
+if [[ $url =~ ^zoom(mtg|us): ]]; then
+  confno=$(sed -n 's/.*[?&]confno=\([^&]*\).*/\1/p' <<<"$url")
+  if [[ -n $confno ]]; then
+    pwd_param=$(sed -n 's/.*[?&]pwd=\([^&]*\).*/\1/p' <<<"$url")
+    if [[ -n $pwd_param ]]; then
+      target="https://app.zoom.us/wc/join/$confno?pwd=$pwd_param"
+    else
+      target="https://app.zoom.us/wc/join/$confno"
+    fi
+  fi
+fi
+
+exec omacos-launch-webapp "$target"

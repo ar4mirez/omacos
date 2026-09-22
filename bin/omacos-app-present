@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# omacos:summary=Is every named catalog app installed?
+# omacos:args=<id> [more ids...] [--refresh]
+# omacos:examples=omacos app present browser.brave
+# omacos:hidden=true
+#
+# A predicate, like `omacos launch app <role> --has`: it prints nothing and
+# answers with its exit status. Menu guards call it, so it must stay cheap —
+# every id is answered from one cached snapshot.
+#
+# 0 all installed · 1 one or more missing · 2 an id that is not in the catalog
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+
+ids=()
+for arg in "$@"; do
+  case $arg in
+    --refresh) catalog_present_all --refresh >/dev/null ;;
+    *)         ids+=("$arg") ;;
+  esac
+done
+
+((${#ids[@]})) || { echo "usage: omacos app present <id> [...]" >&2; exit 2; }
+
+status=0
+for id in "${ids[@]}"; do
+  catalog_present "$id" && continue
+  case $? in
+    2) exit 2 ;;
+    *) status=1 ;;
+  esac
+done
+exit $status

@@ -3,6 +3,7 @@
 # omacos:args=<command...>
 # omacos:examples=omacos launch tui btop
 set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
 
 command=${*:-}
 [[ -n $command ]] || { echo "usage: omacos launch tui <command>" >&2; exit 1; }
@@ -19,12 +20,36 @@ shell=${SHELL:-/bin/zsh}
 title=${OMACOS_TUI_TITLE:-omacos}
 command=$(printf 'printf "\\033]0;%s\\007"; %s' "$title" "$command")
 
+# Which terminal, if you have said. Each spells its flags differently, so a
+# terminal omacos does not know about falls back to Ghostty rather than being
+# launched with arguments it will reject.
+terminal=Ghostty
+if [[ -f $OMACOS_CONFIG/local.env ]]; then
+  chosen=$(set +u; . "$OMACOS_CONFIG/local.env" >/dev/null 2>&1 || true; printf '%s' "${DEFAULT_TERMINAL:-}")
+  case $chosen in
+    ""|Ghostty) ;;
+    kitty|Alacritty|WezTerm|iTerm) terminal=$chosen ;;
+    *) printf 'omacos: DEFAULT_TERMINAL=%s is not one omacos can drive; using Ghostty.\n' "$chosen" >&2 ;;
+  esac
+fi
+
 # --window-save-state=never matters: the seeded Ghostty config sets
 # `window-save-state = always`, so without this every launch also restores the
 # previous TUI window and re-runs its command, duplicating windows each time.
-exec open -na Ghostty --args \
-  --window-save-state=never \
-  --title="$title" \
-  --window-width="${OMACOS_TUI_WIDTH:-110}" \
-  --window-height="${OMACOS_TUI_HEIGHT:-32}" \
-  -e "$shell" -lc "$command"
+case $terminal in
+  Ghostty)
+    exec open -na Ghostty --args \
+      --window-save-state=never \
+      --title="$title" \
+      --window-width="${OMACOS_TUI_WIDTH:-110}" \
+      --window-height="${OMACOS_TUI_HEIGHT:-32}" \
+      -e "$shell" -lc "$command" ;;
+  kitty)
+    exec open -na kitty --args --title "$title" "$shell" -lc "$command" ;;
+  Alacritty)
+    exec open -na Alacritty --args --title "$title" -e "$shell" -lc "$command" ;;
+  WezTerm)
+    exec open -na WezTerm --args start -- "$shell" -lc "$command" ;;
+  iTerm)
+    exec open -na iTerm --args "$shell" -lc "$command" ;;
+esac

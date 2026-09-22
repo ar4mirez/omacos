@@ -1,85 +1,584 @@
 {
-  "style":               { "icon": "◐", "label": "Style" },
-  "style.theme":         { "icon": "◑", "label": "Theme", "action": "omacos-menu-theme" },
-  "style.theme-next":    { "icon": "◒", "label": "Next theme", "action": "omacos-theme-next" },
-  "style.background":    { "icon": "▨", "label": "Next background", "action": "omacos-theme-background" },
-  "style.light-dark":    { "icon": "☀", "label": "Toggle light/dark", "action": "omacos-cmd-toggle-appearance" },
-
-  "apps":                { "icon": "\u25a6", "label": "Apps" },
-  "apps.music":          { "icon": "♪", "label": "Music", "action": "omacos-launch-app music", "when": "omacos-launch-app music --has" },
-  "apps.password":       { "icon": "⚿", "label": "Password manager", "action": "omacos-launch-app password", "when": "omacos-launch-app password --has" },
-  "apps.calendar":       { "icon": "▦", "label": "Calendar", "action": "omacos-launch-app calendar", "when": "omacos-launch-app calendar --has" },
-  "apps.email":          { "icon": "✉", "label": "Email", "action": "omacos-launch-app email", "when": "omacos-launch-app email --has" },
-  "apps.notes":          { "icon": "✎", "label": "Notes", "action": "omacos-launch-app notes", "when": "omacos-launch-app notes --has" },
-  "apps.writing":        { "icon": "✍", "label": "Writing", "action": "omacos-launch-app writing", "when": "omacos-launch-app writing --has" },
-  "apps.ai":             { "icon": "◇", "label": "AI", "action": "omacos-launch-app ai", "when": "omacos-launch-app ai --has" },
-  "apps.ai-alt":         { "icon": "◆", "label": "The other AI", "action": "omacos-launch-app ai-alt", "when": "omacos-launch-app ai-alt --has" },
-  "apps.chat":           { "icon": "◈", "label": "Messenger", "action": "omacos-launch-app chat", "when": "omacos-launch-app chat --has" },
-  "apps.chat-alt":       { "icon": "◉", "label": "The other messenger", "action": "omacos-launch-app chat-alt", "when": "omacos-launch-app chat-alt --has" },
-  "apps.messages":       { "icon": "✆", "label": "Messages", "action": "omacos-launch-app messages", "when": "omacos-launch-app messages --has" },
-  "apps.photos":         { "icon": "▣", "label": "Photos", "action": "omacos-launch-app photos", "when": "omacos-launch-app photos --has" },
-  "apps.x":              { "icon": "✕", "label": "X", "action": "omacos-launch-app x", "when": "omacos-launch-app x --has" },
-  "apps.youtube":        { "icon": "▶", "label": "YouTube", "action": "omacos-launch-app youtube", "when": "omacos-launch-app youtube --has" },
-
-  "capture":             { "icon": "⎙", "label": "Capture" },
-  "capture.region":      { "icon": "▭", "label": "Screenshot a region", "action": "omacos-capture-screenshot region" },
-  "capture.window":      { "icon": "❐", "label": "Screenshot a window", "action": "omacos-capture-screenshot window" },
-  "capture.screen":      { "icon": "▣", "label": "Screenshot the screen", "action": "omacos-capture-screenshot fullscreen" },
-  "capture.recording":   { "icon": "⏺", "label": "Start/stop a recording", "action": "omacos-capture-screenrecording region" },
-  "capture.text":        { "icon": "⌸", "label": "Extract text (OCR)", "action": "omacos-capture-text" },
-  "capture.url":         { "icon": "\u26ad", "label": "Copy the browser's URL", "action": "omacos-capture-url" },
-  "capture.color":       { "icon": "◉", "label": "Pick a colour", "action": "omacos-capture-color" },
-
-  "clipboard":           { "icon": "⎘", "label": "Clipboard" },
-  "clipboard.history":   { "icon": "≡", "label": "History", "action": "omacos-clipboard-history" },
-  "clipboard.clear":     { "icon": "⌫", "label": "Clear history", "action": "omacos-clipboard-clear" },
-  "clipboard.watch-on":  { "icon": "●", "label": "Record history", "action": "omacos-setup-clipboard on", "when": "! omacos-setup-clipboard status >/dev/null" },
-  "clipboard.watch-off": { "icon": "○", "label": "Stop recording history", "action": "omacos-setup-clipboard off", "when": "omacos-setup-clipboard status >/dev/null" },
-
-  "trigger":             { "icon": "◷", "label": "Trigger" },
-  "trigger.reminder":    { "icon": "⏲", "label": "Set a reminder", "action": "omacos-reminder" },
-  "trigger.reminders":   { "icon": "≡", "label": "See reminders", "action": "omacos-reminder list; read -n 1 -s -r -p 'Press any key'" },
-  "trigger.clear":       { "icon": "⌫", "label": "Clear reminders", "action": "omacos-reminder clear" },
-  "trigger.time":        { "icon": "◴", "label": "Show the time", "action": "omacos-notice time" },
-  "trigger.battery":     { "icon": "▮", "label": "Show the battery", "action": "omacos-notice battery" },
-  "trigger.weather":     { "icon": "☂", "label": "Show the weather", "action": "omacos-notice weather" },
-
-  "toggles":             { "icon": "⇄", "label": "Toggles" },
-  "toggles.idle":        { "icon": "☕", "label": "Keep the screen awake", "action": "omacos-toggle-idle", "checked": "omacos-toggle-idle status >/dev/null" },
-  "toggles.bar":         { "icon": "▬", "label": "Hide the top bar", "action": "omacos-toggle-bar", "checked": "omacos-state check bar-hidden" },
-  "toggles.dnd":         { "icon": "\u25cc", "label": "Do Not Disturb", "action": "omacos-toggle-dnd", "when": "omacos-toggle-dnd status >/dev/null" },
-  "toggles.dnd-setup":   { "icon": "\u2699", "label": "Set up Do Not Disturb", "action": "omacos-setup-dnd; read -n 1 -s -r -p 'Press any key'", "when": "! omacos-toggle-dnd status >/dev/null" },
-  "toggles.gaps":        { "icon": "\u2637", "label": "Window gaps", "action": "omacos-toggle-gaps", "checked": "! omacos-state check gaps-off" },
-  "toggles.audio":       { "icon": "\u266a", "label": "Next audio output", "action": "omacos-toggle-audio-output", "when": "command -v SwitchAudioSource" },
-  "toggles.nightlight":  { "icon": "☾", "label": "Night Shift", "action": "omacos-toggle-nightlight" },
-  "toggles.screensaver": { "icon": "▦", "label": "Start the screensaver", "action": "omacos-cmd-screensaver" },
-
-  "setup":               { "icon": "⚙", "label": "Setup" },
-  "setup.keybindings":   { "icon": "⌘", "label": "Keybindings", "action": "omacos-keymap-show; read -n 1 -s -r -p 'Press any key'" },
-  "setup.keymap-build":  { "icon": "↻", "label": "Rebuild keymap", "action": "omacos-keymap-build" },
-  "setup.zoom":          { "icon": "\u2315", "label": "Screen zoom", "action": "omacos-setup-zoom; read -n 1 -s -r -p 'Press any key'" },
-  "setup.dictation":     { "icon": "◎", "label": "Dictation", "action": "omacos-setup-dictation" },
-  "setup.clipboard":     { "icon": "⎘", "label": "Clipboard history", "action": "omacos-setup-clipboard status; read -n 1 -s -r -p 'Press any key'" },
-  "setup.features":      { "icon": "⊞", "label": "Features", "action": "omacos-menu-feature" },
-  "setup.doctor":        { "icon": "✚", "label": "Doctor", "action": "omacos-doctor; read -n 1 -s -r -p 'Press any key'" },
-  "setup.edit-keymap":   { "icon": "✎", "label": "Edit keymap", "action": "${EDITOR:-nvim} ~/.config/omacos/keymap.conf && omacos-keymap-build" },
-  "setup.edit-local":    { "icon": "✎", "label": "Edit local.env", "action": "${EDITOR:-nvim} ~/.config/omacos/local.env" },
-
-  "update":              { "icon": "⇩", "label": "Update" },
-  "update.omacos":       { "icon": "⇧", "label": "Update omacos", "action": "omacos-update" },
-  "update.packages":     { "icon": "□", "label": "Update packages only", "action": "brew update && brew upgrade" },
-  "update.migrations":   { "icon": "▶", "label": "Run pending migrations", "action": "omacos-migrate", "when": "omacos-migrate --pending" },
-
-  "system":              { "icon": "▣", "label": "System" },
-  "system.activity":     { "icon": "▤", "label": "Activity", "action": "btop" },
-  "system.disk":         { "icon": "▦", "label": "Disk usage", "action": "df -h; read -n 1 -s -r -p 'Press any key'" },
-  "system.wifi":         { "icon": "≋", "label": "Wi-Fi settings", "action": "open 'x-apple.systempreferences:com.apple.wifi-settings-extension'" },
-  "system.fonts":        { "icon": "\u0041", "label": "Fonts", "action": "omacos-font-list | less" },
-  "system.displays":     { "icon": "▭", "label": "Displays", "action": "open 'x-apple.systempreferences:com.apple.Displays-Settings.extension'" },
-
-  "power":               { "icon": "⏻", "label": "Power" },
-  "power.lock":          { "icon": "🔒", "label": "Lock", "action": "pmset displaysleepnow" },
-  "power.sleep":         { "icon": "☾", "label": "Sleep", "action": "pmset sleepnow" },
-  "power.restart":       { "icon": "↻", "label": "Restart", "action": "osascript -e 'tell app \"System Events\" to restart'" },
-  "power.shutdown":      { "icon": "⏼", "label": "Shut down", "action": "osascript -e 'tell app \"System Events\" to shut down'" }
+  "style": {
+    "icon": "◐",
+    "label": "Style"
+  },
+  "style.theme": {
+    "icon": "◑",
+    "label": "Theme",
+    "action": "omacos-menu-theme"
+  },
+  "style.theme-next": {
+    "icon": "◒",
+    "label": "Next theme",
+    "action": "omacos-theme-next"
+  },
+  "style.background": {
+    "icon": "▨",
+    "label": "Next background",
+    "action": "omacos-theme-background"
+  },
+  "style.light-dark": {
+    "icon": "☀",
+    "label": "Toggle light/dark",
+    "action": "omacos-cmd-toggle-appearance"
+  },
+  "apps": {
+    "icon": "▦",
+    "label": "Apps"
+  },
+  "apps.music": {
+    "icon": "♪",
+    "label": "Music",
+    "action": "omacos-launch-app music",
+    "when": "omacos-launch-app music --has"
+  },
+  "apps.password": {
+    "icon": "⚿",
+    "label": "Password manager",
+    "action": "omacos-launch-app password",
+    "when": "omacos-launch-app password --has"
+  },
+  "apps.calendar": {
+    "icon": "▦",
+    "label": "Calendar",
+    "action": "omacos-launch-app calendar",
+    "when": "omacos-launch-app calendar --has"
+  },
+  "apps.email": {
+    "icon": "✉",
+    "label": "Email",
+    "action": "omacos-launch-app email",
+    "when": "omacos-launch-app email --has"
+  },
+  "apps.notes": {
+    "icon": "✎",
+    "label": "Notes",
+    "action": "omacos-launch-app notes",
+    "when": "omacos-launch-app notes --has"
+  },
+  "apps.writing": {
+    "icon": "✍",
+    "label": "Writing",
+    "action": "omacos-launch-app writing",
+    "when": "omacos-launch-app writing --has"
+  },
+  "apps.ai": {
+    "icon": "◇",
+    "label": "AI",
+    "action": "omacos-launch-app ai",
+    "when": "omacos-launch-app ai --has"
+  },
+  "apps.ai-alt": {
+    "icon": "◆",
+    "label": "The other AI",
+    "action": "omacos-launch-app ai-alt",
+    "when": "omacos-launch-app ai-alt --has"
+  },
+  "apps.chat": {
+    "icon": "◈",
+    "label": "Messenger",
+    "action": "omacos-launch-app chat",
+    "when": "omacos-launch-app chat --has"
+  },
+  "apps.chat-alt": {
+    "icon": "◉",
+    "label": "The other messenger",
+    "action": "omacos-launch-app chat-alt",
+    "when": "omacos-launch-app chat-alt --has"
+  },
+  "apps.messages": {
+    "icon": "✆",
+    "label": "Messages",
+    "action": "omacos-launch-app messages",
+    "when": "omacos-launch-app messages --has"
+  },
+  "apps.photos": {
+    "icon": "▣",
+    "label": "Photos",
+    "action": "omacos-launch-app photos",
+    "when": "omacos-launch-app photos --has"
+  },
+  "apps.x": {
+    "icon": "✕",
+    "label": "X",
+    "action": "omacos-launch-app x",
+    "when": "omacos-launch-app x --has"
+  },
+  "apps.youtube": {
+    "icon": "▶",
+    "label": "YouTube",
+    "action": "omacos-launch-app youtube",
+    "when": "omacos-launch-app youtube --has"
+  },
+  "apps.maps": {
+    "icon": "⊕",
+    "label": "Maps",
+    "action": "omacos-launch-app maps",
+    "when": "omacos-launch-app maps --has"
+  },
+  "apps.x-compose": {
+    "icon": "✕",
+    "label": "X, composing",
+    "action": "omacos-launch-app x-compose",
+    "when": "omacos-launch-app x-compose --has"
+  },
+  "apps.agent": {
+    "icon": "◆",
+    "label": "Coding agent",
+    "action": "omacos-launch-agent",
+    "when": "omacos-default-agent"
+  },
+  "apps.installed": {
+    "icon": "▦",
+    "label": "Everything installed",
+    "title": "Open an app",
+    "provider": "omacos-menu-apps launch"
+  },
+  "install": {
+    "icon": "⤓",
+    "label": "Install"
+  },
+  "install.browser": {
+    "icon": "◍",
+    "label": "Browser",
+    "title": "Install a browser",
+    "provider": "omacos-menu-apps install browser"
+  },
+  "install.terminal": {
+    "icon": "⌨",
+    "label": "Terminal",
+    "title": "Install a terminal",
+    "provider": "omacos-menu-apps install terminal"
+  },
+  "install.editor": {
+    "icon": "✐",
+    "label": "Editor",
+    "title": "Install a editor",
+    "provider": "omacos-menu-apps install editor"
+  },
+  "install.ai": {
+    "icon": "◇",
+    "label": "AI",
+    "title": "Install a ai",
+    "provider": "omacos-menu-apps install ai"
+  },
+  "install.agent": {
+    "icon": "◆",
+    "label": "Coding agent",
+    "title": "Install a coding agent",
+    "provider": "omacos-menu-apps install agent"
+  },
+  "install.service": {
+    "icon": "⬢",
+    "label": "Service",
+    "title": "Install a service",
+    "provider": "omacos-menu-apps install service"
+  },
+  "install.development": {
+    "icon": "⚒",
+    "label": "Development",
+    "title": "Install a development",
+    "provider": "omacos-menu-apps install development"
+  },
+  "install.webapp": {
+    "icon": "⊕",
+    "label": "A website of your own",
+    "action": "omacos-webapp-install; read -n 1 -s -r -p 'Press any key'"
+  },
+  "install.tui": {
+    "icon": "▤",
+    "label": "A terminal app of your own",
+    "action": "omacos-tui-install; read -n 1 -s -r -p 'Press any key'"
+  },
+  "install.cask": {
+    "icon": "◰",
+    "label": "Any Homebrew cask",
+    "action": "cask=$(gum input --prompt 'cask> ' --placeholder 'figma'); [ -n \"$cask\" ] && { omacos-install-app $cask; read -n 1 -s -r -p 'Press any key'; }"
+  },
+  "install.feature": {
+    "icon": "⚙",
+    "label": "A feature layer",
+    "action": "omacos-menu-feature"
+  },
+  "install.preinstalls": {
+    "icon": "▦",
+    "label": "Restore the preinstalled apps",
+    "when": "omacos-state check preinstalls-removed",
+    "action": "omacos-install-preinstalls; read -n 1 -s -r -p 'Press any key'"
+  },
+  "remove": {
+    "icon": "⊗",
+    "label": "Remove"
+  },
+  "remove.browser": {
+    "icon": "◍",
+    "label": "Browser",
+    "title": "Remove a browser",
+    "provider": "omacos-menu-apps remove browser"
+  },
+  "remove.terminal": {
+    "icon": "⌨",
+    "label": "Terminal",
+    "title": "Remove a terminal",
+    "provider": "omacos-menu-apps remove terminal"
+  },
+  "remove.editor": {
+    "icon": "✐",
+    "label": "Editor",
+    "title": "Remove a editor",
+    "provider": "omacos-menu-apps remove editor"
+  },
+  "remove.ai": {
+    "icon": "◇",
+    "label": "AI",
+    "title": "Remove a ai",
+    "provider": "omacos-menu-apps remove ai"
+  },
+  "remove.agent": {
+    "icon": "◆",
+    "label": "Coding agent",
+    "title": "Remove a coding agent",
+    "provider": "omacos-menu-apps remove agent"
+  },
+  "remove.service": {
+    "icon": "⬢",
+    "label": "Service",
+    "title": "Remove a service",
+    "provider": "omacos-menu-apps remove service"
+  },
+  "remove.development": {
+    "icon": "⚒",
+    "label": "Development",
+    "title": "Remove a development",
+    "provider": "omacos-menu-apps remove development"
+  },
+  "remove.webapp": {
+    "icon": "⊕",
+    "label": "Web app",
+    "title": "Remove a web app",
+    "provider": "omacos-menu-apps remove webapp"
+  },
+  "remove.tui": {
+    "icon": "▤",
+    "label": "Terminal app",
+    "title": "Remove a terminal app",
+    "provider": "omacos-menu-apps remove tui"
+  },
+  "remove.app": {
+    "icon": "⊗",
+    "label": "Anything omacos installed",
+    "action": "omacos-remove-app; read -n 1 -s -r -p 'Press any key'"
+  },
+  "remove.preinstalls": {
+    "icon": "▦",
+    "label": "The preinstalled apps",
+    "when": "! omacos-state check preinstalls-removed",
+    "action": "omacos-remove-preinstalls; read -n 1 -s -r -p 'Press any key'"
+  },
+  "capture": {
+    "icon": "⎙",
+    "label": "Capture"
+  },
+  "capture.region": {
+    "icon": "▭",
+    "label": "Screenshot a region",
+    "action": "omacos-capture-screenshot region"
+  },
+  "capture.window": {
+    "icon": "❐",
+    "label": "Screenshot a window",
+    "action": "omacos-capture-screenshot window"
+  },
+  "capture.screen": {
+    "icon": "▣",
+    "label": "Screenshot the screen",
+    "action": "omacos-capture-screenshot fullscreen"
+  },
+  "capture.recording": {
+    "icon": "⏺",
+    "label": "Start/stop a recording",
+    "action": "omacos-capture-screenrecording region"
+  },
+  "capture.text": {
+    "icon": "⌸",
+    "label": "Extract text (OCR)",
+    "action": "omacos-capture-text"
+  },
+  "capture.url": {
+    "icon": "⚭",
+    "label": "Copy the browser's URL",
+    "action": "omacos-capture-url"
+  },
+  "capture.color": {
+    "icon": "◉",
+    "label": "Pick a colour",
+    "action": "omacos-capture-color"
+  },
+  "clipboard": {
+    "icon": "⎘",
+    "label": "Clipboard"
+  },
+  "clipboard.history": {
+    "icon": "≡",
+    "label": "History",
+    "action": "omacos-clipboard-history"
+  },
+  "clipboard.clear": {
+    "icon": "⌫",
+    "label": "Clear history",
+    "action": "omacos-clipboard-clear"
+  },
+  "clipboard.watch-on": {
+    "icon": "●",
+    "label": "Record history",
+    "action": "omacos-setup-clipboard on",
+    "when": "! omacos-setup-clipboard status >/dev/null"
+  },
+  "clipboard.watch-off": {
+    "icon": "○",
+    "label": "Stop recording history",
+    "action": "omacos-setup-clipboard off",
+    "when": "omacos-setup-clipboard status >/dev/null"
+  },
+  "trigger": {
+    "icon": "◷",
+    "label": "Trigger"
+  },
+  "trigger.reminder": {
+    "icon": "⏲",
+    "label": "Set a reminder",
+    "action": "omacos-reminder"
+  },
+  "trigger.reminders": {
+    "icon": "≡",
+    "label": "See reminders",
+    "action": "omacos-reminder list; read -n 1 -s -r -p 'Press any key'"
+  },
+  "trigger.clear": {
+    "icon": "⌫",
+    "label": "Clear reminders",
+    "action": "omacos-reminder clear"
+  },
+  "trigger.time": {
+    "icon": "◴",
+    "label": "Show the time",
+    "action": "omacos-notice time"
+  },
+  "trigger.battery": {
+    "icon": "▮",
+    "label": "Show the battery",
+    "action": "omacos-notice battery"
+  },
+  "trigger.weather": {
+    "icon": "☂",
+    "label": "Show the weather",
+    "action": "omacos-notice weather"
+  },
+  "toggles": {
+    "icon": "⇄",
+    "label": "Toggles"
+  },
+  "toggles.idle": {
+    "icon": "☕",
+    "label": "Keep the screen awake",
+    "action": "omacos-toggle-idle",
+    "checked": "omacos-toggle-idle status >/dev/null"
+  },
+  "toggles.bar": {
+    "icon": "▬",
+    "label": "Hide the top bar",
+    "action": "omacos-toggle-bar",
+    "checked": "omacos-state check bar-hidden"
+  },
+  "toggles.dnd": {
+    "icon": "◌",
+    "label": "Do Not Disturb",
+    "action": "omacos-toggle-dnd",
+    "when": "omacos-toggle-dnd status >/dev/null"
+  },
+  "toggles.dnd-setup": {
+    "icon": "⚙",
+    "label": "Set up Do Not Disturb",
+    "action": "omacos-setup-dnd; read -n 1 -s -r -p 'Press any key'",
+    "when": "! omacos-toggle-dnd status >/dev/null"
+  },
+  "toggles.gaps": {
+    "icon": "☷",
+    "label": "Window gaps",
+    "action": "omacos-toggle-gaps",
+    "checked": "! omacos-state check gaps-off"
+  },
+  "toggles.audio": {
+    "icon": "♪",
+    "label": "Next audio output",
+    "action": "omacos-toggle-audio-output",
+    "when": "command -v SwitchAudioSource"
+  },
+  "toggles.nightlight": {
+    "icon": "☾",
+    "label": "Night Shift",
+    "action": "omacos-toggle-nightlight"
+  },
+  "toggles.screensaver": {
+    "icon": "▦",
+    "label": "Start the screensaver",
+    "action": "omacos-cmd-screensaver"
+  },
+  "setup": {
+    "icon": "⚙",
+    "label": "Setup"
+  },
+  "setup.keybindings": {
+    "icon": "⌘",
+    "label": "Keybindings",
+    "action": "omacos-keymap-show; read -n 1 -s -r -p 'Press any key'"
+  },
+  "setup.keymap-build": {
+    "icon": "↻",
+    "label": "Rebuild keymap",
+    "action": "omacos-keymap-build"
+  },
+  "setup.zoom": {
+    "icon": "⌕",
+    "label": "Screen zoom",
+    "action": "omacos-setup-zoom; read -n 1 -s -r -p 'Press any key'"
+  },
+  "setup.dictation": {
+    "icon": "◎",
+    "label": "Dictation",
+    "action": "omacos-setup-dictation"
+  },
+  "setup.clipboard": {
+    "icon": "⎘",
+    "label": "Clipboard history",
+    "action": "omacos-setup-clipboard status; read -n 1 -s -r -p 'Press any key'"
+  },
+  "setup.features": {
+    "icon": "⊞",
+    "label": "Features",
+    "action": "omacos-menu-feature"
+  },
+  "setup.defaults": {
+    "icon": "◎",
+    "label": "Defaults",
+    "title": "Which app fills which job"
+  },
+  "setup.defaults.browser": {
+    "icon": "◍",
+    "label": "Browser",
+    "title": "Default browser",
+    "provider": "omacos-menu-apps default browser browser"
+  },
+  "setup.defaults.terminal": {
+    "icon": "⌨",
+    "label": "Terminal",
+    "title": "Default terminal",
+    "provider": "omacos-menu-apps default terminal terminal"
+  },
+  "setup.defaults.editor": {
+    "icon": "✐",
+    "label": "Editor",
+    "title": "Default editor",
+    "provider": "omacos-menu-apps default editor editor"
+  },
+  "setup.defaults.agent": {
+    "icon": "◆",
+    "label": "Agent",
+    "title": "Default agent",
+    "provider": "omacos-menu-apps default agent agent"
+  },
+  "setup.defaults.roles": {
+    "icon": "▦",
+    "label": "Launcher roles",
+    "action": "omacos-default-app; read -n 1 -s -r -p 'Press any key'"
+  },
+  "setup.doctor": {
+    "icon": "✚",
+    "label": "Doctor",
+    "action": "omacos-doctor; read -n 1 -s -r -p 'Press any key'"
+  },
+  "setup.edit-keymap": {
+    "icon": "✎",
+    "label": "Edit keymap",
+    "action": "${EDITOR:-nvim} ~/.config/omacos/keymap.conf && omacos-keymap-build"
+  },
+  "setup.edit-local": {
+    "icon": "✎",
+    "label": "Edit local.env",
+    "action": "${EDITOR:-nvim} ~/.config/omacos/local.env"
+  },
+  "update": {
+    "icon": "⇩",
+    "label": "Update"
+  },
+  "update.omacos": {
+    "icon": "⇧",
+    "label": "Update omacos",
+    "action": "omacos-update"
+  },
+  "update.packages": {
+    "icon": "□",
+    "label": "Update packages only",
+    "action": "brew update && brew upgrade"
+  },
+  "update.migrations": {
+    "icon": "▶",
+    "label": "Run pending migrations",
+    "action": "omacos-migrate",
+    "when": "omacos-migrate --pending"
+  },
+  "system": {
+    "icon": "▣",
+    "label": "System"
+  },
+  "system.activity": {
+    "icon": "▤",
+    "label": "Activity",
+    "action": "btop"
+  },
+  "system.disk": {
+    "icon": "▦",
+    "label": "Disk usage",
+    "action": "df -h; read -n 1 -s -r -p 'Press any key'"
+  },
+  "system.wifi": {
+    "icon": "≋",
+    "label": "Wi-Fi settings",
+    "action": "open 'x-apple.systempreferences:com.apple.wifi-settings-extension'"
+  },
+  "system.fonts": {
+    "icon": "A",
+    "label": "Fonts",
+    "action": "omacos-font-list | less"
+  },
+  "system.displays": {
+    "icon": "▭",
+    "label": "Displays",
+    "action": "open 'x-apple.systempreferences:com.apple.Displays-Settings.extension'"
+  },
+  "power": {
+    "icon": "⏻",
+    "label": "Power"
+  },
+  "power.lock": {
+    "icon": "🔒",
+    "label": "Lock",
+    "action": "pmset displaysleepnow"
+  },
+  "power.sleep": {
+    "icon": "☾",
+    "label": "Sleep",
+    "action": "pmset sleepnow"
+  },
+  "power.restart": {
+    "icon": "↻",
+    "label": "Restart",
+    "action": "osascript -e 'tell app \"System Events\" to restart'"
+  },
+  "power.shutdown": {
+    "icon": "⏼",
+    "label": "Shut down",
+    "action": "osascript -e 'tell app \"System Events\" to shut down'"
+  }
 }

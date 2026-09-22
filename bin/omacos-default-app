@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# omacos:summary=Set which app fills one of the launcher roles
+# omacos:args=<role> [app]
+# omacos:examples=omacos default app music | omacos default app music "Apple Music"
+#
+# The keymap says "Music", not "Spotify". This is the other half: it records
+# your answer in ~/.config/omacos/local.env, where `omacos launch app` reads it.
+# With no app it prints the current one, and with no role it lists them all.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/defaults.sh"
+
+mapfile -t roles < <(omacos-launch-app --roles)
+
+role=${1:-}
+if [[ -z $role ]]; then
+  for r in "${roles[@]}"; do
+    printf '%-14s %s\n' "$r" "$(local_env_get "$(printf '%s' "$r" | tr 'a-z-' 'A-Z_')_APP")"
+  done
+  exit 0
+fi
+
+known=false
+for r in "${roles[@]}"; do [[ $r == "$role" ]] && { known=true; break; }; done
+$known || { printf 'No such role: %s\n' "$role" >&2; printf 'Roles: %s\n' "${roles[*]}" >&2; exit 1; }
+
+key="$(printf '%s' "$role" | tr 'a-z-' 'A-Z_')_APP"
+value=${2:-}
+[[ -n $value ]] || { default_show "$key"; exit 0; }
+
+# A catalog id, a catalog entry's label, or the name of any app you already
+# have — all three are things you might reasonably type.
+target=""
+if catalog_resolve "$value" >/dev/null; then
+  target=$(catalog_field "$value" app)
+  [[ -n $target ]] || target=$(catalog_field "$value" label)
+else
+  while IFS= read -r id; do
+    [[ $(catalog_field "$id" role) == "$role" ]] || continue
+    [[ $(catalog_field "$id" label) == "$value" ]] || continue
+    target=$(catalog_field "$id" app)
+    [[ -n $target ]] || target=$(catalog_field "$id" label)
+    break
+  done < <(catalog_ids)
+fi
+[[ -n $target ]] && value=$target
+
+local_env_set "$key" "$value"
+default_announce "$value" "$value now fills the $role role"

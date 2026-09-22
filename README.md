@@ -48,11 +48,18 @@ omacos reminder 7 'Tea ready'
 omacos toggle idle|bar|gaps|dnd|nightlight|audio-output
 omacos font list
 omacos feature enable desktop | apps
-omacos webapp install Linear https://linear.app
 omacos setup signing            # git commit signing via 1Password
 omacos git org add Acme         # per-org identity under ~/Work/Acme/
-omacos install app slack zoom
-omacos launch app music      # roles, set in local.env
+
+omacos app list [category]      # the catalog, and what you already have
+omacos install app editor.zed   # a catalog id, or any Homebrew cask
+omacos install launch service.spotify
+omacos remove app               # asks which, and only removes what it installed
+omacos default browser firefox  # installs it, then makes it the default
+omacos default app music        # roles, recorded in local.env
+omacos webapp install Linear https://linear.app
+omacos tui install Docker lazydocker tile
+omacos launch app music | omacos launch agent
 omacos update
 ```
 
@@ -83,10 +90,32 @@ NOTES_APP="Bear"            # alt-shift-o
 A role with no app but a website opens the website, so `alt-shift-y` works
 before you have installed anything.
 
-**Apps** (opt-in) — a small, editable set of GUI applications in
-`Brewfile.apps`, installed with one admin prompt for the whole batch rather
-than one per `.pkg` cask. Ships Brave and sets it as the default browser,
-which also gives `omacos webapp install` a real app window to work with.
+**Apps** (opt-in) — a catalog of browsers, editors, terminals, AI apps, coding
+agents, services, language runtimes, web apps and terminal apps, browsable from
+`omacos menu` under Install and Remove. Rows for things you already have stay
+listed but go dim and ticked, so the list reads as the state of the machine
+rather than shrinking as you use it. A small bootstrap set in `Brewfile.apps`
+installs on a new machine with one admin prompt for the whole batch rather than
+one per `.pkg` cask, and sets Brave as the default browser — which also gives
+`omacos webapp install` a real app window to work with.
+
+The catalog is one file, `default/apps.json`, which the install menu, the
+remove menu, the presence checks, `omacos default`, and the preinstall set all
+read. Add to it in `~/.config/omacos/extensions/omacos-apps.jsonc`; reuse an id
+and you replace only the fields you name.
+
+```bash
+omacos app list editor        # what is there, and what you have
+omacos install app ai.ollama  # or any Homebrew cask by name
+omacos default editor zed     # installs it if missing, then records it
+```
+
+**Web apps and terminal apps** — `omacos webapp install` builds a real `.app`
+in `~/Applications` around a frameless browser window, icon and all, and
+`omacos tui install` does the same for a terminal program. Both are removable
+because omacos marks what it made; anything in `~/Applications` without that
+marker is yours and is left alone. A web app can claim a URL scheme, so a
+`mailto:` link can open HEY on a compose window.
 
 **Themes** — one `colors.toml` per theme renders every app's colours, switches
 macOS between light and dark, and sets the wallpaper. Ships 22 of them, most

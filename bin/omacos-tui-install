@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# omacos:summary=Install a terminal command as an app you can launch
+# omacos:args=[name] [command] [float|tile] [icon]
+# omacos:examples=omacos tui install Docker lazydocker tile
+#
+# A .app in ~/Applications that opens a terminal window running the command —
+# so a TUI gets a Dock entry and shows up in Spotlight like anything else.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/bundles.sh"
+
+name=${1:-}; command_line=${2:-}; window=${3:-}; icon=${4:-}
+
+if [[ -z $name || -z $command_line ]]; then
+  if [[ ! -t 0 ]]; then
+    exec omacos-launch-tui "omacos-tui-install; echo; read -n 1 -s -r -p 'Press any key to close'"
+  fi
+  command -v gum >/dev/null || { echo "usage: omacos tui install <name> <command> [float|tile]" >&2; exit 1; }
+  printf "\033[32mA terminal command, as an app you can launch.\033[0m\n\n"
+  [[ -n $name ]] || name=$(gum input --prompt "Name> " --placeholder "Docker")
+  [[ -n $command_line ]] || command_line=$(gum input --prompt "Command> " --placeholder "lazydocker")
+  [[ -n $window ]] || window=$(gum choose --header "Window style" float tile)
+fi
+[[ -n $name && -n $command_line ]] || { echo "usage: omacos tui install <name> <command> [float|tile]" >&2; exit 1; }
+window=${window:-float}
+
+[[ $name == */* || $name == .* ]] && { echo "Invalid name: $name" >&2; exit 1; }
+case $window in
+  float|tile) ;;
+  *) echo "Window style must be float or tile, not: $window" >&2; exit 1 ;;
+esac
+
+# Float and tile are decided by the window title, not by a per-app rule:
+# default/aerospace/base.toml floats any Ghostty window whose title contains
+# "omacos", and omacos-launch-tui is what sets that title. So a floating TUI
+# keeps the word and a tiling one does not.
+if [[ $window == float ]]; then
+  title="omacos · $name"
+else
+  title=$name
+fi
+
+identifier="com.omacos.tui.$(bundle_slug "$name")"
+body=$(printf 'export PATH="%s/bin:$PATH"\nexport OMACOS_TUI_TITLE=%q\nexec omacos-launch-tui %q' \
+  "$OMACOS_PATH" "$title" "$command_line")
+
+app_dir=$(bundle_create "$name" "$identifier" "$body")
+bundle_apply_icon "$app_dir" "$icon" "" || true
+bundle_register "$app_dir"
+
+printf '\033[32mInstalled \033[1m%s\033[0m\033[32m → %s\033[0m \033[2m(%s)\033[0m\n' \
+  "$name" "${app_dir/#$HOME/\~}" "$window"

@@ -18,7 +18,12 @@ set -euo pipefail
 # shellcheck source=/dev/null
 [[ -f $OMACOS_CONFIG/local.env ]] && . "$OMACOS_CONFIG/local.env"
 
+ROLES="music ai ai-alt calendar email email-compose notes writing password chat chat-alt messages photos maps x x-compose youtube"
+
 role=${1:-}
+# `--roles` is the list every other command validates against, so the roles
+# exist in exactly one place.
+[[ $role == --roles ]] && { printf '%s\n' $ROLES; exit 0; }
 [[ -n $role ]] || { echo "usage: omacos launch app <role> [--has]" >&2; exit 1; }
 only_check=false
 [[ ${2:-} == --has ]] && only_check=true
@@ -37,12 +42,14 @@ case $role in
   chat-alt)  candidates=("${CHAT_ALT_APP:-}" WhatsApp) ;;
   messages)  candidates=("${MESSAGES_APP:-}" Messages);        url="https://messages.google.com/web" ;;
   photos)    candidates=("${PHOTOS_APP:-}"   Photos);          url="https://photos.google.com" ;;
+  maps)      candidates=("${MAPS_APP:-}"     Maps);            url="https://maps.google.com" ;;
   x)         candidates=("${X_APP:-}"        X);               url="https://x.com" ;;
   x-compose) candidates=();                                    url="https://x.com/compose/post" ;;
+  email-compose) candidates=();                                url="https://app.hey.com/messages/new" ;;
   youtube)   candidates=("${YOUTUBE_APP:-}"  YouTube);         url="https://www.youtube.com" ;;
   *)
     echo "No such role: $role" >&2
-    echo "Roles: music ai ai-alt calendar email notes writing password chat chat-alt messages photos x x-compose youtube" >&2
+    echo "Roles: $ROLES" >&2
     exit 1 ;;
 esac
 

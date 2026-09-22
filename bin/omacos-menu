@@ -49,9 +49,9 @@ command -v jq  >/dev/null || { echo "omacos menu needs jq: brew install jq" >&2;
 shipped="$OMACOS_PATH/default/menu.json"
 extension="$OMACOS_CONFIG/extensions/omacos-menu.jsonc"
 
-# JSONC: drop whole-line comments and end-of-line comments that follow
-# whitespace, so a "//" inside a URL survives.
-strip_jsonc() { sed -e 's|^[[:space:]]*//.*$||' -e 's|[[:space:]]//[[:space:]].*$||' "$1"; }
+# strip_jsonc lives with the catalog, which reads a JSONC overlay the same way.
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
 
 load_menu() {
   if [[ -f $extension ]]; then
@@ -78,25 +78,69 @@ children_of() {
 
 field() { jq -r --arg k "$1" --arg f "$2" '.[$k][$f] // empty' <<<"$MENU_JSON"; }
 
-# `when` hides a row when its shell condition fails; `checked` appends a tick.
-# Both let rows reflect live system state instead of a stale snapshot.
+# Three guards, each a shell condition, so rows reflect live system state
+# instead of a stale snapshot:
+#   when      hides the row when it fails
+#   checked   ticks the row when it succeeds — "this is the current choice"
+#   disabled  ticks the row and makes it unselectable — "already installed".
+#             Install rows use it so software you have reads as installed
+#             rather than vanishing from the list.
 visible() {
   local when; when=$(field "$1" when)
   [[ -z $when ]] && return 0
   bash -c "$when" >/dev/null 2>&1
 }
-checked_mark() {
-  local checked; checked=$(field "$1" checked)
-  [[ -z $checked ]] && return 0
-  bash -c "$checked" >/dev/null 2>&1 && printf '  ✓'
+guard_passes() {
+  local condition; condition=$(field "$1" "$2")
+  [[ -z $condition ]] && return 1
+  bash -c "$condition" >/dev/null 2>&1
 }
 
-# --list is for scripting and tests: print a route's rows and exit.
-if [[ ${1:-} == --list ]]; then
-  children_of "${2:-root}" | while IFS= read -r id; do
+# Every row of a route, static and provided, as
+#   id <TAB> icon <TAB> label <TAB> action <TAB> ok|checked|disabled
+#
+# A provider says only which state a row is in; the tick that shows it is added
+# here, so every provider does not have to remember to.
+#
+# Read it back through read_rows, never with IFS=$'\t' directly: a tab counts
+# as IFS whitespace, so bash collapses a run of them and a submenu's empty
+# action column silently swallows the one after it.
+#
+# A `provider` is a command printing those same five columns. Install and
+# Remove use one: their rows come from the app catalog, and listing ~80 of them
+# by hand here would only duplicate it. It also costs one presence snapshot for
+# a whole category rather than a forked guard per row.
+rows_for() {
+  local route=$1 id provider state mark
+  while IFS= read -r id; do
     [[ -n $id ]] || continue
     visible "$id" || continue
-    printf '%s\t%s\t%s\n' "$id" "$(field "$id" label)" "$(field "$id" action)"
+    state=ok; mark=""
+    if guard_passes "$id" disabled; then state=disabled; mark="  ✓"
+    elif guard_passes "$id" checked; then mark="  ✓"
+    fi
+    printf '%s\t%s\t%s\t%s\t%s\n' \
+      "$id" "$(field "$id" icon)" "$(field "$id" label)$mark" "$(field "$id" action)" "$state"
+  done < <(children_of "$route")
+
+  provider=$(field "$route" provider)
+  if [[ -n $provider ]]; then
+    bash -c "$provider" 2>/dev/null | awk -F'\t' -v OFS='\t' '
+      NF >= 5 { if ($5 == "checked" || $5 == "disabled") $3 = $3 "  ✓"; print }' || true
+  fi
+  return 0
+}
+
+# Tab on the wire, unit separator for the split — \037 is not IFS whitespace,
+# so empty columns survive.
+read_rows() { rows_for "$1" | tr '\t' '\037'; }
+
+# --list is for scripting and tests: print a route's rows and exit. A disabled
+# row is listed with its tick, the way it is on screen.
+if [[ ${1:-} == --list ]]; then
+  read_rows "${2:-root}" | while IFS=$'\037' read -r id _ label action _; do
+    [[ -n $id ]] || continue
+    printf '%s\t%s\t%s\n' "$id" "$label" "$action"
   done
   exit 0
 fi
@@ -105,20 +149,25 @@ route=${1:-root}
 trail=()
 
 while :; do
-  labels=(); ids=()
-  while IFS= read -r id; do
+  labels=(); ids=(); actions=(); states=()
+  while IFS=$'\037' read -r id icon label action state; do
     [[ -n $id ]] || continue
-    visible "$id" || continue
     ids+=("$id")
-    labels+=("$(printf '%s  %s%s' "$(field "$id" icon)" "$(field "$id" label)" "$(checked_mark "$id")")")
-  done < <(children_of "$route")
+    actions+=("$action")
+    states+=("$state")
+    labels+=("$(printf '%s  %s' "$icon" "$label")")
+  done < <(read_rows "$route")
 
   ((${#ids[@]})) || { echo "Nothing here." >&2; exit 0; }
 
   if [[ $route == root ]]; then
     header="omacos"
   else
-    header="omacos · ${route//./ · }"
+    # `title` lets a row read "Browser" in its parent while the open menu says
+    # "Default browser".
+    title=$(field "$route" title)
+    [[ -n $title ]] || title=${route//./ · }
+    header="omacos · $title"
     labels+=("←  Back")
   fi
 
@@ -134,13 +183,19 @@ while :; do
     continue
   fi
 
-  selected=""
+  selected=""; index=-1
   for i in "${!labels[@]}"; do
-    if [[ ${labels[i]} == "$choice" ]]; then selected=${ids[i]:-}; break; fi
+    if [[ ${labels[i]} == "$choice" ]]; then selected=${ids[i]:-}; index=$i; break; fi
   done
   [[ -n $selected ]] || exit 0
 
-  action=$(field "$selected" action)
+  # A disabled row stays on screen — it is telling you something — but there is
+  # nothing to do with it.
+  if [[ ${states[index]} == disabled ]]; then
+    continue
+  fi
+
+  action=${actions[index]}
   if [[ -n $action ]]; then
     eval "$action"
     exit 0

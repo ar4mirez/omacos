@@ -1,0 +1,572 @@
+{
+  "browser.chrome": {
+    "icon": "◍",
+    "label": "Chrome",
+    "category": "browser",
+    "source": "cask",
+    "package": "google-chrome",
+    "app": "Google Chrome",
+    "bundle": "com.google.Chrome",
+    "role": "browser"
+  },
+  "browser.brave": {
+    "icon": "◍",
+    "label": "Brave",
+    "category": "browser",
+    "source": "cask",
+    "package": "brave-browser",
+    "app": "Brave Browser",
+    "bundle": "com.brave.Browser",
+    "role": "browser"
+  },
+  "browser.edge": {
+    "icon": "◍",
+    "label": "Edge",
+    "category": "browser",
+    "source": "cask",
+    "package": "microsoft-edge",
+    "app": "Microsoft Edge",
+    "bundle": "com.microsoft.edgemac",
+    "role": "browser"
+  },
+  "browser.firefox": {
+    "icon": "◍",
+    "label": "Firefox",
+    "category": "browser",
+    "source": "cask",
+    "package": "firefox",
+    "app": "Firefox",
+    "bundle": "org.mozilla.firefox",
+    "role": "browser"
+  },
+  "browser.zen": {
+    "icon": "◍",
+    "label": "Zen",
+    "category": "browser",
+    "source": "cask",
+    "package": "zen",
+    "app": "Zen",
+    "role": "browser"
+  },
+  "browser.arc": {
+    "icon": "◍",
+    "label": "Arc",
+    "category": "browser",
+    "source": "cask",
+    "package": "arc",
+    "app": "Arc",
+    "bundle": "company.thebrowser.Browser",
+    "role": "browser"
+  },
+  "terminal.kitty": {
+    "icon": "⌨",
+    "label": "kitty",
+    "category": "terminal",
+    "source": "cask",
+    "package": "kitty",
+    "app": "kitty",
+    "bundle": "net.kovidgoyal.kitty",
+    "role": "terminal"
+  },
+  "terminal.alacritty": {
+    "icon": "⌨",
+    "label": "Alacritty",
+    "category": "terminal",
+    "source": "cask",
+    "package": "alacritty",
+    "app": "Alacritty",
+    "bundle": "org.alacritty",
+    "role": "terminal"
+  },
+  "terminal.wezterm": {
+    "icon": "⌨",
+    "label": "WezTerm",
+    "category": "terminal",
+    "source": "cask",
+    "package": "wezterm",
+    "app": "WezTerm",
+    "bundle": "com.github.wez.wezterm",
+    "role": "terminal"
+  },
+  "terminal.iterm2": {
+    "icon": "⌨",
+    "label": "iTerm2",
+    "category": "terminal",
+    "source": "cask",
+    "package": "iterm2",
+    "app": "iTerm",
+    "bundle": "com.googlecode.iterm2",
+    "role": "terminal"
+  },
+  "editor.vscode": {
+    "icon": "✐",
+    "label": "VSCode",
+    "category": "editor",
+    "source": "cask",
+    "package": "visual-studio-code",
+    "app": "Visual Studio Code",
+    "bundle": "com.microsoft.VSCode",
+    "role": "editor"
+  },
+  "editor.cursor": {
+    "icon": "✐",
+    "label": "Cursor",
+    "category": "editor",
+    "source": "cask",
+    "package": "cursor",
+    "app": "Cursor",
+    "role": "editor"
+  },
+  "editor.zed": {
+    "icon": "✐",
+    "label": "Zed",
+    "category": "editor",
+    "source": "cask",
+    "package": "zed",
+    "app": "Zed",
+    "bundle": "dev.zed.Zed",
+    "role": "editor"
+  },
+  "editor.sublime": {
+    "icon": "✐",
+    "label": "Sublime Text",
+    "category": "editor",
+    "source": "cask",
+    "package": "sublime-text",
+    "app": "Sublime Text",
+    "role": "editor"
+  },
+  "editor.helix": {
+    "icon": "✐",
+    "label": "Helix",
+    "category": "editor",
+    "source": "formula",
+    "package": "helix",
+    "command": "hx",
+    "role": "editor"
+  },
+  "editor.emacs": {
+    "icon": "✐",
+    "label": "Emacs",
+    "category": "editor",
+    "source": "cask",
+    "package": "emacs",
+    "app": "Emacs",
+    "role": "editor"
+  },
+  "ai.chatgpt": {
+    "icon": "◇",
+    "label": "ChatGPT",
+    "category": "ai",
+    "source": "cask",
+    "package": "chatgpt",
+    "app": "ChatGPT",
+    "bundle": "com.openai.chat",
+    "role": "ai"
+  },
+  "ai.claude": {
+    "icon": "◇",
+    "label": "Claude",
+    "category": "ai",
+    "source": "cask",
+    "package": "claude",
+    "app": "Claude",
+    "role": "ai"
+  },
+  "ai.ollama": {
+    "icon": "◇",
+    "label": "Ollama",
+    "category": "ai",
+    "source": "formula",
+    "package": "ollama",
+    "command": "ollama"
+  },
+  "ai.lm-studio": {
+    "icon": "◇",
+    "label": "LM Studio",
+    "category": "ai",
+    "source": "cask",
+    "package": "lm-studio",
+    "app": "LM Studio"
+  },
+  "ai.superwhisper": {
+    "icon": "◇",
+    "label": "Dictation",
+    "category": "ai",
+    "source": "cask",
+    "package": "superwhisper",
+    "app": "superwhisper"
+  },
+  "agent.claude": {
+    "icon": "◆",
+    "label": "Claude Code",
+    "category": "agent",
+    "source": "mise",
+    "package": "npm:@anthropic-ai/claude-code",
+    "command": "claude",
+    "role": "agent"
+  },
+  "agent.codex": {
+    "icon": "◆",
+    "label": "Codex",
+    "category": "agent",
+    "source": "mise",
+    "package": "npm:@openai/codex",
+    "command": "codex",
+    "role": "agent"
+  },
+  "agent.opencode": {
+    "icon": "◆",
+    "label": "OpenCode",
+    "category": "agent",
+    "source": "mise",
+    "package": "npm:opencode-ai",
+    "command": "opencode",
+    "role": "agent"
+  },
+  "agent.copilot": {
+    "icon": "◆",
+    "label": "GitHub Copilot",
+    "category": "agent",
+    "source": "mise",
+    "package": "npm:@github/copilot",
+    "command": "copilot",
+    "role": "agent"
+  },
+  "service.1password": {
+    "icon": "⬢",
+    "label": "1Password",
+    "category": "service",
+    "source": "cask",
+    "package": "1password",
+    "app": "1Password",
+    "bundle": "com.1password.1password",
+    "role": "password",
+    "preinstall": true
+  },
+  "service.bitwarden": {
+    "icon": "⬢",
+    "label": "Bitwarden",
+    "category": "service",
+    "source": "cask",
+    "package": "bitwarden",
+    "app": "Bitwarden",
+    "role": "password"
+  },
+  "service.dropbox": {
+    "icon": "⬢",
+    "label": "Dropbox",
+    "category": "service",
+    "source": "cask",
+    "package": "dropbox",
+    "app": "Dropbox",
+    "bundle": "com.getdropbox.dropbox"
+  },
+  "service.spotify": {
+    "icon": "♪",
+    "label": "Spotify",
+    "category": "service",
+    "source": "cask",
+    "package": "spotify",
+    "app": "Spotify",
+    "bundle": "com.spotify.client",
+    "role": "music"
+  },
+  "service.signal": {
+    "icon": "◈",
+    "label": "Signal",
+    "category": "service",
+    "source": "cask",
+    "package": "signal",
+    "app": "Signal",
+    "role": "chat"
+  },
+  "service.tailscale": {
+    "icon": "⬢",
+    "label": "Tailscale",
+    "category": "service",
+    "source": "cask",
+    "package": "tailscale-app",
+    "app": "Tailscale"
+  },
+  "service.nordvpn": {
+    "icon": "⬢",
+    "label": "NordVPN",
+    "category": "service",
+    "source": "cask",
+    "package": "nordvpn",
+    "app": "NordVPN"
+  },
+  "service.docker": {
+    "icon": "⬢",
+    "label": "Docker Desktop",
+    "category": "service",
+    "source": "cask",
+    "package": "docker-desktop",
+    "app": "Docker"
+  },
+  "service.slack": {
+    "icon": "◈",
+    "label": "Slack",
+    "category": "service",
+    "source": "cask",
+    "package": "slack",
+    "app": "Slack",
+    "bundle": "com.tinyspeck.slackmacgap",
+    "preinstall": true
+  },
+  "service.zoom": {
+    "icon": "⬢",
+    "label": "Zoom",
+    "category": "service",
+    "source": "cask",
+    "package": "zoom",
+    "app": "zoom.us",
+    "bundle": "us.zoom.xos",
+    "preinstall": true
+  },
+  "service.teams": {
+    "icon": "◈",
+    "label": "Microsoft Teams",
+    "category": "service",
+    "source": "cask",
+    "package": "microsoft-teams",
+    "app": "Microsoft Teams",
+    "preinstall": true
+  },
+  "service.obsidian": {
+    "icon": "✎",
+    "label": "Obsidian",
+    "category": "service",
+    "source": "cask",
+    "package": "obsidian",
+    "app": "Obsidian",
+    "bundle": "md.obsidian",
+    "role": "notes"
+  },
+  "development.node": {
+    "icon": "⚒",
+    "label": "Node.js",
+    "category": "development",
+    "source": "mise",
+    "package": "node",
+    "command": "node"
+  },
+  "development.bun": {
+    "icon": "⚒",
+    "label": "Bun",
+    "category": "development",
+    "source": "mise",
+    "package": "bun",
+    "command": "bun"
+  },
+  "development.deno": {
+    "icon": "⚒",
+    "label": "Deno",
+    "category": "development",
+    "source": "mise",
+    "package": "deno",
+    "command": "deno"
+  },
+  "development.python": {
+    "icon": "⚒",
+    "label": "Python",
+    "category": "development",
+    "source": "mise",
+    "package": "python",
+    "command": "python3"
+  },
+  "development.ruby": {
+    "icon": "⚒",
+    "label": "Ruby",
+    "category": "development",
+    "source": "mise",
+    "package": "ruby",
+    "command": "ruby"
+  },
+  "development.go": {
+    "icon": "⚒",
+    "label": "Go",
+    "category": "development",
+    "source": "mise",
+    "package": "go",
+    "command": "go"
+  },
+  "development.rust": {
+    "icon": "⚒",
+    "label": "Rust",
+    "category": "development",
+    "source": "mise",
+    "package": "rust",
+    "command": "cargo"
+  },
+  "development.java": {
+    "icon": "⚒",
+    "label": "Java",
+    "category": "development",
+    "source": "mise",
+    "package": "java",
+    "command": "java"
+  },
+  "development.elixir": {
+    "icon": "⚒",
+    "label": "Elixir",
+    "category": "development",
+    "source": "mise",
+    "package": "elixir",
+    "command": "elixir"
+  },
+  "development.php": {
+    "icon": "⚒",
+    "label": "PHP",
+    "category": "development",
+    "source": "mise",
+    "package": "php",
+    "command": "php"
+  },
+  "development.xcode": {
+    "icon": "⚒",
+    "label": "Xcode",
+    "category": "development",
+    "source": "mas",
+    "package": "497799835",
+    "app": "Xcode",
+    "bundle": "com.apple.dt.Xcode"
+  },
+  "webapp.hey": {
+    "icon": "✉",
+    "label": "HEY",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://app.hey.com",
+    "scheme": "mailto",
+    "role": "email",
+    "handler": "omacos-webapp-handler-hey"
+  },
+  "webapp.hey-calendar": {
+    "icon": "▦",
+    "label": "HEY Calendar",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://app.hey.com/calendar/weeks/",
+    "role": "calendar"
+  },
+  "webapp.basecamp": {
+    "icon": "⊕",
+    "label": "Basecamp",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://launchpad.37signals.com"
+  },
+  "webapp.chatgpt": {
+    "icon": "◇",
+    "label": "ChatGPT Web",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://chatgpt.com"
+  },
+  "webapp.grok": {
+    "icon": "◆",
+    "label": "Grok",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://grok.com",
+    "role": "ai-alt"
+  },
+  "webapp.whatsapp": {
+    "icon": "◉",
+    "label": "WhatsApp",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://web.whatsapp.com/",
+    "role": "chat-alt"
+  },
+  "webapp.messages": {
+    "icon": "✆",
+    "label": "Google Messages",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://messages.google.com/web/conversations",
+    "role": "messages"
+  },
+  "webapp.photos": {
+    "icon": "▣",
+    "label": "Google Photos",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://photos.google.com/",
+    "role": "photos"
+  },
+  "webapp.maps": {
+    "icon": "⊕",
+    "label": "Google Maps",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://maps.google.com/",
+    "role": "maps"
+  },
+  "webapp.contacts": {
+    "icon": "⊕",
+    "label": "Google Contacts",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://contacts.google.com/"
+  },
+  "webapp.x": {
+    "icon": "✕",
+    "label": "X",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://x.com/",
+    "role": "x"
+  },
+  "webapp.youtube": {
+    "icon": "▶",
+    "label": "YouTube",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://youtube.com/",
+    "role": "youtube"
+  },
+  "webapp.zoom": {
+    "icon": "⊕",
+    "label": "Zoom Web",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://app.zoom.us/wc/home",
+    "scheme": "zoommtg zoomus",
+    "handler": "omacos-webapp-handler-zoom"
+  },
+  "webapp.discord": {
+    "icon": "◈",
+    "label": "Discord",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://discord.com/channels/@me"
+  },
+  "webapp.linear": {
+    "icon": "⊕",
+    "label": "Linear",
+    "category": "webapp",
+    "source": "webapp",
+    "url": "https://linear.app"
+  },
+  "tui.docker": {
+    "icon": "▤",
+    "label": "Docker",
+    "category": "tui",
+    "source": "tui",
+    "package": "lazydocker",
+    "command": "lazydocker",
+    "window": "tile"
+  },
+  "tui.disk": {
+    "icon": "▤",
+    "label": "Disk Usage",
+    "category": "tui",
+    "source": "tui",
+    "package": "dua-cli",
+    "command": "dua i /",
+    "window": "float"
+  }
+}

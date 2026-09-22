@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# omacos:summary=Turn a feature off, and optionally remove what it installed
+# omacos:args=<feature> [--packages] [--yes]
+# omacos:examples=omacos remove feature apps | omacos remove feature desktop --packages
+#
+# Disabling a feature is the cheap, reversible half: omacos stops managing that
+# layer. Removing its packages is the other half, and it only happens when you
+# ask — `omacos feature disable` on its own has always left the software alone.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+feature=${1:-}
+[[ -n $feature ]] || { echo "usage: omacos remove feature <name> [--packages] [--yes]" >&2; exit 1; }
+shift
+
+with_packages=false
+assume_yes=false
+for arg in "$@"; do
+  case $arg in
+    --packages) with_packages=true ;;
+    --yes|-y)   assume_yes=true ;;
+    *) echo "usage: omacos remove feature <name> [--packages] [--yes]" >&2; exit 1 ;;
+  esac
+done
+
+case $feature in
+  desktop) brewfile="$OMACOS_PATH/Brewfile.desktop" ;;
+  apps)    brewfile="$OMACOS_PATH/Brewfile.apps" ;;
+  *) echo "Unknown feature: $feature" >&2; exit 1 ;;
+esac
+
+omacos-feature disable "$feature"
+
+mapfile -t casks < <(grep '^cask ' "$brewfile" | cut -d'"' -f2)
+mapfile -t formulae < <(grep '^brew ' "$brewfile" | cut -d'"' -f2)
+packages=("${casks[@]}" "${formulae[@]}")
+((${#packages[@]})) || exit 0
+
+if ! $with_packages; then
+  printf '\033[2mIts packages are still installed: %s\033[0m\n' "${packages[*]}"
+  printf '\033[2mRemove them too with: omacos remove feature %s --packages\033[0m\n' "$feature"
+  exit 0
+fi
+
+if ! $assume_yes && [[ -t 0 ]] && command -v gum >/dev/null; then
+  gum confirm "Remove ${#packages[@]} packages installed for '$feature'?" || exit 0
+fi
+
+failed=()
+for cask in "${casks[@]}"; do
+  brew list --cask "$cask" >/dev/null 2>&1 || continue
+  brew uninstall --cask "$cask" || failed+=("$cask")
+done
+for formula in "${formulae[@]}"; do
+  # A formula line may be tapped (felixkratz/formulae/sketchybar); brew answers
+  # to the bare name once it is installed.
+  brew uninstall "${formula##*/}" || failed+=("$formula")
+done
+
+if ((${#failed[@]})); then
+  printf '\n\033[31mNot removed:\033[0m %s\n' "${failed[*]}" >&2
+  exit 1
+fi

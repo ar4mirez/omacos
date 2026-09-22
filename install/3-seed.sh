@@ -44,8 +44,18 @@ if [[ ! -f $OMACOS_CONFIG/local.env ]]; then
 # the left pinky. Also accepts control, command, escape.
 # CAPSLOCK="option"
 
-# Default browser, by application name.
+# Which app fills which job. `omacos default browser firefox` and
+# `omacos default app music Spotify` write these for you; editing them by hand
+# works just as well.
 # DEFAULT_BROWSER="Brave Browser"
+# DEFAULT_TERMINAL="Ghostty"
+# DEFAULT_EDITOR="nvim"
+# DEFAULT_AGENT="claude"
+
+# The launcher roles the keymap binds — see `omacos default app` for the list.
+# MUSIC_APP="Spotify"
+# NOTES_APP="Obsidian"
+# PASSWORD_APP="1Password"
 LOCALENV
   ok "Created local.env (fill in your git identity)"
 fi

@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# omacos:summary=Menu rows for the app catalog
+# omacos:args=<install|remove|launch|default> [category] [role]
+# omacos:examples=omacos menu apps install browser
+# omacos:hidden=true
+#
+# A menu provider: one row per line, as
+#   id <TAB> icon <TAB> label <TAB> action <TAB> ok|disabled
+#
+# Rows are computed rather than listed in default/menu.json because they come
+# from the catalog — writing them out by hand would duplicate it, and it is one
+# presence snapshot for a whole category either way.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/bundles.sh"
+
+mode=${1:-}
+category=${2:-}
+role=${3:-}
+[[ -n $mode ]] || { echo "usage: omacos menu apps <install|remove|launch|default> [category] [role]" >&2; exit 1; }
+
+# Defaults are a different question — not "is it installed" but "is it the one
+# you picked" — so they read the recorded answer rather than the snapshot.
+if [[ $mode == default ]]; then
+  [[ -n $category && -n $role ]] || { echo "usage: omacos menu apps default <category> <role>" >&2; exit 1; }
+  # shellcheck source=/dev/null
+  . "$OMACOS_PATH/default/lib/defaults.sh"
+  key=$(printf '%s' "$role" | tr 'a-z-' 'A-Z_')
+  [[ $role == browser || $role == terminal || $role == editor || $role == agent ]] \
+    && key="DEFAULT_$key" || key="${key}_APP"
+  current=$(local_env_get "$key")
+  while IFS= read -r id; do
+    [[ -n $id ]] || continue
+    target=$(catalog_field "$id" app)
+    [[ -n $target ]] || target=$(catalog_field "$id" command)
+    state=ok
+    [[ -n $current && $current == "$target" ]] && state=checked
+    printf '%s\t%s\t%s\t%s\t%s\n' "default.$id" "$(catalog_field "$id" icon)" \
+      "$(catalog_field "$id" label)" "omacos-default-$role ${id#*.}" "$state"
+  done < <(catalog_ids "$category")
+  exit 0
+fi
+
+# Menu actions run in the menu's own window, which closes the moment they
+# finish — so anything worth reading waits for a key, as the shipped rows do.
+pause="read -n 1 -s -r -p 'Press any key'"
+
+row() { printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5"; }
+
+# id<TAB>installed, for this category only.
+states=$(omacos-app-list ${category:+"$category"} | awk -F'\t' '{print $1 "\t" $3}')
+
+while IFS=$'\t' read -r id state; do
+  [[ -n $id ]] || continue
+  icon=$(catalog_field "$id" icon)
+  label=$(catalog_field "$id" label)
+  case $mode in
+    install)
+      # Installed entries stay listed and go unselectable, so the list reads as
+      # what you have rather than shrinking as you install things.
+      if [[ $state == installed ]]; then
+        row "install.$id" "$icon" "$label" "" disabled
+      else
+        row "install.$id" "$icon" "$label" "omacos-install-app $id; $pause" ok
+      fi ;;
+    remove)
+      [[ $state == installed ]] || continue
+      row "remove.$id" "$icon" "$label" "omacos-remove-app $id; $pause" ok ;;
+    launch)
+      [[ $state == installed ]] || continue
+      row "launch.$id" "$icon" "$label" "omacos-install-launch $id" ok ;;
+    *) echo "unknown mode: $mode" >&2; exit 1 ;;
+  esac
+done <<<"$states"
+
+# Web apps and TUI wrappers you made yourself are not in the catalog, but they
+# are apps, and they are removable.
+if [[ -z $category ]]; then
+  while IFS= read -r name; do
+    [[ -n $name ]] || continue
+    bundle_kind "$(bundle_path "$name")" >/dev/null || continue
+    case $mode in
+      remove) row "remove.bundle.$name" "⊕" "$name" "omacos-remove-app $(printf '%q' "$name"); $pause" ok ;;
+      launch) row "launch.bundle.$name" "⊕" "$name" "open $(printf '%q' "$HOME/Applications/$name.app")" ok ;;
+    esac
+  done < <(bundle_names)
+fi

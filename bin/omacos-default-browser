@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# omacos:summary=Set the browser everything opens links in
+# omacos:args=[browser]
+# omacos:examples=omacos default browser | omacos default browser firefox
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/defaults.sh"
+
+value=${1:-}
+[[ -n $value ]] || { default_show DEFAULT_BROWSER; exit 0; }
+
+default_resolve browser browser "$value"
+default_ensure_installed browser "$value"
+local_env_set DEFAULT_BROWSER "$DEFAULT_TARGET"
+omacos-setup-browser "$DEFAULT_TARGET" >/dev/null
+default_announce "$DEFAULT_TARGET" "$DEFAULT_TARGET is now the default browser"

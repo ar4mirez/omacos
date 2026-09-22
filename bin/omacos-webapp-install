@@ -1,18 +1,47 @@
 #!/usr/bin/env bash
 # omacos:summary=Install a website as a standalone app
-# omacos:args=<name> <url>
+# omacos:args=[name] [url] [icon] [--scheme "mailto ..."] [--handler <command>]
 # omacos:examples=omacos webapp install Linear https://linear.app
 #
 # Creates a real .app in ~/Applications, so it gets its own Dock entry, its own
-# window, and can be tiled like any other app.
+# window, and can be tiled like any other app. With no arguments it asks.
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/bundles.sh"
 
-name=${1:-}; url=${2:-}
+schemes=""
+handler=""
+positional=()
+while (($#)); do
+  case $1 in
+    --scheme)  schemes=${2:?--scheme needs a value}; shift 2 ;;
+    --handler) handler=${2:?--handler needs a value}; shift 2 ;;
+    *)         positional+=("$1"); shift ;;
+  esac
+done
+set -- ${positional[@]+"${positional[@]}"}
+
+name=${1:-}; url=${2:-}; icon=${3:-}
+
+if [[ -z $name || -z $url ]]; then
+  # A keybinding or a menu row has no terminal to ask in, so move into one.
+  if [[ ! -t 0 ]]; then
+    exec omacos-launch-tui "omacos-webapp-install; echo; read -n 1 -s -r -p 'Press any key to close'"
+  fi
+  command -v gum >/dev/null || { echo "usage: omacos webapp install <name> <url>" >&2; exit 1; }
+  printf "\033[32mA website, as an app you can launch and tile.\033[0m\n\n"
+  [[ -n $name ]] || name=$(gum input --prompt "Name> " --placeholder "Linear")
+  [[ -n $url ]]  || url=$(gum input --prompt "URL> " --placeholder "https://linear.app")
+fi
 [[ -n $name && -n $url ]] || { echo "usage: omacos webapp install <name> <url>" >&2; exit 1; }
 
 # A name becomes a path, and a URL becomes a command line. Validate both.
 [[ $name == */* || $name == .* ]] && { echo "Invalid name: $name" >&2; exit 1; }
+# A bare domain is what people type; anything with another scheme is not a
+# website, and Chromium's --app= would treat javascript: or file: as a document
+# to run.
+[[ $url =~ ^[a-zA-Z][a-zA-Z0-9+.-]*: ]] || url="https://$url"
 case $url in
   https://*|http://*) ;;
   *) echo "Refusing a non-http(s) URL: $url" >&2; exit 1 ;;
@@ -20,64 +49,42 @@ esac
 [[ $url == *[[:space:]]* ]] && { echo "Refusing a URL containing whitespace" >&2; exit 1; }
 
 # Chromium-family browsers can open a URL as a real app window. Safari cannot,
-# so fall back to a normal browser window rather than pretending.
+# so fall back to a normal browser window rather than pretending. Your own
+# default comes first: having chosen Brave, you should not get Chrome.
 browser=""
-for candidate in "Google Chrome" "Brave Browser" "Microsoft Edge" "Chromium" "Arc"; do
-  [[ -d "/Applications/$candidate.app" ]] && { browser=$candidate; break; }
+# shellcheck source=/dev/null
+[[ -f $OMACOS_CONFIG/local.env ]] && . "$OMACOS_CONFIG/local.env"
+for candidate in "${DEFAULT_BROWSER:-}" "Google Chrome" "Brave Browser" "Microsoft Edge" "Chromium" "Arc"; do
+  [[ -n $candidate ]] || continue
+  case $candidate in Safari|Firefox|Zen) continue ;; esac
+  if [[ -d "/Applications/$candidate.app" || -d "$HOME/Applications/$candidate.app" ]]; then
+    browser=$candidate; break
+  fi
 done
 
-app_dir="$HOME/Applications/$name.app"
-mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
+identifier="com.omacos.webapp.$(bundle_slug "$name")"
 
-if [[ -n $browser ]]; then
-  launch="open -na \"$browser\" --args --app=\"$url\" --class=\"$name\""
+if [[ -n $schemes ]]; then
+  [[ -n $handler ]] || handler="$OMACOS_PATH/bin/omacos-launch-webapp"
+  app_dir=$(bundle_create_url_handler "$name" "$identifier" "$handler" "$schemes" "$url")
 else
-  launch="open \"$url\""
-fi
-
-cat > "$app_dir/Contents/MacOS/$name" <<LAUNCHER
-#!/bin/bash
-exec $launch
-LAUNCHER
-chmod +x "$app_dir/Contents/MacOS/$name"
-
-cat > "$app_dir/Contents/Info.plist" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleName</key><string>$name</string>
-  <key>CFBundleDisplayName</key><string>$name</string>
-  <key>CFBundleIdentifier</key><string>com.omacos.webapp.$(echo "$name" | tr '[:upper:] ' '[:lower:]-')</string>
-  <key>CFBundleExecutable</key><string>$name</string>
-  <key>CFBundleIconFile</key><string>icon</string>
-  <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>1.0</string>
-  <key>LSMinimumSystemVersion</key><string>13.0</string>
-</dict>
-</plist>
-PLIST
-
-# Best-effort icon from the site's favicon; the app works fine without one.
-if command -v curl >/dev/null; then
-  domain=${url#*://}; domain=${domain%%/*}
-  tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
-  if curl -fsL --max-time 10 "https://www.google.com/s2/favicons?domain=$domain&sz=256" -o "$tmp/icon.png" 2>/dev/null \
-     && [[ -s $tmp/icon.png ]]; then
-    mkdir -p "$tmp/icon.iconset"
-    # -s format png matters: favicon services often return JPEG, sips preserves
-    # the source format regardless of the output extension, and iconutil then
-    # refuses the iconset without saying why.
-    for size in 16 32 128 256 512; do
-      sips -s format png -z $size $size "$tmp/icon.png" \
-        --out "$tmp/icon.iconset/icon_${size}x${size}.png" >/dev/null 2>&1 || true
-    done
-    iconutil -c icns "$tmp/icon.iconset" -o "$app_dir/Contents/Resources/icon.icns" 2>/dev/null || true
+  if [[ -n $browser ]]; then
+    launch="exec open -na $(printf '%q' "$browser") --args --app=$(printf '%q' "$url") --class=$(printf '%q' "$name")"
+  else
+    launch="exec open $(printf '%q' "$url")"
   fi
+  app_dir=$(bundle_create "$name" "$identifier" "$launch" "$url")
 fi
 
-touch "$app_dir"   # nudge Launch Services to notice the new bundle
+bundle_apply_icon "$app_dir" "$icon" "$url" || \
+  printf '\033[2mNo icon found for %s; it will use the generic one.\033[0m\n' "$name"
+
+bundle_register "$app_dir" "$schemes"
+
 printf '\033[32mInstalled \033[1m%s\033[0m\033[32m → %s\033[0m\n' "$name" "${app_dir/#$HOME/\~}"
-if [[ -z $browser ]]; then
+if [[ -z $browser && -z $schemes ]]; then
   printf '\033[2mNo Chromium-family browser found, so it opens in your default browser.\033[0m\n'
+fi
+if [[ -n $schemes ]]; then
+  printf '\033[2mHandles: %s\033[0m\n' "$schemes"
 fi

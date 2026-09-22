@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# omacos:summary=Remove the apps omacos preinstalls, in one go
+# omacos:args=[--yes]
+# omacos:examples=omacos remove preinstalls
+#
+# The web apps, terminal apps and packages omacos puts on a new machine. The
+# list lives in one place — the `preinstall` flag in the app catalog — so this
+# and its opposite can never drift apart.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/bundles.sh"
+
+assume_yes=false
+[[ ${1:-} == --yes || ${1:-} == -y ]] && assume_yes=true
+
+if ! $assume_yes && [[ -t 0 ]] && command -v gum >/dev/null; then
+  gum confirm "Remove every preinstalled app, web app and terminal app?" || exit 0
+fi
+
+echo "Removing the preinstalled apps…"
+
+omacos-webapp-remove --all --yes || true
+omacos-tui-remove --all --yes || true
+
+ids=()
+while IFS= read -r id; do
+  [[ -n $id ]] || continue
+  [[ $(catalog_field "$id" preinstall) == true ]] || continue
+  catalog_present "$id" || continue
+  ids+=("$id")
+done < <(catalog_ids)
+
+((${#ids[@]})) && omacos-remove-app --yes "${ids[@]}"
+
+omacos-state set preinstalls-removed
+
+# The keymap is yours and omacos does not rewrite it, so a binding to something
+# just removed still exists. It fails politely — `omacos launch app` says what
+# is missing — but you may want the key back.
+printf '\n\033[2mKeybindings for these are still in ~/.config/omacos/keymap.conf.\033[0m\n'
+printf '\033[2mEdit them with: omacos menu setup, or $EDITOR ~/.config/omacos/keymap.conf\033[0m\n'

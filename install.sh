@@ -19,6 +19,7 @@ steps=(
   5-identity
   6-services
   7-theme
+  8-defaults
 )
 
 for step in "${steps[@]}"; do

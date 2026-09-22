@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# omacos:summary=Open HEY, turning a mailto: link into a compose window
+# omacos:args=[url]
+# omacos:hidden=true
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+url=${1:-}
+target="https://app.hey.com"
+if [[ $url == mailto:* ]]; then
+  target="https://app.hey.com/messages/new?to=${url#mailto:}"
+fi
+exec omacos-launch-webapp "$target"

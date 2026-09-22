@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# omacos:summary=Open the coding agent you set as the default
+# omacos:args=[args...]
+# omacos:examples=omacos launch agent
+#
+# Agents are terminal programs, so this opens one in its own window the way
+# every other TUI here does. Choose which with `omacos default agent`.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/catalog.sh"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/defaults.sh"
+
+agent=$(local_env_get DEFAULT_AGENT)
+if [[ -z $agent ]]; then
+  omacos-cmd-notify "No coding agent" "Choose one with: omacos default agent" || true
+  echo "No default agent. Pick one: omacos default agent <$(default_choices agent | tr ' ' '|')>" >&2
+  exit 1
+fi
+
+if ! command -v "$agent" >/dev/null 2>&1; then
+  echo "$agent is not on PATH. Reinstall it with: omacos default agent $agent" >&2
+  exit 1
+fi
+
+exec omacos-launch-tui "$agent $*"
