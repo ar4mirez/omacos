@@ -1,0 +1,11 @@
+# Which 1Password vaults the SSH agent may offer keys from.
+# This file contains no secrets — it is safe to commit to your dotfiles.
+#
+# By default the agent only uses Personal/Private/Employee vaults. Uncomment
+# and edit to include others.
+
+# [[ssh-keys]]
+# vault = "Development"
+
+# [[ssh-keys]]
+# item = "GitHub Signing Key"

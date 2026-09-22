@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# omacos:summary=Set up git commit signing with an SSH key from 1Password
+# omacos:args=[public-key]
+# omacos:examples=omacos setup signing | omacos setup signing "ssh-ed25519 AAAA..."
+#
+# Signs with a key that never leaves 1Password: op-ssh-sign asks the app, which
+# asks you for Touch ID. Nothing private is ever written to disk.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+signer="/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+agent_sock="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+
+[[ -x $signer ]] || { echo "1Password is not installed at the expected path." >&2; exit 1; }
+if [[ ! -S $agent_sock ]]; then
+  echo "The 1Password SSH agent is not running." >&2
+  echo "Enable it: 1Password > Settings > Developer > Use the SSH agent" >&2
+  exit 1
+fi
+
+public_key=${1:-}
+if [[ -z $public_key ]]; then
+  # The agent lists public keys only; there is nothing secret in this output.
+  mapfile -t keys < <(SSH_AUTH_SOCK="$agent_sock" ssh-add -L 2>/dev/null | grep -v '^The agent')
+  ((${#keys[@]})) || { echo "No SSH keys in the agent. Add one in 1Password first." >&2; exit 1; }
+  if ((${#keys[@]} == 1)); then
+    public_key=${keys[0]}
+  elif command -v gum >/dev/null; then
+    public_key=$(printf '%s\n' "${keys[@]}" | gum choose --header "Which key should sign your commits?") || exit 0
+  else
+    echo "Several keys available; pass the one you want as an argument:" >&2
+    printf '  %s\n' "${keys[@]}" >&2
+    exit 1
+  fi
+fi
+
+git config --global gpg.format ssh
+git config --global user.signingkey "$public_key"
+git config --global commit.gpgsign true
+git config --global tag.gpgsign true
+git config --global gpg.ssh.program "$signer"
+
+# allowed_signers lets *you* verify your own commits locally. Public keys only.
+email=$(git config --global user.email)
+allowed="$HOME/.ssh/allowed_signers"
+mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
+entry="$email $public_key"
+touch "$allowed"
+grep -qxF "$entry" "$allowed" || printf '%s\n' "$entry" >> "$allowed"
+git config --global gpg.ssh.allowedSignersFile "$allowed"
+
+printf '\033[32mCommit signing is on.\033[0m\n'
+printf '\n\033[33mOne step left, and it is the one people miss:\033[0m\n'
+printf '  Add this key to GitHub as a \033[1mSigning key\033[0m — a separate entry from\n'
+printf '  your Authentication key, even though it is the same key.\n\n'
+printf '  gh ssh-key add --type signing -t "$(scutil --get ComputerName)" <(echo %q)\n\n' "$public_key"

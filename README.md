@@ -39,6 +39,9 @@ omacos menu                  # everything, in one searchable menu
 omacos theme list|set|next|current
 omacos keymap show|build
 omacos feature enable desktop
+omacos webapp install Linear https://linear.app
+omacos setup signing            # git commit signing via 1Password
+omacos install app slack zoom
 omacos update
 ```
 

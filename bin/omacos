@@ -28,6 +28,7 @@ declare -A GROUP_DESCRIPTIONS=(
   [update]="Update omacos and packages"
   [migrate]="Run pending migrations"
   [webapp]="Install a website as an app"
+  [setup]="One-time setup helpers"
   [state]="Read and write persistent state flags"
   [done]="One-shot completion markers"
   [hook]="User extension points"
