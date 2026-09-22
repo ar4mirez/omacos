@@ -17,6 +17,22 @@ public_key=$(git config --global user.signingkey 2>/dev/null) || true
 
 fingerprint=$(printf '%s\n' "$public_key" | ssh-keygen -lf - 2>/dev/null | awk '{print $2}')
 
+# If GitHub already verifies a commit signed by this key, the key is
+# registered and there is nothing to upload — worth checking before asking
+# for a scope, since the common case is that it is already done.
+remote_url=$(git config --get remote.origin.url 2>/dev/null) || true
+if [[ -n ${remote_url:-} ]]; then
+  repo=${remote_url#*github.com[:/]}; repo=${repo%.git}
+  head_sha=$(git rev-parse HEAD 2>/dev/null) || true
+  verification=$(gh api "repos/$repo/commits/$head_sha" \
+    --jq '.commit.verification | "\(.verified) \(.reason)"' 2>/dev/null) || true
+  if [[ ${verification:-} == "true valid" ]]; then
+    printf '\033[32mGitHub already verifies commits signed with this key.\033[0m\n'
+    printf '\033[2mNothing to upload.\033[0m\n'
+    exit 0
+  fi
+fi
+
 # Listing and adding signing keys needs a scope beyond the default set, and
 # gh's own error for this is a bare 404. Check first and say what to run.
 if ! gh auth status 2>&1 | grep -q 'admin:ssh_signing_key'; then

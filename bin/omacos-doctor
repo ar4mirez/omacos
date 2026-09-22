@@ -73,7 +73,8 @@ command -v op >/dev/null && ok "op CLI $(op --version 2>/dev/null)" \
 if [[ -S $op_sock ]]; then
   ok "SSH agent socket is live"
   if [[ $(git config --global gpg.format 2>/dev/null) == ssh ]]; then
-    ok "Commit signing configured"
+    signing_key=$(git config --global user.signingkey 2>/dev/null)
+    ok "Commit signing configured (${signing_key##* })"
   else
     note "Commit signing not set up" "Run: omacos setup signing"
   fi
