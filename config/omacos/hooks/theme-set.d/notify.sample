@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Runs after every `omacos theme set`. $1 is the theme name.
+#
+# To activate: drop the .sample suffix and make it executable.
+#   mv notify.sample notify && chmod +x notify
+
+theme=$1
+osascript -e "display notification \"Theme: $theme\" with title \"omacos\""

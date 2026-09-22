@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Runs once at the end of `install.sh`.
+#
+# The place for apps that are yours rather than omacos's, so a new machine
+# comes up complete without editing the shipped Brewfile.
+#
+# To activate: mv personal-apps.sample personal-apps && chmod +x personal-apps
+
+omacos-install-app slack zoom figma
+omacos-webapp-install Linear https://linear.app

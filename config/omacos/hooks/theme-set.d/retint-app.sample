@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Theme an app omacos does not know about. $1 is the theme name.
+#
+# Colours for the active theme are available two ways:
+#   - the palette:  ~/.local/state/omacos/current/theme/colors.toml
+#   - rendered output from your own ~/.config/omacos/themed/*.tpl templates
+#
+# To activate: mv retint-app.sample retint-app && chmod +x retint-app
+
+palette="$HOME/.local/state/omacos/current/theme/colors.toml"
+accent=$(awk -F'"' '/^accent/ {print $2; exit}' "$palette")
+
+echo "Would retint MyApp with accent $accent"

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Runs at the end of every `omacos update`.
+#
+# Good for things omacos deliberately does not manage: language toolchains,
+# global npm packages, editor plugins.
+#
+# To activate: mv reinstall-tools.sample reinstall-tools && chmod +x reinstall-tools
+
+mise upgrade
+nvim --headless "+Lazy! sync" +qa
