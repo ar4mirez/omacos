@@ -32,6 +32,12 @@ if [[ ! -f $OMACOS_CONFIG/local.env ]]; then
 # GIT_NAME="Your Name"
 # GIT_EMAIL="you@example.com"
 # WORK_DIR="$HOME/Work"
+
+# Which 1Password SSH key signs your commits. Name it here and every machine
+# you set up configures signing without asking. `omacos setup signing` writes
+# this for you the first time you choose interactively.
+# Use a SHA256 fingerprint instead of a name if two 1Password items share one.
+# GIT_SIGNING_KEY="GitHub"
 LOCALENV
   ok "Created local.env (fill in your git identity)"
 fi

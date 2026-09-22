@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# omacos:summary=Register your signing key with GitHub as a Signing key
+# omacos:examples=omacos setup github-signing-key
+#
+# GitHub tracks authentication and signing keys separately, so the key you
+# already use to push is not automatically trusted to sign. Uploading the same
+# key a second time, typed as a signing key, is what makes commits show as
+# Verified.
+set -euo pipefail
+
+command -v gh >/dev/null || { echo "gh is not installed." >&2; exit 1; }
+gh auth status >/dev/null 2>&1 || { echo "gh is not authenticated. Run: gh auth login" >&2; exit 1; }
+
+public_key=$(git config --global user.signingkey 2>/dev/null) || true
+[[ -n ${public_key:-} && $public_key == ssh-* ]] || {
+  echo "No SSH signing key configured. Run: omacos setup signing" >&2; exit 1; }
+
+fingerprint=$(printf '%s\n' "$public_key" | ssh-keygen -lf - 2>/dev/null | awk '{print $2}')
+
+if gh api user/ssh_signing_keys --jq '.[].key' 2>/dev/null \
+   | while read -r existing; do printf '%s\n' "$existing" | ssh-keygen -lf - 2>/dev/null | awk '{print $2}'; done \
+   | grep -qxF "$fingerprint"; then
+  printf '\033[2mAlready registered with GitHub as a signing key.\033[0m\n'
+  exit 0
+fi
+
+title="${1:-$(scutil --get ComputerName 2>/dev/null || hostname)}"
+tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
+printf '%s\n' "$public_key" > "$tmp"
+
+gh ssh-key add "$tmp" --type signing --title "$title"
+printf '\033[32mRegistered with GitHub as a signing key (%s).\033[0m\n' "$title"
