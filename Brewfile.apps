@@ -7,6 +7,11 @@
 # Several of these ship a .pkg and install under sudo, so a bootstrap that
 # includes them cannot be fully unattended — you will be asked once.
 
+# The browser comes first: `omacos webapp install` needs a Chromium-family
+# browser to give a site its own window, and falls back to opening a normal
+# tab without one.
+cask "brave-browser"
+
 cask "slack"
 cask "zoom"
 cask "microsoft-teams"

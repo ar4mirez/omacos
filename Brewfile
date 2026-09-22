@@ -43,6 +43,7 @@ brew "gum"
 brew "jq"
 brew "yq"
 brew "mas"
+brew "duti"             # sets URL scheme handlers for `omacos setup browser`
 brew "shellcheck"
 
 cask "ghostty"

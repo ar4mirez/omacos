@@ -12,12 +12,7 @@ set -euo pipefail
 
 (($#)) || { echo "usage: omacos install app <cask> [...]" >&2; exit 1; }
 
-if [[ ! -t 0 ]]; then
-  exec omacos-launch-tui "omacos-install-app $*; echo; read -n 1 -s -r -p 'Press any key to close'"
-fi
-
-# Ask once for the whole batch rather than once per cask, and fail early if the
-# password is wrong instead of halfway through a queue.
+# Which of these will run installer under sudo? Only those force a terminal.
 needs_admin=()
 for cask in "$@"; do
   brew list --cask "$cask" >/dev/null 2>&1 && continue
@@ -25,6 +20,12 @@ for cask in "$@"; do
     needs_admin+=("$cask")
   fi
 done
+
+# Relaunch only when something actually needs a password. A drag-and-drop cask
+# has no reason to steal a window.
+if ((${#needs_admin[@]})) && [[ ! -t 0 ]]; then
+  exec omacos-launch-tui "omacos-install-app $*; echo; read -n 1 -s -r -p 'Press any key to close'"
+fi
 
 if ((${#needs_admin[@]})); then
   printf '\033[33mThese install a .pkg and need your admin password:\033[0m %s\n' "${needs_admin[*]}"

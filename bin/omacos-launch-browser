@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# omacos:summary=Open the default browser
+# omacos:args=[url]
+# omacos:examples=omacos launch browser | omacos launch browser https://github.com
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+# shellcheck source=/dev/null
+[[ -f $OMACOS_CONFIG/local.env ]] && . "$OMACOS_CONFIG/local.env"
+
+if [[ -n ${1:-} ]]; then
+  exec open "$1"                                   # honours the system default
+elif [[ -n ${DEFAULT_BROWSER:-} ]]; then
+  exec open -a "$DEFAULT_BROWSER"
+else
+  exec open -a Safari
+fi

@@ -174,6 +174,16 @@ check "every feature flag is checked somewhere" "
     grep -rqE \"feature check \$f|\\| *\$f\\)|^  \$f\\)\" $OMACOS_PATH/bin $OMACOS_PATH/install || exit 1
   done"
 
+printf '\n\033[1mBrowser\033[0m\n'
+# duti's role argument is for UTIs; passing it alongside a URL scheme makes
+# duti invent a dynamic UTI and fail with error -50.
+check "sets schemes without a role arg" \
+  "! grep -E 'duti -s .* (http|https) (all|viewer|editor)' $OMACOS_PATH/bin/omacos-setup-browser"
+check "uses duti, not defaultbrowser"  "grep -q 'duti -s' $OMACOS_PATH/bin/omacos-setup-browser && ! grep -q 'defaultbrowser ' $OMACOS_PATH/bin/omacos-setup-browser"
+check "browser keybinding is not hard-coded" \
+  "! grep -q 'Browser | exec-and-forget open -a' $OMACOS_PATH/config/omacos/keymap.conf"
+check "apps Brewfile ships a browser"  "grep -q 'brave-browser' $OMACOS_PATH/Brewfile.apps"
+
 printf '\n\033[1mWebapps\033[0m\n'
 mkdir -p "$HOME/Applications"
 check "creates an app bundle"      "omacos-webapp-install Demo https://example.com && test -x $HOME/Applications/Demo.app/Contents/MacOS/Demo"

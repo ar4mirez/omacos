@@ -62,7 +62,8 @@ keymap that generates both the window manager config and its own cheatsheet.
 
 **Apps** (opt-in) — a small, editable set of GUI applications in
 `Brewfile.apps`, installed with one admin prompt for the whole batch rather
-than one per `.pkg` cask.
+than one per `.pkg` cask. Ships Brave and sets it as the default browser,
+which also gives `omacos webapp install` a real app window to work with.
 
 **Themes** — one `colors.toml` per theme renders every app's colours, switches
 macOS between light and dark, and sets the wallpaper. Ships tokyo-night,

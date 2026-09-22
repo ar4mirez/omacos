@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# omacos:summary=Set the default browser
+# omacos:args=[app name or bundle id]
+# omacos:examples=omacos setup browser | omacos setup browser "Brave Browser"
+#
+# Reads DEFAULT_BROWSER from ~/.config/omacos/local.env when given nothing, so
+# a new machine sets this without being asked.
+#
+# Uses duti against the http and https URL schemes. Two things worth knowing,
+# both found the hard way on macOS 27:
+#   - `defaultbrowser` exits 0 and does nothing here; it predates this macOS.
+#   - duti's third "role" argument is for UTIs. Passing it with a scheme makes
+#     duti invent a dynamic UTI and fail with error -50.
+# macOS 27 keeps the resulting choice somewhere no available tool can read
+# back, so this reports what it set rather than pretending to verify it.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+command -v duti >/dev/null || { echo "Needs duti: brew install duti" >&2; exit 1; }
+
+# shellcheck source=/dev/null
+[[ -f $OMACOS_CONFIG/local.env ]] && . "$OMACOS_CONFIG/local.env"
+
+wanted=${1:-${DEFAULT_BROWSER:-}}
+
+list_browsers() {
+  local app
+  for app in /Applications/*.app; do
+    [[ -d $app ]] || continue
+    # A browser is an app that claims the http scheme.
+    if plutil -p "$app/Contents/Info.plist" 2>/dev/null | grep -q '"http"'; then
+      basename "$app" .app
+    fi
+  done
+}
+
+if [[ -z $wanted ]]; then
+  if command -v gum >/dev/null && [[ -t 0 ]]; then
+    wanted=$(list_browsers | gum choose --header "Default browser?") || exit 0
+  else
+    echo "Browsers found:" >&2; list_browsers | sed 's/^/  /' >&2
+    echo "Pass one, or set DEFAULT_BROWSER in $OMACOS_CONFIG/local.env" >&2
+    exit 1
+  fi
+fi
+
+if [[ $wanted == *.* && $wanted != *" "* && ! -d "/Applications/$wanted.app" ]]; then
+  bundle_id=$wanted           # already a bundle id
+else
+  app_path="/Applications/$wanted.app"
+  [[ -d $app_path ]] || { echo "No app at $app_path" >&2; exit 1; }
+  bundle_id=$(defaults read "$app_path/Contents/Info.plist" CFBundleIdentifier 2>/dev/null) || {
+    echo "Could not read a bundle id from $app_path" >&2; exit 1; }
+fi
+
+for scheme in http https; do
+  duti -s "$bundle_id" "$scheme" || { echo "duti could not set $scheme" >&2; exit 1; }
+done
+
+printf '\033[32mDefault browser: \033[1m%s\033[0m \033[2m(%s)\033[0m\n' "$wanted" "$bundle_id"
+
+if [[ -z ${DEFAULT_BROWSER:-} && -f $OMACOS_CONFIG/local.env ]]; then
+  printf '\nDEFAULT_BROWSER=%q\n' "$wanted" >> "$OMACOS_CONFIG/local.env"
+  printf '\033[2mRecorded in local.env — future machines will not ask.\033[0m\n'
+fi
