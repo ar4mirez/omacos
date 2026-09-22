@@ -46,11 +46,24 @@ trap 'rm -f "$tmp"' EXIT
       # definition wins, and the first appearance fixes the ordering.
       if (!(key in value)) order[++n] = key
       else printf("omacos keymap: duplicate binding for %s — the last one wins\n", key) > "/dev/stderr"
-      gsub(/'"'"'/, "", action)
+      # An action starting with [ is a TOML array: several commands run in
+      # order. It has to reach the file verbatim — wrapping it in quotes, or
+      # stripping the quotes inside it, yields a line AeroSpace rejects, and a
+      # rejected config leaves every binding in the file inert.
+      if (action ~ /^\[/) {
+        literal[key] = 1
+      } else {
+        gsub(/'"'"'/, "", action)
+        literal[key] = 0
+      }
       value[key] = action
     }
     END {
-      for (i = 1; i <= n; i++) printf "%s = '"'"'%s'"'"'\n", order[i], value[order[i]]
+      for (i = 1; i <= n; i++) {
+        k = order[i]
+        if (literal[k]) printf "%s = %s\n", k, value[k]
+        else printf "%s = '"'"'%s'"'"'\n", k, value[k]
+      }
     }
   ' "$keymap"
 
@@ -84,7 +97,7 @@ MODES
 mv "$tmp" "$target"
 trap - EXIT
 
-count=$(grep -cE "^[a-z0-9-]+ = '" "$target" || true)
+count=$(grep -cE "^[a-z0-9-]+ = ('|\[)" "$target" || true)
 printf '\033[32mWrote %s\033[0m \033[2m(%s bindings)\033[0m\n' "${target/#$HOME/\~}" "$count"
 
 # Asking the server is the real liveness test: the process is named AeroSpace,

@@ -227,7 +227,19 @@ for rule in d.get('on-window-detected', []):
 check "workspaces come from the keymap" "yq -p toml -o json '.' $XDG_CONFIG_HOME/aerospace/aerospace.toml | python3 -c \"
 import json,sys
 d = json.load(sys.stdin)
-bound = {v.split()[-1] for k,v in d['mode']['main']['binding'].items() if v.startswith('workspace ')}
+# Only bindings that name a literal workspace count. An action can also be a
+# TOML array (a list of commands), and 'workspace --wrap-around next' names a
+# direction rather than a workspace — neither should be mistaken for one.
+bound = set()
+for action in d['mode']['main']['binding'].values():
+    if not isinstance(action, str) or not action.startswith('workspace '):
+        continue
+    # Exactly 'workspace <name>', which is what the generator's grep matches.
+    # 'workspace --wrap-around next' is a direction, and 'next'.isalnum() is
+    # True, so token count is the thing that actually separates them.
+    parts = action.split()
+    if len(parts) == 2 and parts[1].isalnum():
+        bound.add(parts[1])
 assert set(d['persistent-workspaces']) == bound, (d['persistent-workspaces'], bound)
 \""
 # AeroSpace refuses a config with one unknown key name, and refusing means
@@ -236,7 +248,8 @@ assert set(d['persistent-workspaces']) == bound, (d['persistent-workspaces'], bo
 # AeroSpace to ask, so the key vocabulary is checked here.
 aerospace_key_names_valid() {
   local named="esc enter space backspace tab delete equal minus slash comma
-               period semicolon quote backtick left down up right home end
+               period semicolon quote backtick leftSquareBracket
+               rightSquareBracket left down up right home end
                pageUp pageDown"
   local key last
   while IFS='|' read -r key _; do
@@ -253,6 +266,20 @@ aerospace_key_names_valid() {
 }
 check "key names are ones AeroSpace knows" aerospace_key_names_valid
 check "build reports a rejected config"   "grep -q 'rejected the config' $OMACOS_PATH/bin/omacos-keymap-build"
+array_action_survives() {
+  local keymap="$OMACOS_CONFIG/keymap.conf" toml="$XDG_CONFIG_HOME/aerospace/aerospace.toml"
+  printf "alt-cmd-comma | Stack with the window right | ['join-with right', 'layout accordion']\n" >> "$keymap"
+  omacos-keymap-build >/dev/null 2>&1 || return 1
+  # Emitted verbatim as a list, not wrapped in quotes and not de-quoted inside.
+  grep -qF "alt-cmd-comma = ['join-with right', 'layout accordion']" "$toml" || return 1
+  yq -p toml -o json '.' "$toml" | python3 -c "
+import json,sys
+v = json.load(sys.stdin)['mode']['main']['binding']['alt-cmd-comma']
+assert isinstance(v, list), f'not a TOML array: {v!r}'
+assert v == ['join-with right', 'layout accordion'], v
+"
+}
+check "array actions stay arrays" array_action_survives
 check "cheatsheet renders"     "omacos-keymap-show --plain | grep -q 'Focus left'"
 check "every binding documented" "test \$(grep -cE '^[a-z].*\\|.*\\|' $OMACOS_CONFIG/keymap.conf) -eq \$(omacos-keymap-show --plain | grep -cE '^  [a-z]')"
 
