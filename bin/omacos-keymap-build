@@ -27,8 +27,12 @@ trap 'rm -f "$tmp"' EXIT
   # Derived from the keymap, so there is still one source of truth.
   # This must precede base.toml: a bare key after a table header belongs to
   # that table, and base.toml ends with [[on-window-detected]].
-  workspaces=$(grep -oE "\\| *workspace [A-Za-z0-9]+ *$" "$keymap" \
-               | awk '{print $NF}' | sort -u -V | sed 's/.*/"&"/' | paste -sd, -)
+  # Flags are skipped, so `workspace --auto-back-and-forth S` still names S.
+  # `next` and `prev` are directions, not workspaces, and would otherwise be
+  # persisted as two workspaces called "next" and "prev".
+  workspaces=$(grep -oE "\\| *workspace( --[a-z-]+)* [A-Za-z0-9]+ *$" "$keymap" \
+               | awk '{print $NF}' | grep -vxE 'next|prev' \
+               | sort -u -V | sed 's/.*/"&"/' | paste -sd, -)
   [[ -n $workspaces ]] && echo "persistent-workspaces = [$workspaces]"
 
   echo

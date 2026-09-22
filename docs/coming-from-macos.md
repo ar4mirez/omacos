@@ -25,9 +25,9 @@ whole system. Nothing else claims `alt-1`..`alt-9`.
 | | |
 |---|---|
 | `alt-space` | the omacos menu — launch, install, capture, settings |
-| `alt-shift-enter` | apps only |
+| `alt-cmd-space` | apps only |
 | `alt-enter` | terminal |
-| `alt-shift-b` | browser |
+| `alt-shift-enter` | browser |
 | `alt-ctrl-k` | **every binding, on screen** |
 
 That last one is the only one worth memorising. It is also the first row of
@@ -96,14 +96,20 @@ AeroSpace does not use native Spaces at all.
 
 | | |
 |---|---|
-| `alt-h/j/k/l` | focus left, down, up, right |
-| `alt-shift-h/j/k/l` | move the window that way |
+| `alt-h/j/k/l`, or the arrows | focus left, down, up, right |
+| `alt-shift-h/j/k/l`, or the arrows | move the window that way |
 | `alt-1`..`alt-6` | go to a workspace |
 | `alt-shift-1`..`6` | send this window there, and follow it |
+| `alt-shift-cmd-1`..`6` | send it there and stay where you are |
 | `alt-t` | let this one float |
+| `alt-o` | pin it, so it follows you to every workspace |
 | `alt-f` | fullscreen |
-| `alt-s` | the scratchpad — `alt-shift-s` sends something there |
+| `alt-s` | the scratchpad, both ways — `alt-shift-s` sends something there |
 | `alt-comma` | stack windows in one slot |
+
+Focus takes the pointer with it, to the centre of the window you land on. The
+full chapter — splitting, stacking, pinning, the scratchpad, and the three
+things AeroSpace will not do — is [docs/navigation.md](navigation.md).
 
 The keymap is a text file, `~/.config/omacos/keymap.conf`, and it is the source
 of truth: `aerospace.toml` is generated from it and carries a do-not-edit
@@ -132,7 +138,7 @@ forgets it.
 | Spotlight, Raycast | `alt-space` |
 | Mission Control | `alt-1`..`alt-6` — the workspaces are already separate |
 | Cmd-Tab | `alt-tab` for the last window, `alt-backtick` to cycle this one |
-| Dragging windows | `alt-shift-h/j/k/l` |
+| Dragging windows | `alt-shift-h/j/k/l`, or the arrows |
 | Cmd-Shift-4 | `alt-shift-p` (and Cmd-Shift-4 still works) |
 | Screen recording | `alt-ctrl-p` starts and stops |
 | Digital Color Meter | `alt-ctrl-shift-c` |
@@ -222,9 +228,11 @@ rather say so than ship a UI-scripting hack that breaks every autumn.
   silently. `alt-ctrl-shift-comma` opens the settings pane instead.
 - **Turning the built-in display off, mirroring, cycling scaling.** No
   supported mechanism, or one that can leave a screen unreadable.
-- **Scrolling layouts, pseudo-tiling, sticky windows, dragging a tile.**
-  AeroSpace is not Hyprland. `alt-comma` stacking is the closest thing to
-  Omarchy's window groups.
+- **Scrolling layouts, pseudo-tiling, dragging a tile with the mouse.**
+  AeroSpace is not Hyprland: there is one tiling model, and no modifier-drag.
+  `alt-comma` stacking is the closest thing to Omarchy's window groups, and
+  `alt-o` is Omarchy's `Super + O` rebuilt out of a floating layout and a
+  workspace-change callback, since AeroSpace has no sticky windows of its own.
 - **A true hyper key.** Not expressible in `hidutil`; it needs
   Karabiner-Elements and a DriverKit extension. `omacos setup capslock hyper`
   explains the trade rather than installing one behind your back.

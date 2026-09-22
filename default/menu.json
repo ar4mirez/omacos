@@ -281,6 +281,41 @@
     "when": "! omacos-state check preinstalls-removed",
     "action": "omacos-remove-preinstalls; read -n 1 -s -r -p 'Press any key'"
   },
+  "windows": {
+    "icon": "◱",
+    "label": "Windows",
+    "when": "omacos-feature check desktop"
+  },
+  "windows.scratchpad": {
+    "icon": "▤",
+    "label": "Scratchpad",
+    "action": "aerospace workspace --auto-back-and-forth S"
+  },
+  "windows.balance": {
+    "icon": "▩",
+    "label": "Balance the sizes",
+    "action": "aerospace balance-sizes"
+  },
+  "windows.flatten": {
+    "icon": "▢",
+    "label": "Flatten this workspace",
+    "action": "aerospace flatten-workspace-tree"
+  },
+  "windows.pinned": {
+    "icon": "○",
+    "label": "What is pinned",
+    "action": "omacos-window-pin list; read -n 1 -s -r -p 'Press any key'"
+  },
+  "windows.unpin-all": {
+    "icon": "◌",
+    "label": "Unpin everything",
+    "action": "omacos-window-pin clear"
+  },
+  "windows.keybindings": {
+    "icon": "⌘",
+    "label": "The rest are keys",
+    "action": "omacos-keymap-show; read -n 1 -s -r -p 'Press any key'"
+  },
   "capture": {
     "icon": "⎙",
     "label": "Capture"

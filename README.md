@@ -28,9 +28,10 @@ own dotfiles repo.
 omacos refresh config ghostty/config.ghostty   # take a newer default, with a diff
 ```
 
-See [docs/architecture.md](docs/architecture.md) for why it works this way, and
+See [docs/architecture.md](docs/architecture.md) for why it works this way,
 [docs/coming-from-macos.md](docs/coming-from-macos.md) for what changes on a Mac
-you already know how to use.
+you already know how to use, and [docs/navigation.md](docs/navigation.md) for
+driving the desktop from the keyboard.
 
 ## Commands
 
@@ -40,6 +41,7 @@ omacos commands --json       # machine-readable, for agents
 omacos doctor                # what is actually true on this machine
 omacos menu                  # everything, in one searchable menu
 
+omacos window pin               # this window follows you to every workspace
 omacos theme list|set|next|current|import
 omacos theme background         # cycle the wallpapers a theme ships
 omacos keymap show|build
@@ -84,6 +86,11 @@ keymap that generates both the window manager config and its own cheatsheet.
 no longer a button. Every item on the bar answers left, right and middle clicks
 from one table you can edit. `alt-w` closes a window; `alt-q` quits the app,
 because on macOS those are not the same thing.
+
+Arrows and `hjkl` both move focus, and the pointer follows. `alt-s` drops into
+a scratchpad workspace and back out. `alt-o` pins a window so it comes along to
+every workspace you visit — AeroSpace has no sticky windows, so omacos carries
+it on the workspace-change callback instead.
 
 **Apps** are bound by *role*, not by name — the keymap says Music, and
 `~/.config/omacos/local.env` says which one:

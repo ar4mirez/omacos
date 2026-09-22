@@ -10,13 +10,19 @@ after-login-command = []
 after-startup-command = [
   'exec-and-forget /opt/homebrew/bin/borders',
   'exec-and-forget /opt/homebrew/bin/sketchybar',
+  # A pin is a window id, and window ids do not survive the windows that owned
+  # them. Starting with an empty set beats inheriting pins for windows that
+  # closed while AeroSpace was not running.
+  'exec-and-forget omacos-window-pin clear',
 ]
 
 # AeroSpace reimplements workspaces rather than using native Spaces, so nothing
-# else can observe a workspace switch. This is the only bridge SketchyBar gets.
+# else can observe a workspace switch. This is the only bridge SketchyBar gets,
+# and the only moment a pinned window can be brought along (`omacos window pin`,
+# which is how a window follows you everywhere without sticky-window support).
 exec-on-workspace-change = [
   '/bin/bash', '-c',
-  'sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE',
+  'sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE; omacos-window-follow-pinned',
 ]
 
 start-at-login = true
@@ -28,7 +34,10 @@ accordion-padding = 30
 default-root-container-layout = 'tiles'
 default-root-container-orientation = 'auto'
 
-# Mouse follows the focused window, which keeps hover menus where you expect.
+# Omarchy's `Super + Arrow` "switches focus and moves the cursor to the center
+# of the new application". The lazy variants only move the pointer when it is
+# not already inside the window, so clicking a window never yanks the cursor.
+on-focus-changed = ['move-mouse window-lazy-center']
 on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
 
 automatically-unhide-macos-hidden-apps = true

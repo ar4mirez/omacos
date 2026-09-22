@@ -17,8 +17,10 @@ fi
 render() {
   awk -F'|' '
     function flush_section() { if (section != "") printf "\n\033[1m%s\033[0m\n", section }
-    /^#[ \t]*-+[ \t]*/ {
-      # Section headers in the keymap are `# ---- name ----`
+    /^#[ \t]*---+/ {
+      # Section headers in the keymap are `# ---- name ----`. Three dashes at
+      # least: a comment that merely opens with a flag — `# --focus-follows-
+      # window, or ...` — is prose, and was being drawn as a heading.
       line = $0
       gsub(/^#[ \t-]+|[ \t-]+$/, "", line)
       if (line != "") { section = toupper(substr(line,1,1)) substr(line,2); flush_section(); section = "" }

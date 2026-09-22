@@ -45,6 +45,10 @@ check "no script ends in a bare conditional" "! trailing_conditional"
 
 printf '\n\033[1mDispatcher\033[0m\n'
 check "root help lists groups"        "omacos --help | grep -q theme"
+# A group with no GROUP_DESCRIPTIONS entry still appears in the root help, just
+# with nothing beside it — so adding a command in a new group silently ships a
+# blank line of help unless someone notices.
+check "every group is described"      "! omacos --help | grep -qE '^  [a-z-]+ +$'"
 check "commands --json is valid JSON" "omacos commands --json | python3 -m json.tool"
 check "unknown command exits 127"     "omacos definitely-not-a-command >/dev/null 2>&1; test \$? -eq 127"
 check "group help works"              "omacos theme --help | grep -q 'Apply a theme'"
@@ -447,12 +451,12 @@ bound = set()
 for action in d['mode']['main']['binding'].values():
     if not isinstance(action, str) or not action.startswith('workspace '):
         continue
-    # Exactly 'workspace <name>', which is what the generator's grep matches.
-    # 'workspace --wrap-around next' is a direction, and 'next'.isalnum() is
-    # True, so token count is the thing that actually separates them.
-    parts = action.split()
-    if len(parts) == 2 and parts[1].isalnum():
-        bound.add(parts[1])
+    # Flags are dropped, so 'workspace --auto-back-and-forth S' still names S,
+    # which is what the generator's grep does too. 'next'.isalnum() is True, so
+    # the directions have to be excluded by name rather than by shape.
+    args = [a for a in action.split()[1:] if not a.startswith('--')]
+    if len(args) == 1 and args[0].isalnum() and args[0] not in ('next', 'prev'):
+        bound.add(args[0])
 assert set(d['persistent-workspaces']) == bound, (d['persistent-workspaces'], bound)
 \""
 # AeroSpace refuses a config with one unknown key name, and refusing means
@@ -494,7 +498,81 @@ assert v == ['join-with right', 'layout accordion'], v
 }
 check "array actions stay arrays" array_action_survives
 check "cheatsheet renders"     "omacos-keymap-show --plain | grep -q 'Focus left'"
+# A keymap comment that begins with a flag is prose, not a `# ---- rule ----`.
+check "a flag in a comment is not a heading" \
+  "! omacos-keymap-show --plain | grep -q 'Focus-follows-window'"
 check "every binding documented" "test \$(grep -cE '^[a-z].*\\|.*\\|' $OMACOS_CONFIG/keymap.conf) -eq \$(omacos-keymap-show --plain | grep -cE '^  [a-z]')"
+
+printf '\n\033[1mNavigation parity\033[0m\n'
+# Omarchy's navigation chapter is the spec these answer to. Each check names
+# the binding it mirrors, so a keymap edit that quietly drops one is loud.
+KEYMAP="$OMACOS_PATH/config/omacos/keymap.conf"
+BASE="$OMACOS_PATH/default/aerospace/base.toml"
+
+# Super+Return then Super+Shift+Return — the chapter's first lesson.
+check "alt-enter is a terminal"        "grep -q '^alt-enter | Terminal |' $KEYMAP"
+check "alt-shift-enter is a browser"   "grep -q '^alt-shift-enter | Browser |' $KEYMAP"
+
+# Super+Arrow. The arrows and hjkl have to stay the same four commands, or the
+# cheatsheet promises two sets of keys that behave differently.
+arrows_mirror_hjkl() {
+  local pairs="h:left j:down k:up l:right" pair letter arrow vim arrowed
+  for pair in $pairs; do
+    letter=${pair%%:*}; arrow=${pair##*:}
+    vim=$(sed -n "s/^alt-$letter | [^|]*| //p" "$KEYMAP" | head -1)
+    arrowed=$(sed -n "s/^alt-$arrow | [^|]*| //p" "$KEYMAP" | head -1)
+    [[ -n $vim && $vim == "$arrowed" ]] || { echo "alt-$letter is '$vim', alt-$arrow is '$arrowed'"; return 1; }
+    vim=$(sed -n "s/^alt-shift-$letter | [^|]*| //p" "$KEYMAP" | head -1)
+    arrowed=$(sed -n "s/^alt-shift-$arrow | [^|]*| //p" "$KEYMAP" | head -1)
+    [[ -n $vim && $vim == "$arrowed" ]] || { echo "alt-shift-$letter is '$vim', alt-shift-$arrow is '$arrowed'"; return 1; }
+  done
+  return 0
+}
+check "arrows and hjkl agree" arrows_mirror_hjkl
+# "switch focus and move the cursor to the center of the new application"
+check "the mouse follows focus"        "grep -q \"^on-focus-changed = \\['move-mouse window-lazy-center'\\]\" $BASE"
+
+# Super+Shift+Alt+N — send it away without going with it.
+check "a window can be sent without following" \
+  "grep -q '^alt-shift-cmd-1 |.*| move-node-to-workspace 1$' $KEYMAP"
+check "sending and following are different keys" \
+  "grep -q '^alt-shift-1 |.*--focus-follows-window 1$' $KEYMAP"
+
+# Ctrl+Alt+Delete, and Super+Alt+F.
+check "everything here can be closed" \
+  "grep -qF \"alt-cmd-w | Close every window here | ['close-all-windows-but-current', 'close']\" $KEYMAP"
+check "fullscreen has an edge-to-edge variant" \
+  "grep -q '^alt-ctrl-f |.*| fullscreen --no-outer-gaps$' $KEYMAP"
+
+# Super+Grave / Super+S: a scratchpad you can also leave the same way.
+check "the scratchpad toggles"  "grep -q '^alt-s |.*| workspace --auto-back-and-forth S$' $KEYMAP"
+check "the scratchpad persists" "grep -q 'persistent-workspaces = .*\"S\"' $XDG_CONFIG_HOME/aerospace/aerospace.toml"
+
+# Super+O: a window that follows you everywhere.
+check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
+check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
+check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
+
+printf '\n\033[1mPinned windows\033[0m\n'
+# The scripts have to behave on a machine with no desktop layer at all: one is
+# on the path of every workspace switch, and must never be the reason one fails.
+# NO_WM is this machine with the desktop layer absent: omacos on PATH, no
+# AeroSpace anywhere on it. That is also exactly what CI looks like.
+NO_WM="$OMACOS_PATH/bin:/usr/bin:/bin"
+check "nothing pinned lists nothing" "PATH=$NO_WM omacos-window-pin list | grep -q 'Nothing is pinned'"
+check "pinning needs AeroSpace"      "! PATH=$NO_WM omacos-window-pin 2>/dev/null"
+check "pinning says why"             "PATH=$NO_WM omacos-window-pin 2>&1 | grep -q AeroSpace"
+check "follow is free when idle"     "PATH=$NO_WM omacos-window-follow-pinned"
+follow_survives_no_aerospace() {
+  local rc
+  mkdir -p "$OMACOS_STATE/pinned" && : > "$OMACOS_STATE/pinned/4242"
+  PATH="$NO_WM" omacos-window-follow-pinned
+  rc=$?
+  rm -rf "$OMACOS_STATE/pinned"
+  return $rc
+}
+check "follow survives no AeroSpace" follow_survives_no_aerospace
+check "pin rejects an unknown verb"  "! omacos-window-pin bogus 2>/dev/null"
 
 printf '\n\033[1mCLI surface\033[0m\n'
 # Omarchy's CLI is discoverable by design; --check is what keeps ours that way

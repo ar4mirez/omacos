@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# omacos:summary=Bring pinned windows along to the workspace you just entered
+# omacos:args=[workspace]
+# omacos:hidden=true
+# omacos:examples=omacos window follow-pinned
+#
+# The other half of `omacos window pin`. AeroSpace runs this from
+# exec-on-workspace-change, so it is on the path of every workspace switch:
+# it must cost nothing when nothing is pinned, which is almost always.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+pins="$OMACOS_STATE/pinned"
+
+# The common case, and the cheap one: no directory, no aerospace call at all.
+[[ -d $pins ]] || exit 0
+ids=()
+for file in "$pins"/*; do
+  [[ -e $file ]] || continue
+  ids+=("${file##*/}")
+done
+[[ ${#ids[@]} -gt 0 ]] || exit 0
+
+command -v aerospace >/dev/null 2>&1 || exit 0
+
+# AEROSPACE_FOCUSED_WORKSPACE is set for exec-on-workspace-change; asking is
+# the fallback for running this by hand.
+workspace=${1:-${AEROSPACE_FOCUSED_WORKSPACE:-}}
+[[ -n $workspace ]] || workspace=$(aerospace list-workspaces --focused 2>/dev/null | head -1)
+[[ -n $workspace ]] || exit 0
+
+# One listing for the whole set: a window id is only valid while the window
+# lives, and a closed window would otherwise leave a pin that can never be
+# satisfied and is never cleaned up.
+alive=$(aerospace list-windows --all --format '%{window-id}' 2>/dev/null || true)
+
+for id in "${ids[@]}"; do
+  if [[ $'\n'$alive$'\n' == *$'\n'"$id"$'\n'* ]]; then
+    # No --focus-follows-window: the pinned window comes to you, it does not
+    # take the focus away from what you switched workspaces to reach.
+    aerospace move-node-to-workspace --window-id "$id" "$workspace" >/dev/null 2>&1 || true
+  else
+    rm -f "$pins/$id"
+  fi
+done
