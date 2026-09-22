@@ -104,6 +104,22 @@ cp "$OMACOS_PATH/config/omacos/keymap.conf" "$OMACOS_CONFIG/keymap.conf"
 check "builds aerospace.toml"  "omacos-keymap-build"
 check "no duplicate bindings" "test -z \"\$(sed -n '/^\\[mode\\.main\\.binding\\]/,/^\\[/p' $XDG_CONFIG_HOME/aerospace/aerospace.toml | grep -E \"^[a-z0-9-]+ = '\" | cut -d' ' -f1 | sort | uniq -d)\""
 check "parses as TOML"         "yq -p toml -o json '.' $XDG_CONFIG_HOME/aerospace/aerospace.toml"
+# TOML binds a bare key to the table above it, so a top-level setting emitted
+# after base.toml silently becomes a key of [[on-window-detected]].
+check "top-level keys stay top-level" "yq -p toml -o json '.' $XDG_CONFIG_HOME/aerospace/aerospace.toml | python3 -c \"
+import json,sys
+d = json.load(sys.stdin)
+assert 'persistent-workspaces' in d, 'persistent-workspaces is not top-level'
+assert d.get('config-version') == 2, 'config-version missing or wrong'
+for rule in d.get('on-window-detected', []):
+    assert set(rule) <= {'if','run'}, f'stray key leaked into on-window-detected: {rule}'
+\""
+check "workspaces come from the keymap" "yq -p toml -o json '.' $XDG_CONFIG_HOME/aerospace/aerospace.toml | python3 -c \"
+import json,sys
+d = json.load(sys.stdin)
+bound = {v.split()[-1] for k,v in d['mode']['main']['binding'].items() if v.startswith('workspace ')}
+assert set(d['persistent-workspaces']) == bound, (d['persistent-workspaces'], bound)
+\""
 check "cheatsheet renders"     "omacos-keymap-show --plain | grep -q 'Focus left'"
 check "every binding documented" "test \$(grep -cE '^[a-z].*\\|.*\\|' $OMACOS_CONFIG/keymap.conf) -eq \$(omacos-keymap-show --plain | grep -cE '^  [a-z]')"
 

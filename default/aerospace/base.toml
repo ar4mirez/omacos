@@ -1,6 +1,11 @@
 # omacos AeroSpace base settings — package-owned. Keybindings are appended by
 # `omacos keymap build` from ~/.config/omacos/keymap.conf.
 
+# config-version 2 replaces v1's habit of inferring workspaces from keybindings,
+# which the upstream guide calls error-prone. persistent-workspaces is appended
+# by `omacos keymap build`, derived from the keymap.
+config-version = 2
+
 after-login-command = []
 after-startup-command = [
   'exec-and-forget /opt/homebrew/bin/borders',

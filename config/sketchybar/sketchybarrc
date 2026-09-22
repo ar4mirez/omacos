@@ -27,6 +27,9 @@ sketchybar --bar height=36 \
                  padding_right=8 \
                  color="$BAR_COLOR"
 
+# updates=when_shown saves power for polled items (clock, battery). Items that
+# react to events override it with updates=on — with when_shown their scripts
+# never run on --trigger, which leaves the workspace indicators dead.
 sketchybar --default updates=when_shown \
                      icon.font="$FONT:Bold:14.0" \
                      icon.color="$ICON_COLOR" \
@@ -57,6 +60,7 @@ if true; then
     sketchybar --add item "space.$workspace" left \
                --subscribe "space.$workspace" aerospace_workspace_change \
                --set "space.$workspace" \
+                     updates=on \
                      label="$workspace" \
                      icon.drawing=off \
                      background.color="$ITEM_BG_COLOR" \
@@ -67,7 +71,8 @@ if true; then
 fi
 
 sketchybar --add item front_app left \
-           --set front_app script="$PLUGIN_DIR/front_app.sh" \
+           --set front_app updates=on \
+                           script="$PLUGIN_DIR/front_app.sh" \
                            icon.drawing=off \
                            label.color="$ACCENT_COLOR" \
                            label.font="$FONT:Bold:13.0" \
@@ -88,3 +93,11 @@ sketchybar --add item theme right \
                        icon.color="$ACCENT_COLOR"
 
 sketchybar --update
+
+# The workspace items only update on aerospace_workspace_change, so without
+# this they sit unstyled until you happen to switch workspaces. It has to come
+# after --update: before that, the items are not yet subscribed and the
+# trigger lands on nothing.
+if focused=$(aerospace list-workspaces --focused 2>/dev/null) && [[ -n $focused ]]; then
+  sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE="$focused"
+fi

@@ -14,8 +14,9 @@ else
   done
 
   # Accessibility cannot be granted from a script, so ask rather than pretend.
-  if [[ -d /Applications/AeroSpace.app ]] && ! pgrep -qx aerospace 2>/dev/null; then
-    warn "AeroSpace is installed but not running"
-    say  "Grant Accessibility in System Settings > Privacy & Security, then: open -a AeroSpace"
+  if [[ -d /Applications/AeroSpace.app ]] && ! aerospace list-workspaces --all >/dev/null 2>&1; then
+    warn "AeroSpace is not responding"
+    say  "Grant Accessibility in System Settings > Privacy & Security, then relaunch it:"
+    say  "  killall AeroSpace; open -a AeroSpace"
   fi
 fi
