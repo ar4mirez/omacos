@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# omacos:summary=Go back to the installed omacos
+# omacos:examples=omacos dev unlink
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+rm -f "$OMACOS_CONFIG/path.conf"
+printf '\033[33mUnlinked. Open a new shell to use %s again.\033[0m\n' "$HOME/.local/share/omacos"
+OMACOS_PATH="$HOME/.local/share/omacos" "$HOME/.local/share/omacos/bin/omacos-finalize-user" >/dev/null 2>&1 || true

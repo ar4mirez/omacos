@@ -88,6 +88,17 @@ check "root route lists rows" "omacos-menu --list | grep -q style"
 check "nested route resolves" "omacos-menu --list style | grep -q style.theme"
 check "shipped menu is valid JSON" "python3 -m json.tool < $OMACOS_PATH/default/menu.json"
 
+printf '\n\033[1mWebapps\033[0m\n'
+mkdir -p "$HOME/Applications"
+check "creates an app bundle"      "omacos-webapp-install Demo https://example.com && test -x $HOME/Applications/Demo.app/Contents/MacOS/Demo"
+check "Info.plist is valid"        "plutil -lint $HOME/Applications/Demo.app/Contents/Info.plist"
+check "rejects path traversal"     "! omacos-webapp-install ../evil https://example.com 2>/dev/null"
+check "rejects javascript: URLs"   "! omacos-webapp-install X 'javascript:alert(1)' 2>/dev/null"
+check "removes what it created"    "omacos-webapp-remove Demo && ! test -d $HOME/Applications/Demo.app"
+mkdir -p "$HOME/Applications/Foreign.app/Contents"
+echo '<plist></plist>' > "$HOME/Applications/Foreign.app/Contents/Info.plist"
+check "refuses foreign bundles"    "! omacos-webapp-remove Foreign 2>/dev/null && test -d $HOME/Applications/Foreign.app"
+
 printf '\n\033[1mKeymap\033[0m\n'
 cp "$OMACOS_PATH/config/omacos/keymap.conf" "$OMACOS_CONFIG/keymap.conf"
 check "builds aerospace.toml"  "omacos-keymap-build"

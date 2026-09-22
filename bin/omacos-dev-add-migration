@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# omacos:summary=Create a migration stamped with the current commit
+# omacos:examples=omacos dev add-migration
+#
+# The timestamp comes from the last commit, not `date +%s`, so ordering follows
+# git history and two branches cannot collide on the same second.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+cd "$OMACOS_PATH"
+timestamp=$(git log -1 --format=%cd --date=unix)
+file="migrations/$timestamp.sh"
+
+if [[ -e $file ]]; then
+  printf '\033[33mA migration already exists for this commit: %s\033[0m\n' "$file"
+else
+  # Mode 0644 and no shebang: migrations are run with `bash -euo pipefail`.
+  cat > "$file" <<'TEMPLATE'
+echo "Describe what this migration does"
+
+# Must be idempotent: it may run on machines in any state, and a machine where
+# another user already applied it. Exit non-zero to stay pending and stop the
+# queue rather than leaving a half-applied change behind.
+TEMPLATE
+  chmod 0644 "$file"
+  printf '\033[32mCreated %s\033[0m\n' "$file"
+fi
+printf '\033[2mTest with: rm ~/.local/state/omacos/migrations/%s.sh && omacos migrate\033[0m\n' "$timestamp"

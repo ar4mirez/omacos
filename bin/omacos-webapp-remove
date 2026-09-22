@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# omacos:summary=Remove a webapp
+# omacos:args=<name>
+# omacos:examples=omacos webapp remove Linear
+set -euo pipefail
+name=${1:?usage: omacos webapp remove <name>}
+[[ $name == */* || $name == .* ]] && { echo "Invalid name: $name" >&2; exit 1; }
+app_dir="$HOME/Applications/$name.app"
+[[ -d $app_dir ]] || { echo "No such webapp: $name" >&2; exit 1; }
+# Only ever remove bundles omacos created.
+grep -q 'com.omacos.webapp' "$app_dir/Contents/Info.plist" 2>/dev/null \
+  || { echo "$name was not created by omacos — refusing to remove it" >&2; exit 1; }
+rm -rf "$app_dir"
+printf '\033[33mRemoved %s\033[0m\n' "$name"

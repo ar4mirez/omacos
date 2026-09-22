@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# omacos:summary=Install a Homebrew cask and report what happened
+# omacos:args=<cask> [more casks...]
+# omacos:examples=omacos install app visual-studio-code | omacos install app slack zoom
+set -euo pipefail
+
+(($#)) || { echo "usage: omacos install app <cask> [...]" >&2; exit 1; }
+
+for cask in "$@"; do
+  if brew list --cask "$cask" >/dev/null 2>&1; then
+    printf '\033[2m· %s already installed\033[0m\n' "$cask"
+    continue
+  fi
+  printf '\033[34m▸\033[0m Installing %s…\n' "$cask"
+  if brew install --cask "$cask"; then
+    printf '\033[32m✓\033[0m %s\n' "$cask"
+  else
+    printf '\033[31m✗\033[0m %s failed\n' "$cask" >&2
+  fi
+done

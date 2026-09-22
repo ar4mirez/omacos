@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# omacos:summary=Install a website as a standalone app
+# omacos:args=<name> <url>
+# omacos:examples=omacos webapp install Linear https://linear.app
+#
+# Creates a real .app in ~/Applications, so it gets its own Dock entry, its own
+# window, and can be tiled like any other app.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+name=${1:-}; url=${2:-}
+[[ -n $name && -n $url ]] || { echo "usage: omacos webapp install <name> <url>" >&2; exit 1; }
+
+# A name becomes a path, and a URL becomes a command line. Validate both.
+[[ $name == */* || $name == .* ]] && { echo "Invalid name: $name" >&2; exit 1; }
+case $url in
+  https://*|http://*) ;;
+  *) echo "Refusing a non-http(s) URL: $url" >&2; exit 1 ;;
+esac
+[[ $url == *[[:space:]]* ]] && { echo "Refusing a URL containing whitespace" >&2; exit 1; }
+
+# Chromium-family browsers can open a URL as a real app window. Safari cannot,
+# so fall back to a normal browser window rather than pretending.
+browser=""
+for candidate in "Google Chrome" "Brave Browser" "Microsoft Edge" "Chromium" "Arc"; do
+  [[ -d "/Applications/$candidate.app" ]] && { browser=$candidate; break; }
+done
+
+app_dir="$HOME/Applications/$name.app"
+mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
+
+if [[ -n $browser ]]; then
+  launch="open -na \"$browser\" --args --app=\"$url\" --class=\"$name\""
+else
+  launch="open \"$url\""
+fi
+
+cat > "$app_dir/Contents/MacOS/$name" <<LAUNCHER
+#!/bin/bash
+exec $launch
+LAUNCHER
+chmod +x "$app_dir/Contents/MacOS/$name"
+
+cat > "$app_dir/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>$name</string>
+  <key>CFBundleDisplayName</key><string>$name</string>
+  <key>CFBundleIdentifier</key><string>com.omacos.webapp.$(echo "$name" | tr '[:upper:] ' '[:lower:]-')</string>
+  <key>CFBundleExecutable</key><string>$name</string>
+  <key>CFBundleIconFile</key><string>icon</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
+</dict>
+</plist>
+PLIST
+
+# Best-effort icon from the site's favicon; the app works fine without one.
+if command -v curl >/dev/null; then
+  domain=${url#*://}; domain=${domain%%/*}
+  tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+  if curl -fsL --max-time 10 "https://www.google.com/s2/favicons?domain=$domain&sz=256" -o "$tmp/icon.png" 2>/dev/null \
+     && [[ -s $tmp/icon.png ]]; then
+    mkdir -p "$tmp/icon.iconset"
+    # -s format png matters: favicon services often return JPEG, sips preserves
+    # the source format regardless of the output extension, and iconutil then
+    # refuses the iconset without saying why.
+    for size in 16 32 128 256 512; do
+      sips -s format png -z $size $size "$tmp/icon.png" \
+        --out "$tmp/icon.iconset/icon_${size}x${size}.png" >/dev/null 2>&1 || true
+    done
+    iconutil -c icns "$tmp/icon.iconset" -o "$app_dir/Contents/Resources/icon.icns" 2>/dev/null || true
+  fi
+fi
+
+touch "$app_dir"   # nudge Launch Services to notice the new bundle
+printf '\033[32mInstalled \033[1m%s\033[0m\033[32m → %s\033[0m\n' "$name" "${app_dir/#$HOME/\~}"
+[[ -z $browser ]] && printf '\033[2mNo Chromium-family browser found, so it opens in your default browser.\033[0m\n'

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# omacos:summary=Point omacos at a working checkout instead of the installed copy
+# omacos:args=<path-to-checkout>
+# omacos:examples=omacos dev link ~/code/omacos
+#
+# The last escape hatch: work on omacos itself without reinstalling. Writes
+# ~/.config/omacos/path.conf, which env-bootstrap reads before anything else.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+target=${1:?usage: omacos dev link <path-to-checkout>}
+target=$(cd "$target" 2>/dev/null && pwd) || { echo "No such directory: $1" >&2; exit 1; }
+[[ -x $target/bin/omacos ]] || { echo "Not an omacos checkout: $target" >&2; exit 1; }
+
+mkdir -p "$OMACOS_CONFIG"
+printf 'OMACOS_PATH=%q\n' "$target" > "$OMACOS_CONFIG/path.conf"
+printf '\033[32mLinked omacos to %s\033[0m\n' "$target"
+printf '\033[2mOpen a new shell for it to take effect. Undo with: omacos dev unlink\033[0m\n'
+
+# Agent skills are symlinks, so repoint them at the checkout too.
+omacos-finalize-user >/dev/null 2>&1 || true
