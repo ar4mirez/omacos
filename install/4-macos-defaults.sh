@@ -41,3 +41,13 @@ fi
 
 killall Dock Finder SystemUIServer 2>/dev/null || true
 ok "Restarted Dock, Finder and SystemUIServer"
+
+# Caps Lock is the best-placed key on the board and does nothing useful. Remap
+# it when local.env says to; hidutil needs no driver, so this is safe to script.
+# shellcheck source=/dev/null
+[[ -f $OMACOS_CONFIG/local.env ]] && . "$OMACOS_CONFIG/local.env"
+if [[ -n ${CAPSLOCK:-} ]]; then
+  omacos-setup-capslock "$CAPSLOCK" | sed 's/^/      /'
+else
+  skip "Caps Lock unchanged — set CAPSLOCK=option in local.env to remap it"
+fi

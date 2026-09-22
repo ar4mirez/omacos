@@ -11,7 +11,7 @@ set -euo pipefail
 # Only list flags something actually checks. statusbar and borders were
 # here and read by nothing, which promises granularity that does not exist:
 # they come with `desktop`.
-KNOWN=(desktop apps hyper)
+KNOWN=(desktop apps)
 features_file="$OMACOS_CONFIG/features"
 
 command=${1:-list}; name=${2:-}

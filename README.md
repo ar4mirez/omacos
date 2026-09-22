@@ -85,6 +85,23 @@ offers them in order and the server takes the first that works — so you
 silently push as whichever account happens to be first. Each identity pins its
 key with `IdentitiesOnly`, so the wrong one is never offered.
 
+## Caps Lock
+
+```bash
+omacos setup capslock option    # Caps Lock becomes the WM modifier
+omacos setup capslock status
+omacos setup capslock off
+```
+
+This uses `hidutil`, which is part of macOS — no kernel extension, nothing to
+approve, nothing to break on an OS upgrade — and a login agent so it survives a
+reboot. Since the keymap is built on `alt`, Caps Lock then reaches every window
+command under your left pinky.
+
+True hyper (⌘⌃⌥⇧ on one key) is not expressible in `hidutil` and needs
+Karabiner-Elements plus its DriverKit extension. `omacos setup capslock hyper`
+explains that trade rather than installing it behind your back.
+
 ## Escape hatches
 
 Ordered cheapest to most drastic. You should never have to fork.

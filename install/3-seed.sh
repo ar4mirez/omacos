@@ -38,6 +38,14 @@ if [[ ! -f $OMACOS_CONFIG/local.env ]]; then
 # this for you the first time you choose interactively.
 # Use a SHA256 fingerprint instead of a name if two 1Password items share one.
 # GIT_SIGNING_KEY="GitHub"
+
+# Caps Lock is the easiest key to reach and does nothing useful. "option" makes
+# it the omacos window-manager modifier, so Caps+1..6 and Caps+hjkl work under
+# the left pinky. Also accepts control, command, escape.
+# CAPSLOCK="option"
+
+# Default browser, by application name.
+# DEFAULT_BROWSER="Brave Browser"
 LOCALENV
   ok "Created local.env (fill in your git identity)"
 fi

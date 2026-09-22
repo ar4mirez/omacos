@@ -34,14 +34,19 @@ case ${os%%.*} in
   *)  note "macOS $os is older than this project targets" ;;
 esac
 [[ $(uname -m) == arm64 ]] && ok "Apple silicon (arm64)" || bad "Unsupported architecture: $(uname -m)"
-if csrutil status 2>/dev/null | grep -q enabled; then ok "SIP enabled (AeroSpace needs no exception)"
+# Captured rather than piped into grep -q: with pipefail, grep exiting early
+# SIGPIPEs the writer and the pipeline returns 141. It happens to work for
+# short output and silently inverts for long output.
+sip_status=$(csrutil status 2>/dev/null) || sip_status=""
+if [[ $sip_status == *enabled* ]]; then ok "SIP enabled (AeroSpace needs no exception)"
 else note "SIP is disabled" "omacos does not require this"; fi
 
 section "Homebrew"
 if command -v brew >/dev/null; then
   ok "brew $(brew --version | head -1 | awk '{print $2}')"
   for tap in nikitabobko/tap felixkratz/formulae; do
-    if brew tap 2>/dev/null | grep -qix "$tap"; then ok "tap $tap"
+    taps=$(brew tap 2>/dev/null) || taps=""
+    if grep -qix "$tap" <<<"$taps"; then ok "tap $tap"
     else note "tap $tap missing" "Run: brew tap $tap"; fi
   done
   if [[ -f $OMACOS_PATH/Brewfile ]]; then

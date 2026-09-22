@@ -39,6 +39,14 @@ if [[ ${1:-} == --plain ]]; then
   render | sed $'s/\033\[[0-9;]*m//g'
 else
   printf '\033[1momacos keybindings\033[0m  \033[2m(from ~/.config/omacos/keymap.conf)\033[0m\n'
+  # When Caps Lock is remapped to option, "alt" below is reachable under the
+  # left pinky — worth saying, since the keymap cannot know.
+  # Read first, then match: piping into `grep -q` makes the writer take
+  # SIGPIPE, and pipefail turns that into a failure.
+  caps_mapping=$(hidutil property --get UserKeyMapping 2>/dev/null) || caps_mapping=""
+  if [[ $caps_mapping == *30064771129* ]]; then
+    printf '\033[2malt is also Caps Lock on this machine.\033[0m\n'
+  fi
   render
   printf '\n\033[2mEdit the keymap, then run: omacos keymap build\033[0m\n'
 fi

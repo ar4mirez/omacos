@@ -174,6 +174,20 @@ check "every feature flag is checked somewhere" "
     grep -rqE \"feature check \$f|\\| *\$f\\)|^  \$f\\)\" $OMACOS_PATH/bin $OMACOS_PATH/install || exit 1
   done"
 
+printf '\n\033[1mCaps Lock\033[0m\n'
+check "uses hidutil, not a driver"  "grep -q 'hidutil' $OMACOS_PATH/bin/omacos-setup-capslock"
+check "persists via a login agent"  "grep -q 'LaunchAgents' $OMACOS_PATH/bin/omacos-setup-capslock"
+check "off is offered"              "omacos-setup-capslock 2>&1 | grep -qv Unknown"
+check "rejects unknown targets"     "! omacos-setup-capslock nonsense 2>/dev/null"
+# Under `set -o pipefail`, `producer | grep -q` reports failure whenever grep
+# matches early: grep exits, the producer takes SIGPIPE, and the pipeline
+# returns 141. It reads as a clean idiom and silently inverts the result.
+pipes_into_grep_q() {
+  grep -lE '^[^#]*[a-z] \| *grep -q' "$OMACOS_PATH"/bin/omacos* 2>/dev/null | head -1
+}
+check "nothing pipes into grep -q" "test -z \"\$(pipes_into_grep_q)\""
+check "hyper explains the driver cost" "grep -q 'DriverKit' $OMACOS_PATH/bin/omacos-setup-capslock"
+
 printf '\n\033[1mBrowser\033[0m\n'
 # duti's role argument is for UTIs; passing it alongside a URL scheme makes
 # duti invent a dynamic UTI and fail with error -50.

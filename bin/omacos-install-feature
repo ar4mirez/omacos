@@ -22,9 +22,5 @@ case $feature in
     mapfile -t casks < <(grep '^cask ' "$OMACOS_PATH/Brewfile.apps" | cut -d'"' -f2)
     ((${#casks[@]})) && omacos-install-app "${casks[@]}"
     ;;
-  hyper)
-    brew install --cask karabiner-elements
-    printf '\n\033[33mKarabiner needs a driver extension approved in System Settings.\033[0m\n'
-    ;;
   *) echo "Unknown feature: $feature" >&2; exit 1 ;;
 esac

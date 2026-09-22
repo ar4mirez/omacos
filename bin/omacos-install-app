@@ -16,7 +16,8 @@ set -euo pipefail
 needs_admin=()
 for cask in "$@"; do
   brew list --cask "$cask" >/dev/null 2>&1 && continue
-  if brew info --cask "$cask" 2>/dev/null | grep -qiE '\.pkg|requires (an )?admin|sudo'; then
+  info=$(brew info --cask "$cask" 2>/dev/null) || info=""
+  if grep -qiE '\.pkg|requires (an )?admin|sudo' <<<"$info"; then
     needs_admin+=("$cask")
   fi
 done

@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# omacos:summary=Remap Caps Lock to a useful modifier
+# omacos:args=<option|control|command|escape|hyper|off|status>
+# omacos:examples=omacos setup capslock option | omacos setup capslock off
+#
+# omacos uses alt as its window-manager modifier, so `option` turns Caps Lock
+# into the Super key Omarchy users expect — reachable by the left pinky, and
+# with no driver involved.
+#
+# Everything except `hyper` uses hidutil, which is part of macOS: no kernel
+# extension, nothing to approve, nothing to break on an OS upgrade. True hyper
+# (cmd+ctrl+opt+shift on one key) is not expressible in hidutil, and needs
+# Karabiner-Elements and its DriverKit extension.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+CAPS_LOCK=0x700000039
+declare -A TARGETS=(
+  [option]=0x7000000E2
+  [control]=0x7000000E0
+  [command]=0x7000000E3
+  [escape]=0x700000029
+)
+
+AGENT_LABEL="com.omacos.capslock"
+AGENT_PLIST="$HOME/Library/LaunchAgents/$AGENT_LABEL.plist"
+
+mapping_json() {
+  printf '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":%s,"HIDKeyboardModifierMappingDst":%s}]}' \
+    "$CAPS_LOCK" "$1"
+}
+
+# hidutil mappings are forgotten at logout, so the choice needs a login agent
+# to survive a reboot.
+write_agent() {
+  local json=$1
+  mkdir -p "$(dirname "$AGENT_PLIST")"
+  cat > "$AGENT_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$AGENT_LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/hidutil</string>
+    <string>property</string>
+    <string>--set</string>
+    <string>$json</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+</dict>
+</plist>
+PLIST
+  launchctl bootout "gui/$UID/$AGENT_LABEL" 2>/dev/null || true
+  launchctl bootstrap "gui/$UID" "$AGENT_PLIST" 2>/dev/null || true
+}
+
+target=${1:-status}
+
+case $target in
+  status)
+    # Read once, then inspect. `hidutil | grep -q` looks natural but grep exits
+    # on first match, hidutil takes SIGPIPE, and pipefail turns that into 141 —
+    # so the check reports "unmapped" on a machine that is mapped.
+    current=$(hidutil property --get UserKeyMapping 2>/dev/null) || current=""
+    if [[ $current == *"$((CAPS_LOCK))"* ]]; then
+      dst=$(grep -m1 'MappingDst' <<<"$current" | grep -oE '[0-9]{8,}')
+      name="something custom"
+      for key in "${!TARGETS[@]}"; do
+        [[ $((TARGETS[$key])) == "$dst" ]] && name=$key
+      done
+      printf 'Caps Lock is mapped to \033[1m%s\033[0m\n' "$name"
+    else
+      printf 'Caps Lock is unmapped.\n'
+    fi
+    if [[ -f $AGENT_PLIST ]]; then
+      printf '\033[2mPersisted across reboots by %s\033[0m\n' "$AGENT_LABEL"
+    fi
+    ;;
+
+  off)
+    hidutil property --set '{"UserKeyMapping":[]}' >/dev/null
+    launchctl bootout "gui/$UID/$AGENT_LABEL" 2>/dev/null || true
+    rm -f "$AGENT_PLIST"
+    printf '\033[33mCaps Lock is Caps Lock again.\033[0m\n'
+    ;;
+
+  hyper)
+    printf '\033[33mTrue hyper needs Karabiner-Elements.\033[0m\n'
+    printf 'hidutil maps one key to one modifier; cmd+ctrl+opt+shift on a single\n'
+    printf 'key is beyond it. Karabiner installs a DriverKit extension you have to\n'
+    printf 'approve, and it has needed fixes after several recent macOS releases.\n\n'
+    printf 'Since omacos binds its window-manager keys to alt, this gets you the\n'
+    printf 'same reach with nothing to break:\n\n'
+    printf '    omacos setup capslock option\n\n'
+    if command -v gum >/dev/null && [[ -t 0 ]]; then
+      gum confirm "Install Karabiner-Elements anyway?" || exit 0
+    else
+      printf 'To install it anyway: brew install --cask karabiner-elements\n'
+      exit 0
+    fi
+    brew install --cask karabiner-elements
+    printf '\n\033[33mApprove its driver extension in System Settings > Privacy & Security,\n'
+    printf 'then map Caps Lock to Hyper in Karabiner > Complex Modifications.\033[0m\n'
+    ;;
+
+  option|control|command|escape)
+    json=$(mapping_json "${TARGETS[$target]}")
+    hidutil property --set "$json" >/dev/null
+    write_agent "$json"
+    printf '\033[32mCaps Lock is now \033[1m%s\033[0m\033[32m.\033[0m\n' "$target"
+    [[ $target == option ]] &&
+      printf '\033[2mThat is the omacos window-manager modifier: Caps+1..6, Caps+hjkl, Caps+space.\033[0m\n'
+    printf '\033[2mUndo with: omacos setup capslock off\033[0m\n'
+    ;;
+
+  *)
+    echo "Unknown target: $target" >&2
+    echo "Use one of: option control command escape hyper off status" >&2
+    exit 1 ;;
+esac

@@ -28,7 +28,8 @@ list_browsers() {
   for app in /Applications/*.app; do
     [[ -d $app ]] || continue
     # A browser is an app that claims the http scheme.
-    if plutil -p "$app/Contents/Info.plist" 2>/dev/null | grep -q '"http"'; then
+    info=$(plutil -p "$app/Contents/Info.plist" 2>/dev/null) || info=""
+    if [[ $info == *'"http"'* ]]; then
       basename "$app" .app
     fi
   done
