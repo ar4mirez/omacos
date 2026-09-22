@@ -103,3 +103,42 @@ tracking issue had no test results; AeroSpace had no macOS 27 issue at all and
 is pre-1.0. So AeroSpace, SketchyBar and JankyBorders sit behind
 `omacos feature enable desktop`, and nothing in the terminal layer depends on
 them. A broken status bar should cost you a status bar.
+
+## Working on omacos itself
+
+Two trees, on purpose:
+
+| | |
+|---|---|
+| `~/Work/<you>/omacos` | the working checkout you edit and push from |
+| `~/.local/share/omacos` | the installed tree, exactly as an end user has it |
+
+Keeping the installed tree a plain clone of the remote means you use omacos the
+way everyone else does — `omacos update` really does pull, migrate, re-seed and
+reload. Developing directly in `~/.local/share/omacos` hides that whole path
+from you, which is where the interesting bugs live.
+
+The normal loop is therefore the same one a user is on:
+
+```bash
+cd ~/Work/<you>/omacos
+# edit, ./test/run.sh, commit, push
+omacos update          # the installed tree pulls it, like any machine
+```
+
+When that round trip is too slow to iterate against, point omacos at the
+checkout instead:
+
+```bash
+omacos dev link ~/Work/<you>/omacos   # edits take effect immediately
+omacos dev status                     # which tree am I running?
+omacos dev unlink                     # back to the installed tree
+```
+
+`dev link` writes `~/.config/omacos/path.conf`, which `default/env-bootstrap`
+reads before anything else, and repoints the agent-skill symlinks at the
+checkout so an assistant reads the code you are actually editing.
+
+Under the `~/Work/<Org>/<Repo>` convention the checkout also picks up that
+organisation's git identity, so omacos commits are signed with the key that
+account expects — see `omacos git org add`.

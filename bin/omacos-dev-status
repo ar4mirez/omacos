@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# omacos:summary=Show which omacos tree is in use
+# omacos:examples=omacos dev status
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+installed="$HOME/.local/share/omacos"
+
+if [[ $OMACOS_PATH == "$installed" ]]; then
+  printf '\033[32minstalled\033[0m  %s\n' "${OMACOS_PATH/#$HOME/\~}"
+  printf '\033[2mThis is what an end user runs. `omacos update` pulls from the remote.\033[0m\n'
+else
+  printf '\033[33mlinked\033[0m  %s\n' "${OMACOS_PATH/#$HOME/\~}"
+  printf '\033[2mA working checkout. Edits take effect immediately; `omacos dev unlink` returns to\033[0m\n'
+  printf '\033[2m%s.\033[0m\n' "${installed/#$HOME/\~}"
+fi
+
+if [[ -d $OMACOS_PATH/.git ]]; then
+  branch=$(git -C "$OMACOS_PATH" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')
+  head=$(git -C "$OMACOS_PATH" log --oneline -1 2>/dev/null || echo '?')
+  dirty=$(git -C "$OMACOS_PATH" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+  printf '\n  branch  %s\n  head    %s\n' "$branch" "$head"
+  [[ $dirty -gt 0 ]] && printf '  \033[33m%s uncommitted change(s)\033[0m\n' "$dirty"
+fi
+
+if [[ -d $installed/.git && $OMACOS_PATH != "$installed" ]]; then
+  printf '\n\033[2minstalled tree is at %s\033[0m\n' "$(git -C "$installed" log --oneline -1 2>/dev/null || echo '?')"
+fi

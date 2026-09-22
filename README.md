@@ -123,10 +123,21 @@ them. A broken status bar should cost you a status bar, not a working machine.
 
 ## Development
 
+Work in a checkout; keep `~/.local/share/omacos` as a plain clone of the remote
+so you stay on the same update path as everyone else.
+
 ```bash
-./test/run.sh    # 51 tests, sandboxed — cannot touch your real home
+git clone git@github.com:ar4mirez/omacos.git ~/Work/ar4mirez/omacos
+cd ~/Work/ar4mirez/omacos
+./test/run.sh    # 74 tests, sandboxed — cannot touch your real home
 ./install.sh     # idempotent: a no-op on a configured machine
+
+omacos dev link ~/Work/ar4mirez/omacos   # iterate without push-then-update
+omacos dev status                        # which tree am I running?
+omacos dev unlink
 ```
+
+See [docs/architecture.md](docs/architecture.md#working-on-omacos-itself).
 
 ## Licence
 
