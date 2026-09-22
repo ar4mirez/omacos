@@ -18,7 +18,15 @@ bad()  { ((fail++)); printf '  \033[31m✗\033[0m %s\n' "$1"; [[ -n ${2:-} ]] &&
 section() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 
 section "omacos"
-[[ -d $OMACOS_PATH ]] && ok "OMACOS_PATH  $OMACOS_PATH" || bad "OMACOS_PATH missing: $OMACOS_PATH"
+if [[ ! -d $OMACOS_PATH ]]; then
+  bad "OMACOS_PATH missing: $OMACOS_PATH"
+elif [[ $OMACOS_PATH == "$HOME/.local/share/omacos" ]]; then
+  ok "OMACOS_PATH  $OMACOS_PATH"
+else
+  # Worth saying plainly: while linked, `omacos update` pulls into your
+  # checkout rather than the installed tree.
+  note "Linked to a working checkout" "$OMACOS_PATH — return with: omacos dev unlink"
+fi
 case ":$PATH:" in *":$OMACOS_PATH/bin:"*) ok "bin/ is on PATH" ;;
   *) note "bin/ is not on PATH" "Open a new shell, or source ~/.config/zsh/.zshrc" ;; esac
 if command -v omacos >/dev/null; then ok "omacos resolves to $(command -v omacos)"; else bad "omacos not on PATH"; fi
