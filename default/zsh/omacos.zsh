@@ -93,6 +93,17 @@ if [[ ${OMACOS_ALIASES:-true} == true ]]; then
   alias reload='exec zsh'
 fi
 
+# ---------------------------------------------------------------- functions ---
+# Omarchy's shell-function layer: compression, worktrees, tmux dev layouts,
+# rsync watchers, SSH port forwarding and the reconnecting ssh wrapper.
+# Guarded: a tree without the file is a broken install, and an error printed
+# before every prompt is a worse way to find that out than `omacos doctor`.
+_omacos_functions="${OMACOS_PATH:-$HOME/.local/share/omacos}/default/zsh/functions.zsh"
+if [[ ${OMACOS_FUNCTIONS:-true} == true && -r $_omacos_functions ]]; then
+  source "$_omacos_functions"
+fi
+unset _omacos_functions
+
 # -------------------------------------------------------------------- tools ---
 (( $+commands[starship] )) && [[ ${OMACOS_PROMPT:-true} == true ]] && eval "$(starship init zsh)"
 (( $+commands[zoxide] ))  && eval "$(zoxide init zsh --cmd cd)"

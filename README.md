@@ -82,6 +82,11 @@ comment. There is no registry to update.
 zoxide, eza, bat, ripgrep, fd, lazygit, delta, mise, direnv, Ghostty, Neovim,
 tmux, btop.
 
+…plus a **shell-function layer**: `compress`, `ff`, the tmux dev layouts
+(`tdl`, `tds`, `tsl`), git worktrees (`ga`, `gd`), rsync watchers (`rsw`), SSH
+port forwarding (`fip`), and an `ssh` that cleans up the terminal and reconnects
+when a session drops. See [docs/shell-functions.md](docs/shell-functions.md).
+
 **Desktop** (opt-in) — AeroSpace tiling, SketchyBar, JankyBorders, driven by a
 keymap that generates both the window manager config and its own cheatsheet.
 `alt-ctrl-k` shows them all. No dock, no desktop icons, and a wallpaper that is

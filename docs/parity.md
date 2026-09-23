@@ -46,7 +46,7 @@ how a port ends up claiming things it cannot do.
 |---|---|---|---|
 | 15–18 | Terminal, Neovim, AI, dev tools | done | Ghostty, LazyVim, and a 68-entry catalog covering browsers, editors, terminals, AI apps, coding agents, services and runtimes. |
 | 19 | Shell tools | differs | fzf, zoxide, ripgrep, eza, bat, fd, atuin, direnv, mise all ship. **Open:** `tldr`, `yt-dlp`, `try`. |
-| 20 | Shell functions | open | **The largest single gap.** None of Omarchy's shell functions exist here: `compress`/`decompress`, the tmux dev layouts (`tdl`, `tds`, `tsl`), the git worktree helpers (`ga`, `gd`), the rsync watchers (`rsw`, `lsw`, `dsw`), the SSH port-forward helpers (`fip`, `dip`, `lip`), the reconnecting `ssh` wrapper, and `ff`. Almost all of it is portable as-is. |
+| 20 | Shell functions | done | Ported in full: `compress`/`decompress`, `ff`/`eff`, the tmux dev layouts (`tdl`, `tds`, `tdlm`, `tsl`), the git worktree helpers (`ga`, `gd`), the rsync watchers (`rsw`, `lsw`, `dsw`), the SSH port-forward helpers (`fip`, `dip`, `lip`), the reconnecting `ssh` wrapper, and `format-drive`/`iso2sd` on `diskutil`. See [shell-functions.md](shell-functions.md). |
 | 21–25 | TUIs, GUIs, browsers, commercial apps, web apps | done | `omacos tui install`, `omacos webapp install`, `omacos default browser`, and the catalog behind all of them. |
 | 26–29 | Gaming, PDFs, Windows VM, other packages | n/a | Steam aside, this is Proton, Lutris and virt-manager. Preview fills in PDFs; Homebrew is the package manager. |
 
@@ -84,12 +84,14 @@ how a port ends up claiming things it cannot do.
 
 Ranked by what you would notice:
 
-1. **Shell functions** (ch 20) — the whole layer is missing and nearly all of it ports unchanged.
-2. **Touch ID for `sudo`** (ch 37) — one line of PAM config for the manual's whole hardware-auth chapter.
-3. **Bar indicators** for Do Not Disturb, Night Shift and pending reminders (ch 05, 13) — the state is already tracked; nothing draws it.
-4. **Fonts** (ch 38) — choosing and installing one. Ghostty already loads a generated include, so there is a clean place to put it.
-5. **Networking odds and ends** (ch 35) — speed test, DNS, Wi-Fi QR. All native, all small.
-6. **QR decode** (ch 12) — the Vision framework already does OCR for `omacos capture text`; barcodes are the same API.
-7. **Transcode** (ch 12) — `sips` and ffmpeg.
-8. **Update-available badge** (ch 05, 30).
-9. **Low Power Mode** (ch 36), **a seeded `starship.toml`** (ch 40), **a debug bundle** (ch 45).
+1. **Touch ID for `sudo`** (ch 37) — one line of PAM config for the manual's whole hardware-auth chapter.
+2. **Bar indicators** for Do Not Disturb, Night Shift and pending reminders (ch 05, 13) — the state is already tracked; nothing draws it.
+3. **Fonts** (ch 38) — choosing and installing one. Ghostty already loads a generated include, so there is a clean place to put it.
+4. **Networking odds and ends** (ch 35) — speed test, DNS, Wi-Fi QR. All native, all small.
+5. **QR decode** (ch 12) — the Vision framework already does OCR for `omacos capture text`; barcodes are the same API.
+6. **Transcode** (ch 12) — `sips` and ffmpeg.
+7. **Update-available badge** (ch 05, 30).
+8. **Low Power Mode** (ch 36), **a seeded `starship.toml`** (ch 40), **a debug bundle** (ch 45).
+9. **`tldr`, `yt-dlp`, `try`** (ch 19) — three packages, not a feature.
+
+*Shell functions (ch 20) used to head this list. It is done.*

@@ -47,6 +47,7 @@ brew "jq"
 brew "yq"
 brew "mas"
 brew "duti"             # sets URL scheme handlers for `omacos setup browser`
+brew "fswatch"              # rsw: the macOS answer to inotifywait
 brew "shellcheck"
 
 cask "ghostty"

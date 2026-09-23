@@ -564,6 +564,66 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mShell functions\033[0m\n'
+FNS="$OMACOS_PATH/default/zsh/functions.zsh"
+# Every check runs in `zsh -f` with the file sourced, so nothing here depends on
+# the developer's own shell.
+zfn() { zsh -f -c "setopt GLOB_DOTS EXTENDED_GLOB; source '$FNS'; $1" 2>&1; }
+
+check "the layer parses as zsh"  "zsh -n $FNS"
+check "omacos.zsh sources it"    "grep -q 'default/zsh/functions.zsh' $OMACOS_PATH/default/zsh/omacos.zsh"
+check "it is behind a knob"      "grep -q 'OMACOS_FUNCTIONS' $OMACOS_PATH/default/zsh/omacos.zsh"
+check "fswatch is in the Brewfile" "grep -q '^brew \"fswatch\"' $OMACOS_PATH/Brewfile"
+
+# `local path=...` empties PATH in zsh, because $path IS $PATH. That cost a
+# debugging session; these names must never be declared local again.
+no_zsh_special_locals() {
+  ! grep -nE '^[[:space:]]*local .*\b(path|argv|cdpath|fpath|manpath|status|options|signals|dirstack|module_path|psvar)=' "$FNS"
+}
+check "no local shadows a zsh special" no_zsh_special_locals
+
+check "compress round-trips"     "zfn 'cd \$(mktemp -d); mkdir p; echo hi > p/f; compress p >/dev/null; rm -rf p; decompress p.tar.gz; cat p/f' | grep -q hi"
+# macOS tar buries a ._ AppleDouble beside every entry unless told not to.
+check "no AppleDouble in the tarball" \
+  "zfn 'cd \$(mktemp -d); mkdir p; echo hi > p/f; compress p >/dev/null; tar -tzf p.tar.gz' | grep -qv '\\._'"
+check "compress states its usage" "zfn 'compress' | grep -q Usage"
+
+check "ga refuses outside a repo" "zfn 'cd \$(mktemp -d); ga branch' | grep -q 'Not a git repository'"
+check "gd refuses a plain checkout" "zfn 'cd \$(mktemp -d); gd' | grep -q 'Not a worktree'"
+
+check "tmux layouts need tmux"   "zfn 'unset TMUX; tdl agent' | grep -q 'Start tmux first'"
+check "tsl needs a pane count"   "zfn 'unset TMUX; tsl' | grep -q Usage"
+
+check "rsw states its usage"     "zfn 'rsw' | grep -q 'Usage: rsw'"
+check "rsw rejects a missing dir" "zfn 'rsw /nope/nothing /tmp' | grep -q 'No such directory'"
+check "lsw is quiet when idle"   "zfn 'lsw' | grep -q 'No active watches'"
+check "dsw is quiet when idle"   "zfn 'dsw' | grep -q 'No active watches'"
+check "lip is quiet when idle"   "zfn 'lip' | grep -q 'No active forwards'"
+check "fip states its usage"     "zfn 'fip' | grep -q 'Usage: fip'"
+
+# The reconnect wrapper must only re-run sessions that are safe to re-run: a
+# remote command would have its side effects replayed.
+check "a bare destination is interactive" \
+  "zfn '_omacos_ssh_interactive host && echo yes' | grep -q yes"
+check "a glued option value is handled" \
+  "zfn '_omacos_ssh_interactive -p2222 host && echo yes' | grep -q yes"
+check "a separated option value is handled" \
+  "zfn '_omacos_ssh_interactive -p 2222 host && echo yes' | grep -q yes"
+check "a remote command is not replayed" \
+  "zfn '_omacos_ssh_interactive host uptime || echo no' | grep -q no"
+check "no destination is not interactive" \
+  "zfn '_omacos_ssh_interactive || echo no' | grep -q no"
+
+# Nothing here may ever point dd or diskutil at the disk you booted from.
+check "format-drive refuses an internal disk" \
+  "zfn 'format-drive /dev/disk0 X' | grep -q 'not an external disk'"
+check "format-drive refuses a partition" \
+  "zfn 'format-drive /dev/disk0s2 X' | grep -q 'not a partition\\|whole disk'"
+check "iso2sd refuses an internal disk" \
+  "zfn 'iso2sd $FNS /dev/disk0' | grep -q 'not an external disk'"
+check "iso2sd needs a real image" \
+  "zfn 'iso2sd /nope/none.iso /dev/disk4' | grep -q 'No such file'"
+
 printf '\n\033[1mWeather location\033[0m\n'
 # Omarchy pins the weather to a place when IP geolocation guesses wrong. The
 # answer belongs in local.env with every other "which one do you want".
