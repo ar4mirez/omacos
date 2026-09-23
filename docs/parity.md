@@ -89,8 +89,15 @@ something macOS will not allow.
 
 What remains is not a gap but a choice macOS forces and Omarchy does not: it
 draws its own menu bar across the top of the screen, so with the omacos bar
-there too you have two. `omacos toggle menubar` hides Apple's; `omacos bar
-position bottom` moves ours. `omacos doctor` says so when both are up.
+there too you have two.
+
+`omacos bar position bottom` moves ours, and takes effect at once.
+`omacos toggle menubar` hides Apple's, but macOS only reads that preference
+when the session starts — so it needs a log out and back in, and the command
+says so rather than reporting a success you cannot see. It checks by looking
+for the menu bar's own window rather than by reading the preference back,
+because those two answers disagree for as long as you stay logged in.
+`omacos doctor` reports whichever you have.
 
 *Shell functions (ch 20), Touch ID for `sudo` (ch 37), the bar indicators
 (ch 05, 13), fonts (ch 38), networking (ch 35), QR decode and transcoding

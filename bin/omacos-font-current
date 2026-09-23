@@ -4,6 +4,21 @@
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
 
+# --size answers the other half of "what is the font".
+if [[ ${1:-} == --size ]]; then
+  if [[ -s $OMACOS_STATE/current/font.size ]]; then
+    cat "$OMACOS_STATE/current/font.size"
+    exit 0
+  fi
+  ghostty="${XDG_CONFIG_HOME:-$HOME/.config}/ghostty/config.ghostty"
+  if [[ -f $ghostty ]]; then
+    size=$(sed -n 's/^font-size *= *//p' "$ghostty" | head -1)
+    [[ -n $size ]] && { printf '%s\n' "$size"; exit 0; }
+  fi
+  echo "No font size set." >&2
+  exit 1
+fi
+
 if [[ -s $OMACOS_STATE/current/font.name ]]; then
   cat "$OMACOS_STATE/current/font.name"
   exit 0

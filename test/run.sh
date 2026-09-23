@@ -579,6 +579,39 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mFont size\033[0m\n'
+check "size reads back"        "omacos-font-current --size | grep -qE '^[0-9]+$'"
+check "size is settable"       "omacos-font-size 13 >/dev/null && test \"\$(omacos-font-current --size)\" = 13"
+check "it lands in the include" "grep -q '^font-size = 13' $OMACOS_STATE/current/font.conf"
+check "absurd sizes are refused" "! omacos-font-size 200 2>/dev/null && ! omacos-font-size 2 2>/dev/null"
+check "non-numbers are refused"  "! omacos-font-size abc 2>/dev/null"
+# Setting a family must not silently reset a size you chose.
+size_survives_a_family_change() {
+  omacos-font-size 15 >/dev/null 2>&1 || return 1
+  local family; family=$(omacos-font-list | head -1)
+  omacos-font-set "$family" >/dev/null 2>&1 || return 1
+  [[ $(omacos-font-current --size) == 15 ]]
+}
+check "a family change keeps the size" size_survives_a_family_change
+
+printf '\n\033[1mThe menu bar, honestly\033[0m\n'
+MB="$OMACOS_PATH/bin/omacos-toggle-menubar"
+# _HIHideMenuBar is read by the window server at login. Writing it succeeds and
+# changes nothing until you log out, so a status that reads the preference
+# agrees with itself and disagrees with the screen.
+check "status measures, not reads"  "grep -q 'really_hidden' $MB"
+check "the helper can measure it"   "grep -q 'case \"menubar\"' $OMACOS_PATH/default/swift/omacos-helper.swift"
+check "it says a logout is needed"  "grep -q 'log out' $MB"
+check "it offers the other way out" "grep -q 'bar position bottom' $MB"
+# A bare call returning non-zero under `set -e` ends the script before it
+# prints anything, which is how this shipped saying nothing at all.
+check "the status call is guarded"  "grep -q 'really_hidden || seen=' $MB"
+menubar_status_says_something() {
+  local out; out=$(omacos-toggle-menubar status 2>&1 || true)
+  [[ -n $out ]]
+}
+check "status always answers"       menubar_status_says_something
+
 printf '\n\033[1mThe bar, and the other bar\033[0m\n'
 BAR="$OMACOS_PATH/bin/omacos-bar"
 check "position defaults to top"   "test \"\$(omacos-bar position)\" = top"

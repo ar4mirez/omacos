@@ -14,8 +14,20 @@ set -euo pipefail
 
 key=_HIHideMenuBar
 
-hidden() {
+# What was asked for.
+wanted_hidden() {
   [[ $(defaults read NSGlobalDomain "$key" 2>/dev/null) == 1 ]]
+}
+
+# What is actually on screen. These disagree, and that is the entire problem:
+# the window server reads _HIHideMenuBar when the session starts, so writing it
+# changes nothing until you log out — while `defaults read` happily reports
+# success. Measuring costs one call and cannot be wrong.
+really_hidden() {
+  local helper="$OMACOS_STATE/bin/omacos-helper" state
+  [[ -x $helper ]] || return 2          # cannot tell
+  state=$("$helper" menubar 2>/dev/null) || return 2
+  [[ $state == hidden ]]
 }
 
 apply() {
@@ -26,21 +38,51 @@ apply() {
   killall SystemUIServer 2>/dev/null || true
 }
 
+# Said after any change: the write succeeded, and that is not the same as the
+# menu bar having moved.
+report_reality() {
+  local seen=0
+  really_hidden || seen=$?
+  case $seen in
+    0) printf '\033[32mThe menu bar is gone.\033[0m Move the pointer to the top edge for it.\n' ;;
+    1)
+      printf '\033[33mThe setting is written, but the menu bar is still on screen.\033[0m\n'
+      printf 'macOS reads this one when the session starts, so it takes a log out\n'
+      printf 'and back in. If that is not worth it, put our bar somewhere else:\n\n'
+      printf '    \033[36momacos bar position bottom\033[0m\n\n'
+      ;;
+    *) printf '\033[2mWritten. Whether it took effect could not be checked — build the\n'
+       printf 'helper with: omacos cmd build-helper\033[0m\n' ;;
+  esac
+}
+
 case ${1:-toggle} in
   status)
-    if hidden; then printf 'The macOS menu bar is hidden.\n'
-    else printf 'The macOS menu bar is shown.\n'; exit 1; fi
+    seen=0
+    really_hidden || seen=$?
+    case $seen in
+      0) printf 'The macOS menu bar is hidden.\n' ;;
+      1)
+        if wanted_hidden; then
+          printf 'The macOS menu bar is on screen, though it is set to hide.\n'
+          printf 'macOS applies that at login: log out and back in.\n'
+        else
+          printf 'The macOS menu bar is shown.\n'
+        fi
+        exit 1 ;;
+      *) wanted_hidden && printf 'Set to hide (unverified).\n' || { printf 'The macOS menu bar is shown.\n'; exit 1; } ;;
+    esac
     ;;
   on)
     apply true
-    printf '\033[32mThe macOS menu bar auto-hides.\033[0m Move the pointer to the top edge for it.\n'
+    report_reality
     ;;
   off)
     apply false
     printf '\033[33mThe macOS menu bar is back.\033[0m\n'
     ;;
   toggle)
-    if hidden; then omacos-toggle-menubar off; else omacos-toggle-menubar on; fi
+    if wanted_hidden; then omacos-toggle-menubar off; else omacos-toggle-menubar on; fi
     ;;
   *) echo "usage: omacos toggle menubar [on|off|status]" >&2; exit 1 ;;
 esac

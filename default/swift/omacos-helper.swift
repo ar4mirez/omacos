@@ -10,6 +10,7 @@
 //                               entry NUL-terminated
 //   omacos-helper fonts         font families you could set, one per line
 //   omacos-helper qr <text>     a QR code drawn in the terminal
+//   omacos-helper menubar      is the macOS menu bar actually on screen
 //   omacos-helper copy-file <path>
 //                               put a file on the clipboard as a file, so
 //                               pasting into Mail or Finder attaches it
@@ -274,12 +275,44 @@ func copyFile(path: String) {
     print(url.path)
 }
 
+// Whether the macOS menu bar is actually on screen, rather than whether a
+// preference asking for it to be hidden has been written.
+//
+// The two are not the same thing and that is the whole point: _HIHideMenuBar
+// is read by the window server when the session starts, so writing it reports
+// success while the bar stays exactly where it was until you log out. A status
+// that reads the preference agrees with itself and disagrees with the screen.
+//
+// The menu bar is a layer-24 window at the top of a display, about 30pt tall.
+// Nothing else looks like that. Reading window geometry needs no screen
+// recording permission — only window *titles* do.
+func menuBarVisible() {
+    let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID)
+        as? [[String: Any]] ?? []
+    var bars: [String] = []
+    for window in windows {
+        guard (window[kCGWindowLayer as String] as? Int) == 24,
+              let bounds = window[kCGWindowBounds as String] as? [String: CGFloat],
+              let height = bounds["Height"], let width = bounds["Width"], let y = bounds["Y"],
+              height >= 20, height <= 60, width > 400, y <= 1
+        else { continue }
+        bars.append(String(format: "%.0fx%.0f", width, height))
+    }
+    if bars.isEmpty {
+        print("hidden")
+    } else {
+        print("visible \(bars.joined(separator: " "))")
+    }
+}
+
 switch CommandLine.arguments.dropFirst().first {
 case "ocr":
     guard CommandLine.arguments.count > 2 else { die("usage: omacos-helper ocr <image>") }
     ocr(path: CommandLine.arguments[2])
 case "color":
     pickColor()
+case "menubar":
+    menuBarVisible()
 case "copy-file":
     guard let path = CommandLine.arguments.dropFirst(2).first else {
         die("usage: omacos-helper copy-file <path>")
@@ -302,5 +335,5 @@ case "clipboard":
 default:
     // Every subcommand, not the two it launched with. A usage line that stops
     // being updated is how you end up believing a working binary is stale.
-    die("usage: omacos-helper <ocr <image>|color|clipboard|fonts|qr <text>|qr-decode <image>|copy-file <path>>")
+    die("usage: omacos-helper <ocr <image>|color|clipboard|fonts|menubar|qr <text>|qr-decode <image>|copy-file <path>>")
 }

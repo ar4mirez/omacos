@@ -23,6 +23,11 @@
     "label": "Font",
     "action": "omacos-font-set"
   },
+  "style.font-size": {
+    "icon": "↕",
+    "label": "Font size",
+    "action": "omacos-launch-tui \"omacos-font-size \\$(gum input --value \\$(omacos-font-current --size) --prompt 'Points: ')\""
+  },
   "style.background": {
     "icon": "▨",
     "label": "Next background",

@@ -58,7 +58,7 @@ omacos notice time|battery|weather
 omacos reminder 7 'Tea ready'
 omacos toggle idle|bar|gaps|dnd|nightlight|audio-output|menubar|lowpower
 omacos snapshot create|list|restore|delete   # Time Machine, without the disk
-omacos font list|set|current    # one font for the terminal and the bar
+omacos font list|set|size|current  # one font for the terminal and the bar
 omacos network speedtest|dns|qr # how fast, which DNS, share the Wi-Fi
 omacos feature enable desktop | apps
 omacos setup signing            # git commit signing via 1Password

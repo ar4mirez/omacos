@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# omacos:summary=Make the terminal text bigger or smaller
+# omacos:args=[points]
+# omacos:examples=omacos font size | omacos font size 13
+#
+# The seeded Ghostty config ships 14pt, which is comfortable on a laptop panel
+# and large on an external display. This changes it without editing that file,
+# through the same generated include `omacos font set` writes.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+size=${1:-}
+
+if [[ -z $size ]]; then
+  exec omacos-font-current --size
+fi
+
+[[ $size =~ ^[0-9]+$ ]] && ((size >= 6 && size <= 72)) || {
+  echo "Font size must be a whole number between 6 and 72." >&2; exit 1; }
+
+# Reuse the one writer, so family and size can never disagree about the file.
+family=$(omacos-font-current)
+exec omacos-font-set "$family" "$size"
