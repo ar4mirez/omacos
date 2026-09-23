@@ -19,6 +19,10 @@ else
 fi
 
 FONT="JetBrainsMono Nerd Font"
+# Overridden by `omacos font set`, so the bar and the terminal stay in step.
+FONT_FILE="$HOME/.local/state/omacos/current/font.sh"
+# shellcheck source=/dev/null
+[[ -f $FONT_FILE ]] && source "$FONT_FILE"
 
 sketchybar --bar height=36 \
                  position=top \

@@ -3,17 +3,32 @@
 # omacos:args=[--all]
 # omacos:examples=omacos font list | omacos font list --all
 #
-# atsutil, not system_profiler: SPFontsDataType is richer but takes about
-# thirteen seconds, which is far too slow to sit behind a menu row.
+# The native helper, not atsutil: atsutil reports only the fonts registered
+# with the system font database, and on a Mac where Homebrew has dropped a Nerd
+# Font into ~/Library/Fonts it lists none of them — including the one the
+# terminal is set to. The helper reads the font files as well as the registry.
+# system_profiler SPFontsDataType knows no more and takes thirteen seconds.
 set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+helper="$OMACOS_STATE/bin/omacos-helper"
 
 if [[ ${1:-} == --all ]]; then
-  # Every face, PostScript names included.
+  # Every face, PostScript names included. Still atsutil, which is the only
+  # thing that reports faces rather than families.
   atsutil fonts -list
   exit 0
 fi
 
-# Just the families, which is what "what can I set my terminal to" means.
+if [[ -x $helper ]]; then
+  "$helper" fonts
+  exit 0
+fi
+
+# No helper built yet. Say so rather than print a list that is quietly missing
+# every font you installed yourself.
+echo "omacos: the native helper is not built, so this can only see system fonts." >&2
+echo "omacos: build it with: omacos cmd build-helper" >&2
 atsutil fonts -list | awk '
   /^System Families:/ { families = 1; next }
   /^[A-Za-z].*:$/     { families = 0 }

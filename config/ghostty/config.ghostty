@@ -22,6 +22,10 @@ confirm-close-surface = false
 # if it does not exist yet", so Ghostty works before the first theme is applied.
 config-file = ?~/.local/state/omacos/current/theme/ghostty.conf
 
+# The font from `omacos font set`. After the default above so it wins, before
+# your local file below so yours still wins over both.
+config-file = ?~/.local/state/omacos/current/font.conf
+
 # Your overrides — loaded last, so they win over both the defaults above and
 # the theme. Never touched by omacos.
 config-file = ?~/.config/ghostty/local.ghostty

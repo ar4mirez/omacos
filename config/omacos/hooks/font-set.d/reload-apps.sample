@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Runs after `omacos font set`, with the family name in $1.
+#
+# Ghostty and SketchyBar are handled already. This is for anything else of
+# yours that keeps its own copy of the font — a GUI editor, a note-taker.
+#
+# To activate: mv reload-apps.sample reload-apps && chmod +x reload-apps
+
+family="$1"
+echo "font is now $family"

@@ -564,6 +564,42 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mFonts\033[0m\n'
+FONTSTATE="$OMACOS_STATE/current"
+check "font list names families"  "omacos-font-list | grep -q ."
+check "the catalog carries fonts" "omacos-app-list font | grep -q '^font\.'"
+check "every font is a cask"      "test \$(jq -r '[.[] | select(.category==\"font\") | .source] | unique | join(\",\")' $OMACOS_PATH/default/apps.json) = cask"
+check "an unknown family is refused" "! omacos-font-set 'No Such Font Family' 2>/dev/null"
+check "it says how to get one"    "omacos-font-set 'No Such Font Family' 2>&1 | grep -q 'omacos install app font'"
+
+font_set_writes_all_three() {
+  local family
+  family=$(omacos-font-list | head -1)
+  [[ -n $family ]] || return 1
+  omacos-font-set "$family" >/dev/null 2>&1 || return 1
+  [[ -f $FONTSTATE/font.name && -f $FONTSTATE/font.conf && -f $FONTSTATE/font.sh ]] || return 1
+  grep -qF "$family" "$FONTSTATE/font.conf" && grep -qF "$family" "$FONTSTATE/font.sh"
+}
+check "setting one writes all three" font_set_writes_all_three
+check "current reads it back"     "test \"\$(omacos-font-current)\" = \"\$(omacos-font-list | head -1)\""
+
+# font-family is a LIST in Ghostty: assigning it again appends a fallback
+# rather than replacing the primary, so without an empty reset first the seeded
+# default keeps rendering and the only symptom is that nothing changed.
+check "ghostty's list is reset first" \
+  "head -3 $FONTSTATE/font.conf | grep -qE '^font-family = *$'"
+check "the reset precedes the value" \
+  "test \$(grep -n 'font-family = *$' $FONTSTATE/font.conf | head -1 | cut -d: -f1) -lt \$(grep -n 'font-family = \"' $FONTSTATE/font.conf | head -1 | cut -d: -f1)"
+
+# Both seeded configs have to actually load what is generated, or setting a
+# font writes three files that nothing reads.
+check "ghostty loads the font file"   "grep -q 'current/font.conf' $OMACOS_PATH/config/ghostty/config.ghostty"
+check "ghostty loads it before yours" \
+  "test \$(grep -n 'current/font.conf' $OMACOS_PATH/config/ghostty/config.ghostty | cut -d: -f1) -lt \$(grep -n 'local.ghostty' $OMACOS_PATH/config/ghostty/config.ghostty | cut -d: -f1)"
+check "the bar loads the font file"   "grep -q 'current/font.sh' $OMACOS_PATH/config/sketchybar/sketchybarrc"
+check "a font-set hook can run"       "test -f $OMACOS_PATH/config/omacos/hooks/font-set.d/reload-apps.sample"
+check "font set fires the hook"       "grep -q 'omacos-hook font-set' $OMACOS_PATH/bin/omacos-font-set"
+
 printf '\n\033[1mBar indicators\033[0m\n'
 BARP="$OMACOS_PATH/config/sketchybar/plugins"
 # A fake sketchybar that echoes its arguments, so a plugin can be run and read.

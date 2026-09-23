@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# omacos:summary=Print the font omacos is set to
+# omacos:examples=omacos font current
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+if [[ -s $OMACOS_STATE/current/font.name ]]; then
+  cat "$OMACOS_STATE/current/font.name"
+  exit 0
+fi
+
+# Nothing set means the seeded default is still in force, and that is written
+# in the Ghostty config rather than anywhere omacos owns.
+ghostty="${XDG_CONFIG_HOME:-$HOME/.config}/ghostty/config.ghostty"
+if [[ -f $ghostty ]]; then
+  family=$(sed -n 's/^font-family *= *//p' "$ghostty" | head -1 | tr -d '"')
+  [[ -n $family ]] && { printf '%s\n' "$family"; exit 0; }
+fi
+echo "No font set." >&2
+exit 1

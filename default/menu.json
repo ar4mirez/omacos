@@ -18,6 +18,11 @@
     "label": "Next theme",
     "action": "omacos-theme-next"
   },
+  "style.font": {
+    "icon": "✑",
+    "label": "Font",
+    "action": "omacos-font-set"
+  },
   "style.background": {
     "icon": "▨",
     "label": "Next background",
@@ -162,6 +167,11 @@
     "title": "Install a editor",
     "provider": "omacos-menu-apps install editor"
   },
+  "install.font": {
+    "icon": "✑",
+    "label": "Font",
+    "provider": "omacos-menu-apps install font"
+  },
   "install.ai": {
     "icon": "◇",
     "label": "AI",
@@ -233,6 +243,11 @@
     "label": "Editor",
     "title": "Remove a editor",
     "provider": "omacos-menu-apps remove editor"
+  },
+  "remove.font": {
+    "icon": "✑",
+    "label": "Font",
+    "provider": "omacos-menu-apps remove font"
   },
   "remove.ai": {
     "icon": "◇",

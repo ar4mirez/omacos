@@ -597,5 +597,61 @@
     "package": "dua-cli",
     "command": "dua i /",
     "window": "float"
+  },
+  "font.jetbrains-mono": {
+    "icon": "✑",
+    "label": "JetBrains Mono",
+    "category": "font",
+    "source": "cask",
+    "package": "font-jetbrains-mono-nerd-font"
+  },
+  "font.fira-code": {
+    "icon": "✑",
+    "label": "Fira Code",
+    "category": "font",
+    "source": "cask",
+    "package": "font-fira-code-nerd-font"
+  },
+  "font.meslo-lg": {
+    "icon": "✑",
+    "label": "Meslo LG",
+    "category": "font",
+    "source": "cask",
+    "package": "font-meslo-lg-nerd-font"
+  },
+  "font.caskaydia-mono": {
+    "icon": "✑",
+    "label": "Cascadia Mono",
+    "category": "font",
+    "source": "cask",
+    "package": "font-caskaydia-mono-nerd-font"
+  },
+  "font.victor-mono": {
+    "icon": "✑",
+    "label": "Victor Mono",
+    "category": "font",
+    "source": "cask",
+    "package": "font-victor-mono-nerd-font"
+  },
+  "font.iosevka": {
+    "icon": "✑",
+    "label": "Iosevka",
+    "category": "font",
+    "source": "cask",
+    "package": "font-iosevka-nerd-font"
+  },
+  "font.hack": {
+    "icon": "✑",
+    "label": "Hack",
+    "category": "font",
+    "source": "cask",
+    "package": "font-hack-nerd-font"
+  },
+  "font.bitstream-vera": {
+    "icon": "✑",
+    "label": "Bitstream Vera",
+    "category": "font",
+    "source": "cask",
+    "package": "font-bitstream-vera-sans-mono-nerd-font"
   }
 }

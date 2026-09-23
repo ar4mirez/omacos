@@ -8,8 +8,10 @@
 //   omacos-helper color         the system eyedropper, printed as #RRGGBB
 //   omacos-helper clipboard     watch the pasteboard, printing each new text
 //                               entry NUL-terminated
+//   omacos-helper fonts         font families you could set, one per line
 
 import AppKit
+import CoreText
 import Vision
 
 func die(_ message: String) -> Never {
@@ -92,12 +94,59 @@ func watchClipboard() {
     }
 }
 
+// The font families you could actually set the terminal to.
+//
+// Three tools claim to answer this and all three are wrong here. atsutil and
+// system_profiler report only fonts registered with the system font database,
+// and `ghostty +list-fonts` the same — none of them see a Nerd Font that
+// Homebrew dropped into ~/Library/Fonts, which is every font omacos would ever
+// be asked to set. So the files are read directly, which is the ground truth.
+//
+// Deliberately not filtered to the monospace trait: on this machine that trait
+// is set on "JetBrainsMono Nerd Font Mono" but not on "JetBrainsMono Nerd
+// Font", which is the family actually in use. A filter that hides the font you
+// are already using is worse than a list with a few extra rows in it.
+func fontFamilies() {
+    var families = Set<String>()
+
+    // Registered, and fixed-pitch: the system's own terminal-shaped fonts.
+    for name in (CTFontManagerCopyAvailableFontFamilyNames() as? [String] ?? []) {
+        if let font = NSFont(name: name, size: 12), font.isFixedPitch {
+            families.insert(name)
+        }
+    }
+
+    // Installed by hand or by Homebrew. Anything here was put there on purpose.
+    let manager = FileManager.default
+    for directory in ["\(NSHomeDirectory())/Library/Fonts", "/Library/Fonts"] {
+        guard let entries = try? manager.contentsOfDirectory(atPath: directory) else { continue }
+        for entry in entries
+        where ["ttf", "otf", "ttc", "dfont"].contains((entry as NSString).pathExtension.lowercased()) {
+            let url = URL(fileURLWithPath: directory).appendingPathComponent(entry)
+            guard let descriptors =
+                CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor]
+            else { continue }
+            for descriptor in descriptors {
+                if let family = CTFontDescriptorCopyAttribute(descriptor, kCTFontFamilyNameAttribute) as? String {
+                    families.insert(family)
+                }
+            }
+        }
+    }
+
+    for family in families.sorted(by: { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }) {
+        print(family)
+    }
+}
+
 switch CommandLine.arguments.dropFirst().first {
 case "ocr":
     guard CommandLine.arguments.count > 2 else { die("usage: omacos-helper ocr <image>") }
     ocr(path: CommandLine.arguments[2])
 case "color":
     pickColor()
+case "fonts":
+    fontFamilies()
 case "clipboard":
     watchClipboard()
 default:
