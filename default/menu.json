@@ -508,6 +508,12 @@
     "action": "omacos-toggle-titlebar",
     "checked": "! omacos-toggle-titlebar status"
   },
+  "toggles.padding": {
+    "icon": "▣",
+    "label": "Terminal padding",
+    "action": "omacos-toggle-padding",
+    "checked": "omacos-toggle-padding status"
+  },
   "toggles.bar-position": {
     "icon": "▤",
     "label": "Bar at the bottom",

@@ -579,6 +579,55 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mSpace: gaps, padding\033[0m\n'
+KB="$OMACOS_PATH/bin/omacos-keymap-build"
+# macOS reserves nothing for SketchyBar — NSScreen.visibleFrame is the whole
+# display — so without a gap on the bar's edge AeroSpace tiles underneath it
+# and the bottom of every window sits behind the bar. Measured at 36pt.
+check "gaps reserve the bar's edge"  "grep -q 'bar_reserve' $KB"
+check "the reserve follows the bar"  "grep -q 'omacos-bar position' $KB"
+check "gaps-off still clears the bar" "grep -q 'Gaps off still leaves room' $KB"
+check "moving the bar rebuilds gaps" "grep -q 'omacos-keymap-build' $OMACOS_PATH/bin/omacos-bar"
+gaps_reserve_the_bar() {
+  local toml="$XDG_CONFIG_HOME/aerospace/aerospace.toml" verdict=0
+  # Only the desktop layer has a bar to leave room for, so the reserve is
+  # conditional on it — which means this check has to turn it on.
+  local had_desktop=1
+  omacos-feature check desktop 2>/dev/null || had_desktop=0
+  omacos-feature enable desktop >/dev/null 2>&1
+
+  omacos-bar position bottom >/dev/null 2>&1
+  omacos-keymap-build >/dev/null 2>&1 || verdict=1
+  grep -qE '^outer\.bottom = (4[0-9]|[5-9][0-9])' "$toml" || verdict=1
+
+  omacos-bar position top >/dev/null 2>&1
+  omacos-keymap-build >/dev/null 2>&1 || verdict=1
+  grep -qE '^outer\.top = (4[0-9]|[5-9][0-9])' "$toml" || verdict=1
+  grep -qE '^outer\.bottom = 8$' "$toml" || verdict=1
+
+  # Leave the sandbox as it was found: a later check asserts the bar defaults
+  # to top, and another that the desktop feature starts off.
+  omacos-bar position top >/dev/null 2>&1
+  ((had_desktop)) || omacos-feature disable desktop >/dev/null 2>&1
+  return $verdict
+}
+check "the gap moves with the bar"   gaps_reserve_the_bar
+
+PAD="$OMACOS_PATH/bin/omacos-toggle-padding"
+check "padding toggles"              "omacos-toggle-padding off >/dev/null && ! omacos-toggle-padding status >/dev/null && omacos-toggle-padding on >/dev/null && omacos-toggle-padding status >/dev/null"
+check "off means zero"               "omacos-toggle-padding off >/dev/null && grep -q '^window-padding-x = 0' $OMACOS_STATE/current/ghostty.conf"
+# Two commands write one file; neither may drop the other's setting.
+settings_coexist() {
+  omacos-toggle-padding off >/dev/null 2>&1 || return 1
+  omacos-toggle-titlebar on >/dev/null 2>&1 || return 1
+  local f="$OMACOS_STATE/current/ghostty.conf"
+  grep -q 'macos-titlebar-style = hidden' "$f" || return 1
+  grep -q 'window-padding-x = 0' "$f" || return 1
+  omacos-toggle-padding on >/dev/null 2>&1 || return 1
+  grep -q 'macos-titlebar-style = hidden' "$f"
+}
+check "titlebar and padding coexist" settings_coexist
+
 printf '\n\033[1mThe title bar\033[0m\n'
 TB="$OMACOS_PATH/bin/omacos-toggle-titlebar"
 GC="$OMACOS_PATH/config/ghostty/config.ghostty"
@@ -652,7 +701,7 @@ check "status always answers"       menubar_status_says_something
 
 printf '\n\033[1mThe bar, and the other bar\033[0m\n'
 BAR="$OMACOS_PATH/bin/omacos-bar"
-check "position defaults to top"   "test \"\$(omacos-bar position)\" = top"
+check "position defaults to top"   "rm -f $OMACOS_STATE/current/bar.sh; test \"\$(omacos-bar position)\" = top"
 check "it moves"                   "omacos-bar position bottom >/dev/null && test \"\$(omacos-bar position)\" = bottom"
 check "and moves back"             "omacos-bar position top >/dev/null && test \"\$(omacos-bar position)\" = top"
 check "a bad edge is refused"      "! omacos-bar position sideways 2>/dev/null"

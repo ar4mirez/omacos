@@ -33,6 +33,9 @@ write_settings() {
     printf 'BAR_TRANSPARENT=%s\n' "$2"
   } > "$settings"
   command -v sketchybar >/dev/null 2>&1 && sketchybar --reload >/dev/null 2>&1 || true
+  # The gap that keeps windows off the bar lives in aerospace.toml, which is
+  # generated — so moving the bar means regenerating it.
+  command -v omacos-keymap-build >/dev/null 2>&1 && omacos-keymap-build >/dev/null 2>&1 || true
 }
 
 position=$(read_setting BAR_POSITION top)

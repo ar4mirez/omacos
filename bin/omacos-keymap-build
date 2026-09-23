@@ -39,15 +39,38 @@ trap 'rm -f "$tmp"' EXIT
   # Gaps are a config value with no runtime command, so toggling them means
   # regenerating. Zero the [gaps] block in place rather than appending a second
   # one — two [gaps] tables is invalid TOML, which AeroSpace rejects wholesale.
+  #
+  # The edge the omacos bar is on gets the bar's height added to its gap.
+  # macOS reserves no space for SketchyBar — NSScreen.visibleFrame is the whole
+  # display — so AeroSpace tiles under it and the bottom (or top) of every
+  # window sits behind the bar. Measured at 36pt of overlap before this.
+  bar_edge="" bar_reserve=0
+  if omacos-feature check desktop 2>/dev/null && ! omacos-state check bar-hidden 2>/dev/null; then
+    bar_edge=$(omacos-bar position 2>/dev/null || echo top)
+    bar_reserve=${OMACOS_BAR_HEIGHT:-36}
+  fi
+
   if omacos-state check gaps-off 2>/dev/null; then
-    awk '
+    # Gaps off still leaves room for the bar: a window underneath it is not a
+    # tighter layout, it is a hidden line of text.
+    awk -v edge="$bar_edge" -v reserve="$bar_reserve" '
       /^\[gaps\]/            { in_gaps = 1; print; next }
       /^\[/ && !/^\[gaps\]/  { in_gaps = 0 }
+      in_gaps && /^outer\.top *=/    { printf "outer.top = %d\n", (edge == "top" ? reserve : 0); next }
+      in_gaps && /^outer\.bottom *=/ { printf "outer.bottom = %d\n", (edge == "bottom" ? reserve : 0); next }
       in_gaps && /[a-z]+ *=/  { sub(/=.*/, "= 0"); print; next }
       { print }
     ' "$base"
   else
-    cat "$base"
+    awk -v edge="$bar_edge" -v reserve="$bar_reserve" '
+      /^\[gaps\]/            { in_gaps = 1; print; next }
+      /^\[/ && !/^\[gaps\]/  { in_gaps = 0 }
+      in_gaps && /^outer\.top *=/ && edge == "top" {
+        split($0, part, "="); printf "outer.top = %d\n", part[2] + reserve; next }
+      in_gaps && /^outer\.bottom *=/ && edge == "bottom" {
+        split($0, part, "="); printf "outer.bottom = %d\n", part[2] + reserve; next }
+      { print }
+    ' "$base"
   fi
   echo
   echo "[mode.main.binding]"
