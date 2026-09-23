@@ -51,6 +51,7 @@ declare -A GROUP_DESCRIPTIONS=(
   [reminder]="Countdown reminders"
   [toggle]="Flip something on or off"
   [snapshot]="System snapshots you can roll back to"
+  [system]="What this machine is"
 )
 
 # ---------------------------------------------------------------- metadata ---

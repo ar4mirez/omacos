@@ -144,6 +144,7 @@ forgets it.
 | Digital Color Meter | `alt-ctrl-shift-c` |
 | Live Text, by hand | `alt-ctrl-o` lifts text off any region |
 | **Time Machine** | **`omacos snapshot`** — see below |
+| About This Mac | `omacos system info` — hardware, software, and how old it all is |
 | App Store | `alt-space` › Install, or `omacos install app <id>` |
 | System Settings | `alt-space` › Setup |
 | Notification Center | `alt-ctrl-shift-comma` opens the settings; see the caveat below |

@@ -21,6 +21,11 @@ export OMACOS_CONFIG="$XDG_CONFIG_HOME/omacos"
 export OMACOS_STATE="$XDG_STATE_HOME/omacos"
 mkdir -p "$OMACOS_CONFIG" "$OMACOS_STATE"
 
+# NO_WM is this machine with the desktop layer absent: omacos on PATH, no
+# AeroSpace anywhere on it. Several checks need it, and it is also exactly what
+# a machine that stopped at the terminal half looks like.
+NO_WM="$OMACOS_PATH/bin:/usr/bin:/bin"
+
 printf '\n\033[1mSyntax\033[0m\n'
 for f in "$OMACOS_PATH"/bin/omacos*; do
   if bash -n "$f" 2>/dev/null; then :; else bad "parse $(basename "$f")"; fi
@@ -553,12 +558,47 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mSystem info\033[0m\n'
+SYSINFO=$(omacos-system-info --plain 2>/dev/null)
+check "the panel renders"        "test -n \"\$SYSINFO\""
+check "it has all three sections" "grep -q Hardware <<<\"\$SYSINFO\" && grep -q Software <<<\"\$SYSINFO\" && grep -q Uptime <<<\"\$SYSINFO\""
+check "it names the machine"     "grep -qE '^ *Mac +\\S' <<<\"\$SYSINFO\""
+check "it says how old it is"    "grep -qE 'Uptime.*(day|hour|min)' <<<\"\$SYSINFO\""
+# "1 days" is the tell that nobody read the output twice.
+check "it does not say '1 days'" "! grep -qE '\\b1 (days|hours|mins)\\b' <<<\"\$SYSINFO\""
+# A row with a label and no value is noise; row() is supposed to drop those.
+check "no row is left empty"     "! grep -qE '^ +[A-Za-z][A-Za-z ]+ +$' <<<\"\$SYSINFO\""
+check "--plain drops the mark"   "! grep -q '▄' <<<\"\$SYSINFO\""
+check "--plain drops the colour" "! printf '%s' \"\$SYSINFO\" | grep -q \$'\\033'"
+# It has to work on a machine with no desktop layer, like CI and like anyone
+# who stopped at the terminal half.
+check "it runs without AeroSpace" "PATH=$NO_WM omacos-system-info --plain | grep -q Hardware"
+
+# The panel is the thing people paste into a bug report, so the identifiers
+# macOS keeps next to the model name must never reach it. Two checks: the
+# source may not reach for them, and the output may not contain the real one.
+check "the source avoids the JSON form" \
+  "! grep -q 'system_profiler -json' $OMACOS_PATH/bin/omacos-system-info"
+# Comments are stripped first: the header says out loud which identifiers it
+# refuses to touch, and that sentence is the opposite of a leak.
+source_names_no_identifier() {
+  ! grep -vE '^[[:space:]]*#' "$OMACOS_PATH/bin/omacos-system-info" \
+    | grep -qiE 'serial|platform_uuid|provisioning|udid'
+}
+check "the source names no identifier" source_names_no_identifier
+panel_leaks_no_serial() {
+  local serial
+  serial=$(system_profiler SPHardwareDataType 2>/dev/null | sed -n 's/^ *Serial Number (system): *//p' | head -1)
+  # Nothing to leak on a runner that reports no serial; the two source checks
+  # above still hold there.
+  [[ -n $serial ]] || return 0
+  ! grep -qF "$serial" <<<"$SYSINFO"
+}
+check "the panel leaks no serial" panel_leaks_no_serial
+
 printf '\n\033[1mPinned windows\033[0m\n'
 # The scripts have to behave on a machine with no desktop layer at all: one is
 # on the path of every workspace switch, and must never be the reason one fails.
-# NO_WM is this machine with the desktop layer absent: omacos on PATH, no
-# AeroSpace anywhere on it. That is also exactly what CI looks like.
-NO_WM="$OMACOS_PATH/bin:/usr/bin:/bin"
 check "nothing pinned lists nothing" "PATH=$NO_WM omacos-window-pin list | grep -q 'Nothing is pinned'"
 check "pinning needs AeroSpace"      "! PATH=$NO_WM omacos-window-pin 2>/dev/null"
 check "pinning says why"             "PATH=$NO_WM omacos-window-pin 2>&1 | grep -q AeroSpace"

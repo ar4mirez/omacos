@@ -578,6 +578,11 @@
     "icon": "▣",
     "label": "System"
   },
+  "system.info": {
+    "icon": "◳",
+    "label": "About this Mac",
+    "action": "omacos-system-info; read -n 1 -s -r -p 'Press any key'"
+  },
   "system.activity": {
     "icon": "▤",
     "label": "Activity",

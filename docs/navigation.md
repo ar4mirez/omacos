@@ -155,6 +155,15 @@ workspace you switch to. Good for a video, a timer, or a terminal running an
 agent you want to keep half an eye on. It does not take focus when it arrives;
 it just turns up.
 
+One difference from the screenshot in Omarchy's manual: there, the popped
+window is redrawn as a centred, inset panel. Here it keeps the size and
+position it already had. AeroSpace declines to resize or move a floating
+window at all — `resize` answers *"doesn't support floating windows yet"* and
+points at [AeroSpace#9](https://github.com/nikitabobko/AeroSpace/issues/9) —
+and the alternative, driving the window's frame through the Accessibility API,
+means a second permission grant for whatever shell ran the key. Size it once
+by hand and it stays that size.
+
 A pin is a window id on disk, so it lasts exactly as long as the window does.
 Closing the window drops the pin, and so does restarting AeroSpace — ids belong
 to a single run and inheriting them would eventually pin something at random.
@@ -181,7 +190,9 @@ feel. `alt-shift-s` deliberately does *not* follow the window — sending
 something out of sight is the whole point.
 
 It is a full workspace rather than a panel that drops over the current one, so
-a single window on it fills the screen instead of sitting centred. To take a
+a single window on it fills the screen instead of sitting centred — the same
+missing ability as above, from the same place: nothing can position a floating
+window. To take a
 window off the scratchpad, send it somewhere directly with `alt-shift-1`.
 
 ## Where this stops
@@ -191,10 +202,14 @@ would rather say so than ship a hack that breaks every autumn:
 
 - **The scrolling layout**, and `Super + L` to choose it per workspace.
   AeroSpace is not Hyprland; there is one tiling model and it is dwindle-shaped.
+  When a workspace has more windows than it can usefully show, `alt-comma`
+  stacking is the nearest thing: the windows keep a usable size and you move
+  through them instead of squeezing them all on screen at once.
 - **Super-drag and Super-right-drag.** No modifier-drag without an input driver.
-- **A scratchpad that draws as a centred panel** when it holds one window.
-  Gaps in AeroSpace are a config value for the whole machine, not a per-
-  workspace one.
+- **Placing a floating window.** Nothing in AeroSpace can move or resize one
+  ([AeroSpace#9](https://github.com/nikitabobko/AeroSpace/issues/9)), which is
+  why a pinned window is not re-centred and why the scratchpad cannot drop down
+  as a panel. Both would need the same thing, and it does not exist yet.
 
 ## The whole map
 
@@ -220,7 +235,7 @@ would rather say so than ship a hack that breaks every autumn:
 | `Super + G` | `alt-comma` | stack, or unstack |
 | `Super + Ctrl + Arrow` | `alt-h`/`alt-l` | move within the stack |
 | `Super + Alt + G` | `alt-shift-j`/`k` | lift it out |
-| `Super + O` | `alt-o` | pin it everywhere |
+| `Super + O` | `alt-o` | pin it everywhere, at its own size |
 | `Super + Grave`, `Super + S` | `alt-s` | the scratchpad, both ways |
 | `Super + Shift + Grave`, `Super + Alt + S` | `alt-shift-s` | put it there |
 

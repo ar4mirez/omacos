@@ -42,6 +42,7 @@ omacos doctor                # what is actually true on this machine
 omacos menu                  # everything, in one searchable menu
 
 omacos window pin               # this window follows you to every workspace
+omacos system info              # what this machine is, in one panel
 omacos theme list|set|next|current|import
 omacos theme background         # cycle the wallpapers a theme ships
 omacos keymap show|build

@@ -1,0 +1,215 @@
+#!/usr/bin/env bash
+# omacos:summary=What this machine is, in one panel
+# omacos:args=[--plain]
+# omacos:examples=omacos system info | omacos system info --plain
+#
+# Omarchy's manual opens its dwindle screenshot on a panel that says what the
+# machine is: hardware, software, and how old all of it is. This is that panel
+# for a Mac, assembled from what macOS already knows.
+#
+# No fastfetch dependency on purpose. Everything below is sysctl, sw_vers, df
+# and one system_profiler call — and that one is read with targeted greps
+# rather than its JSON, which carries the serial number, the platform UUID and
+# the provisioning UDID. None of those belong in something people paste into a
+# bug report.
+set -uo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+plain=false
+[[ ${1:-} == --plain ]] && plain=true
+
+# ------------------------------------------------------------------ format ---
+
+if $plain || [[ ! -t 1 ]]; then
+  bold() { printf '%s' "$1"; }
+  key()  { printf '%s' "$1"; }
+else
+  bold() { printf '\033[1m%s\033[0m' "$1"; }
+  key()  { printf '\033[36m%s\033[0m' "$1"; }
+fi
+
+# Rows are collected rather than printed, so the logo can run down the left of
+# them. A row is "label<TAB>value"; a bare "#" starts a section.
+rows=()
+section() { rows+=("#	$1"); }
+row() { [[ -n ${2:-} ]] && rows+=("$1	$2"); return 0; }
+
+# 68719476736 -> "64.0 GiB". Bytes, not bits, and binary units, because that is
+# what every other number on a Mac means.
+human() {
+  awk -v b="$1" 'BEGIN {
+    split("B KiB MiB GiB TiB PiB", u, " ")
+    i = 1
+    while (b >= 1024 && i < 6) { b /= 1024; i++ }
+    printf (i <= 2 ? "%.0f %s" : "%.1f %s"), b, u[i]
+  }'
+}
+
+# "1 days" is the tell of a panel nobody read twice.
+plural() { printf '%s %s' "$1" "$([[ $1 == 1 ]] && printf '%s' "$2" || printf '%ss' "$2")"; }
+
+# ---------------------------------------------------------------- hardware ---
+
+# One call for both data types: two would cost twice the half-second.
+profile=$(system_profiler SPHardwareDataType SPDisplaysDataType 2>/dev/null) || profile=""
+field() { sed -n "s/^ *$1: *//p" <<<"$profile" | head -1; }
+
+section "Hardware"
+
+model=$(field "Model Name")
+identifier=$(field "Model Identifier")
+[[ -z $model ]] && model=$(sysctl -n hw.model 2>/dev/null)
+row "Mac" "$model${identifier:+ ($identifier)}"
+
+chip=$(sysctl -n machdep.cpu.brand_string 2>/dev/null)
+performance=$(sysctl -n hw.perflevel0.logicalcpu 2>/dev/null || true)
+efficiency=$(sysctl -n hw.perflevel1.logicalcpu 2>/dev/null || true)
+if [[ -n ${performance:-} && -n ${efficiency:-} ]]; then
+  cores="$performance performance + $efficiency efficiency"
+else
+  cores="$(sysctl -n hw.ncpu 2>/dev/null) cores"
+fi
+row "CPU" "${chip:-unknown}${cores:+ ($cores)}"
+
+# The GPU core count is the second "Total Number of Cores" in the profile: the
+# first belongs to the CPU. Reading the Displays section on its own avoids
+# having to care which order they came in.
+gpu=$(sed -n '/Graphics\/Displays:/,$p' <<<"$profile" | sed -n 's/^ *Chipset Model: *//p' | head -1)
+gpu_cores=$(sed -n '/Graphics\/Displays:/,$p' <<<"$profile" | sed -n 's/^ *Total Number of Cores: *//p' | head -1)
+row "GPU" "${gpu:-}${gpu_cores:+ ($gpu_cores cores)}"
+
+resolution=$(field "Resolution")
+panel=$(field "Display Type")
+row "Display" "${resolution:-}${panel:+ — $panel}"
+
+if read -r _ blocks used _ percent _ < <(df -k /System/Volumes/Data 2>/dev/null | tail -1); then
+  row "Disk" "$(human $((used * 1024))) / $(human $((blocks * 1024))) ($percent)"
+fi
+
+memory=$(sysctl -n hw.memsize 2>/dev/null)
+if [[ -n ${memory:-} ]]; then
+  # Active + wired + compressed is what Activity Monitor calls memory used;
+  # free pages alone would call a healthy Mac full.
+  pagesize=$(sysctl -n hw.pagesize 2>/dev/null || echo 4096)
+  in_use=$(vm_stat 2>/dev/null | awk -v p="$pagesize" '
+    /Pages active/ || /Pages wired down/ || /Pages occupied by compressor/ {
+      gsub(/\./, "", $NF); total += $NF
+    }
+    END { printf "%.0f", total * p }')
+  if [[ -n ${in_use:-} && $in_use -gt 0 ]]; then
+    row "Memory" "$(human "$in_use") / $(human "$memory") ($((in_use * 100 / memory))%)"
+  else
+    row "Memory" "$(human "$memory")"
+  fi
+fi
+
+# ---------------------------------------------------------------- software ---
+
+section "Software"
+
+row "OS" "macOS $(sw_vers -productVersion 2>/dev/null) ($(sw_vers -buildVersion 2>/dev/null))"
+row "Kernel" "$(uname -sr 2>/dev/null)"
+
+# The desktop layer is optional, so none of these three are assumed present.
+if command -v aerospace >/dev/null 2>&1; then
+  # `aerospace --version` is "... version: 0.21.3-Beta <sha>"; the sha is not
+  # what anyone means by a version.
+  row "Window manager" "AeroSpace $(aerospace --version 2>/dev/null | sed -n '1s/.*version: *\([^ ]*\).*/\1/p')"
+fi
+# Left out rather than guessed: run from a keybinding there is no terminal to
+# name, and "unknown" is not information.
+row "Terminal" "${TERM_PROGRAM:-}"
+row "Shell" "$(basename "${SHELL:-}") ${ZSH_VERSION:-$(zsh --version 2>/dev/null | awk '{print $2}')}"
+
+if [[ -d ${HOMEBREW_PREFIX:-/opt/homebrew}/Cellar ]]; then
+  formulae=$(find "${HOMEBREW_PREFIX:-/opt/homebrew}/Cellar" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+  casks=$(find "${HOMEBREW_PREFIX:-/opt/homebrew}/Caskroom" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+  row "Packages" "$formulae formulae, $casks casks"
+fi
+
+theme=$(cat "$OMACOS_STATE/current/theme.name" 2>/dev/null || true)
+row "Theme" "${theme:-}"
+
+ghostty="${XDG_CONFIG_HOME:-$HOME/.config}/ghostty/config.ghostty"
+if [[ -f $ghostty ]]; then
+  family=$(sed -n 's/^font-family *= *//p' "$ghostty" | head -1 | tr -d '"')
+  size=$(sed -n 's/^font-size *= *//p' "$ghostty" | head -1)
+  row "Font" "${family:-}${size:+ (${size}pt)}"
+fi
+
+# ---------------------------------------------------- age, uptime, update ---
+
+section "Age / Uptime / Update"
+
+# How long has this install been here. .AppleSetupDone is written once, when
+# the Mac is first set up, and never again.
+if [[ -e /var/db/.AppleSetupDone ]]; then
+  born=$(stat -f '%B' /var/db/.AppleSetupDone 2>/dev/null || true)
+  if [[ -n ${born:-} ]]; then
+    row "Mac age" "$(plural $(( ( $(date +%s) - born ) / 86400 )) day)"
+  fi
+fi
+
+# `sec = ` matches inside `usec = ` too, so anchor it to the start of the line.
+boot=$(sysctl -n kern.boottime 2>/dev/null | sed -n 's/^{ *sec = \([0-9]*\).*/\1/p')
+if [[ -n ${boot:-} ]]; then
+  up=$(( $(date +%s) - boot ))
+  row "Uptime" "$(plural $((up / 86400)) day), $(plural $((up % 86400 / 3600)) hour), $(plural $((up % 3600 / 60)) min)"
+fi
+
+# When omacos itself last moved. The installed tree is a plain clone, so its
+# last commit is exactly what the last `omacos update` pulled.
+if [[ -d $OMACOS_PATH/.git ]]; then
+  updated=$(git -C "$OMACOS_PATH" log -1 --format=%cd --date='format:%A, %B %-d %Y at %H:%M' 2>/dev/null || true)
+  row "Updated" "${updated:-}"
+fi
+row "omacos" "$(cat "$OMACOS_PATH/version" 2>/dev/null || true)"
+
+# ------------------------------------------------------------------ render ---
+
+# A mark down the left, the way every one of these panels has looked since
+# screenfetch. Block glyphs only: a Nerd Font icon here would be a tofu box on
+# any machine that has not installed one yet.
+# Every entry is the same display width, or the rows beside them step in and
+# out as the mark is drawn.
+logo=(
+  "          "
+  "  ▄▄▄▄▄▄  "
+  " █▀    ▀█ "
+  "█▀  ▄▄  ▀█"
+  "█   ██   █"
+  "█▄  ▀▀  ▄█"
+  " █▄    ▄█ "
+  "  ▀▀▀▀▀▀  "
+)
+blank="          "
+
+width=0
+for entry in "${rows[@]}"; do
+  label=${entry%%	*}
+  [[ $label == "#" ]] && continue
+  (( ${#label} > width )) && width=${#label}
+done
+
+printf '\n'
+line=0
+total=$(( ${#logo[@]} > ${#rows[@]} ? ${#logo[@]} : ${#rows[@]} ))
+while (( line < total )); do
+  mark=${logo[line]:-$blank}
+  $plain && mark=""
+  entry=${rows[line]:-}
+  if [[ -z $entry ]]; then
+    [[ -n ${mark// /} ]] && printf '%s\n' "$mark"
+  else
+    label=${entry%%	*}
+    value=${entry#*	}
+    if [[ $label == "#" ]]; then
+      # Headings sit in the same gutter as their rows, one step to the left.
+      printf '%s  %s\n' "$mark" "$(bold "$value")"
+    else
+      printf '%s    %s  %s\n' "$mark" "$(key "$(printf '%-*s' "$width" "$label")")" "$value"
+    fi
+  fi
+  line=$((line + 1))
+done
+printf '\n'
