@@ -10,6 +10,10 @@
 //                               entry NUL-terminated
 //   omacos-helper fonts         font families you could set, one per line
 //   omacos-helper qr <text>     a QR code drawn in the terminal
+//   omacos-helper qr-decode <image>
+//                               read a QR code; the value goes to the
+//                               clipboard, marked concealed, and is never
+//                               printed — only what kind of thing it was
 
 import AppKit
 import CoreImage
@@ -190,12 +194,74 @@ func qrCode(_ text: String) {
     print("")
 }
 
+// Read a QR code and put it on the clipboard without ever showing it.
+//
+// A QR code routinely carries a secret: the otpauth:// URI behind a 2FA setup
+// code is the obvious one. So the value is written straight to the pasteboard
+// and this prints only what kind of thing it was. Nothing to scroll back to,
+// nothing in a notification, nothing in a shell history.
+//
+// It is marked ConcealedType, which is the convention every clipboard manager
+// honours — omacos's own watcher skips it, which is what keeps a 2FA seed out
+// of the history it would otherwise sit in forever.
+func decodeQR(path: String) {
+    guard let image = NSImage(contentsOfFile: path),
+          let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+    else { die("cannot read image: \(path)") }
+
+    let request = VNDetectBarcodesRequest()
+    // QR only. Dense screen content false-positives as a 1D barcode readily,
+    // and a wrong answer here is worse than no answer.
+    request.symbologies = [.qr]
+
+    do {
+        try VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([request])
+    } catch {
+        die("decode failed: \(error.localizedDescription)")
+    }
+
+    let values = (request.results ?? []).compactMap { $0.payloadStringValue }
+    guard let value = values.first, !value.isEmpty else {
+        FileHandle.standardError.write(Data("omacos-helper: no QR code in that selection\n".utf8))
+        exit(2)
+    }
+
+    let pasteboard = NSPasteboard.general
+    pasteboard.declareTypes(
+        [.string, NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")],
+        owner: nil)
+    pasteboard.setString(value, forType: .string)
+
+    // What it was, never what it said.
+    let kind: String
+    switch true {
+    case value.hasPrefix("otpauth:"):        kind = "a one-time-password setup code"
+    case value.hasPrefix("WIFI:"):           kind = "Wi-Fi credentials"
+    case value.hasPrefix("mailto:"):         kind = "an email address"
+    case value.hasPrefix("tel:"):            kind = "a phone number"
+    case value.hasPrefix("BEGIN:VCARD"):     kind = "a contact card"
+    case value.hasPrefix("http://"),
+         value.hasPrefix("https://"):        kind = "a link"
+    default:                                 kind = "\(value.count) characters of text"
+    }
+    print(kind)
+    if values.count > 1 {
+        FileHandle.standardError.write(
+            Data("omacos-helper: \(values.count) codes in that selection; took the first\n".utf8))
+    }
+}
+
 switch CommandLine.arguments.dropFirst().first {
 case "ocr":
     guard CommandLine.arguments.count > 2 else { die("usage: omacos-helper ocr <image>") }
     ocr(path: CommandLine.arguments[2])
 case "color":
     pickColor()
+case "qr-decode":
+    guard let path = CommandLine.arguments.dropFirst(2).first else {
+        die("usage: omacos-helper qr-decode <image>")
+    }
+    decodeQR(path: path)
 case "qr":
     guard let text = CommandLine.arguments.dropFirst(2).first, !text.isEmpty else {
         die("usage: omacos-helper qr <text>")

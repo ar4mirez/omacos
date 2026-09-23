@@ -36,7 +36,7 @@ how a port ends up claiming things it cannot do.
 | 09 | Reminders | done | `alt-ctrl-r` set, `alt-ctrl-cmd-r` list, `alt-ctrl-shift-r` clear, plus `omacos reminder`. |
 | 10 | Notices | done | Time, battery and weather on `alt-ctrl-shift-t/b/w`. `omacos notice location` pins the weather when IP geolocation guesses wrong. |
 | 11 | Text extraction & dictation | differs | OCR on `alt-ctrl-o` via the native Vision framework — no second OCR engine. Dictation is macOS's own, on-device; `omacos setup dictation` turns it on, but its shortcut lives behind a settings pane no script can drive, so there is no toggle key. |
-| 12 | Screenshots & recording | differs | Screenshot, region, window, recording, colour picker — all there, saving wherever macOS is already configured to save. macOS's own capture gives you the annotation editor. **Open:** QR decode, and transcoding media before sharing. The webcam overlay is n/a. |
+| 12 | Screenshots & recording | differs | Screenshot, region, window, recording, colour picker — all there, saving wherever macOS is already configured to save. macOS's own capture gives you the annotation editor. `alt-ctrl-shift-o` reads a QR code off the screen — the value goes to the clipboard marked concealed, so the history skips it, and is never printed or named in the notification. **Open:** transcoding media before sharing. The webcam overlay is n/a. |
 | 13 | Toggles, idle, screensaver | done | Night Shift, Do Not Disturb, stay awake, gaps, bar, screensaver, lock. Flags live in state, and `omacos state check` is the script predicate. Two of Omarchy's six indicators have no readable state here: Focus is behind Full Disk Access and Night Shift behind a private framework, so the bar shows what it can actually check. Dismissing and replaying notifications is not scriptable and says so. |
 | 14 | Omarchy CLI | done | Same shape throughout: groups, `--help` at every level, `commands --json`, `commands --check`. Adding a command is adding a file. |
 
@@ -84,15 +84,14 @@ how a port ends up claiming things it cannot do.
 
 Ranked by what you would notice:
 
-1. **QR decode** (ch 12) — the Vision framework already does OCR for `omacos capture text`; barcodes are the same API.
-2. **Transcode** (ch 12) — `sips` and ffmpeg.
-3. **Update-available badge** (ch 05, 30).
-4. **Low Power Mode** (ch 36), **a seeded `starship.toml`** (ch 40), **a debug bundle** (ch 45).
-5. **`tldr`, `yt-dlp`, `try`** (ch 19) — three packages, not a feature.
+1. **Transcode** (ch 12) — `sips` and ffmpeg.
+2. **Update-available badge** (ch 05, 30).
+3. **Low Power Mode** (ch 36), **a seeded `starship.toml`** (ch 40), **a debug bundle** (ch 45).
+4. **`tldr`, `yt-dlp`, `try`** (ch 19) — three packages, not a feature.
 
 *Shell functions (ch 20), Touch ID for `sudo` (ch 37), the bar indicators
-(ch 05, 13), fonts (ch 38) and networking (ch 35) used to head this list.
-All five are done.*
+(ch 05, 13), fonts (ch 38), networking (ch 35) and QR decode (ch 12) used to
+head this list. All six are done.*
 
 **One thing that cannot be done, rather than has not been.** Omarchy's
 indicators widget shows Do Not Disturb. macOS keeps Focus state under

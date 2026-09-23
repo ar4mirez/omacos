@@ -47,7 +47,7 @@ omacos system info              # what this machine is, in one panel
 omacos theme list|set|next|current|import
 omacos theme background         # cycle the wallpapers a theme ships
 omacos keymap show|build
-omacos capture screenshot|screenrecording|text|color
+omacos capture screenshot|screenrecording|text|color|qr
 omacos clipboard history|clear
 omacos notice time|battery|weather
 omacos reminder 7 'Tea ready'

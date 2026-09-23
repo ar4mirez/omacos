@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# omacos:summary=Read a QR code off the screen onto the clipboard
+# omacos:examples=omacos capture qr
+#
+# The value is never printed and never named in the notification — it goes to
+# the clipboard and nowhere else, marked concealed so the clipboard history
+# skips it. QR codes routinely carry secrets, the otpauth:// URI behind a 2FA
+# setup code most of all, and that is not something to leave in a log.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+helper=$(omacos-cmd-build-helper)
+
+scratch=$(mktemp -d)
+# The screenshot has the code in it, so it is as sensitive as the code. Removed
+# on every exit path, including the ones that fail.
+trap 'rm -rf "$scratch"' EXIT
+shot="$scratch/region.png"
+
+screencapture -x -i -s "$shot" || exit 0
+[[ -f $shot ]] || exit 0   # cancelled
+
+# The helper writes the clipboard itself, because pbcopy cannot mark an entry
+# concealed and a value that reaches the shell has already been somewhere it
+# should not be.
+kind=$("$helper" qr-decode "$shot") || {
+  status=$?
+  if ((status == 2)); then
+    omacos-cmd-notify "No QR code" "Nothing scannable in that selection." || true
+  else
+    omacos-cmd-notify "QR decode failed" "The image could not be read." || true
+  fi
+  exit "$status"
+}
+
+omacos-cmd-notify "Copied" "$kind — paste it wherever it goes." || true
+printf '\033[32mOn the clipboard:\033[0m %s\n' "$kind"
+printf '\033[2mNot shown, and kept out of clipboard history.\033[0m\n'

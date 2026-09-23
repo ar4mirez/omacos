@@ -564,6 +564,66 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mQR decode\033[0m\n'
+QRC="$OMACOS_PATH/bin/omacos-capture-qr"
+HELPER="$OMACOS_STATE/bin/omacos-helper"
+check "it is bound to a key"   "grep -q '^alt-ctrl-shift-o |.*omacos-capture-qr' $OMACOS_PATH/config/omacos/keymap.conf"
+check "it is in the menu"      "jq -e '.\"capture.qr\"' $OMACOS_PATH/default/menu.json"
+# The screenshot holds the code, so it is as sensitive as the code.
+check "the screenshot is cleaned up" "grep -q \"trap 'rm -rf\" $QRC"
+# pbcopy cannot mark an entry concealed, and a value that reaches the shell has
+# already been somewhere it should not be. The helper writes the clipboard.
+# Comments stripped: the header explains why pbcopy is not used, and saying so
+# is not using it. (Third time this exact trap has been walked into.)
+shell_never_sees_the_value() {
+  ! grep -vE '^[[:space:]]*#' "$QRC" | grep -q 'pbcopy'
+}
+check "the shell never sees the value" shell_never_sees_the_value
+check "only the kind is reported"      "grep -q 'kind=' $QRC"
+
+qr_decode_round_trip() {
+  [[ -x $HELPER ]] || return 0          # no helper on CI
+  command -v swiftc >/dev/null 2>&1 || return 0
+  local dir; dir=$(mktemp -d)
+  cat > "$dir/mk.swift" <<'SWIFT'
+import CoreImage
+import AppKit
+import Foundation
+let a = Array(CommandLine.arguments.dropFirst())
+let f = CIFilter(name: "CIQRCodeGenerator")!
+f.setValue(Data(a[0].utf8), forKey: "inputMessage")
+f.setValue("M", forKey: "inputCorrectionLevel")
+let rep = NSBitmapImageRep(ciImage: f.outputImage!.transformed(by: CGAffineTransform(scaleX: 10, y: 10)))
+try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: a[1]))
+SWIFT
+  swiftc -O "$dir/mk.swift" -o "$dir/mk" 2>/dev/null || { rm -rf "$dir"; return 0; }
+
+  local secret="otpauth://totp/Test:me?secret=TESTSEEDVALUE123"
+  "$dir/mk" "$secret" "$dir/q.png"
+  local out; out=$("$HELPER" qr-decode "$dir/q.png" 2>&1)
+
+  # It must say what kind of thing it was, and never the thing itself.
+  [[ $out == *"one-time-password"* ]] || { rm -rf "$dir"; return 1; }
+  [[ $out != *TESTSEEDVALUE123* ]]    || { rm -rf "$dir"; return 1; }
+  # And it must actually be on the clipboard, or the command did nothing.
+  [[ $(pbpaste) == "$secret" ]]       || { rm -rf "$dir"; return 1; }
+
+  # A picture with no code in it is an answer, not a crash.
+  "$dir/mk" "x" "$dir/blank.png"
+  : > "$dir/empty.png"
+  "$HELPER" qr-decode "$dir/empty.png" >/dev/null 2>&1 && { rm -rf "$dir"; return 1; }
+  rm -rf "$dir"
+  return 0
+}
+check "it decodes without leaking" qr_decode_round_trip
+
+# Vision reads 1D barcodes too, and dense screen content false-positives as one
+# readily. A wrong answer here is worse than no answer.
+check "it looks for QR codes only" "grep -q 'symbologies = \[.qr\]' $OMACOS_PATH/default/swift/omacos-helper.swift"
+# The convention every clipboard manager honours, and the one omacos's own
+# watcher already skips.
+check "the entry is marked concealed" "grep -q 'org.nspasteboard.ConcealedType' $OMACOS_PATH/default/swift/omacos-helper.swift"
+
 printf '\n\033[1mNetworking\033[0m\n'
 NET="$OMACOS_PATH/bin/omacos-network"
 check "it states its usage"       "! omacos-network 2>/dev/null && omacos-network 2>&1 | grep -q 'speedtest|dns'"

@@ -360,6 +360,11 @@
     "label": "Extract text (OCR)",
     "action": "omacos-capture-text"
   },
+  "capture.qr": {
+    "icon": "▦",
+    "label": "Read a QR code",
+    "action": "omacos-capture-qr"
+  },
   "capture.url": {
     "icon": "⚭",
     "label": "Copy the browser's URL",
