@@ -49,10 +49,12 @@ omacos theme background         # cycle the wallpapers a theme ships
 omacos keymap show|build
 omacos capture screenshot|screenrecording|text|color|qr
 omacos transcode                # shrink a picture or video before sending
+omacos debug                    # what a bug report needs, with nothing private
+omacos debug                    # what a bug report needs, with nothing private
 omacos clipboard history|clear
 omacos notice time|battery|weather
 omacos reminder 7 'Tea ready'
-omacos toggle idle|bar|gaps|dnd|nightlight|audio-output|menubar
+omacos toggle idle|bar|gaps|dnd|nightlight|audio-output|menubar|lowpower
 omacos snapshot create|list|restore|delete   # Time Machine, without the disk
 omacos font list|set|current    # one font for the terminal and the bar
 omacos network speedtest|dns|qr # how fast, which DNS, share the Wi-Fi

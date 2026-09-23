@@ -1,0 +1,43 @@
+# ~/.config/starship.toml — yours. omacos seeded it once.
+# To take a newer default:  omacos refresh config starship.toml
+#
+# Deliberately quiet. There is no user, because it is always you; no hostname,
+# because you know which machine you are on; and no clock, because there is one
+# at the top of the screen. What is left is the two things that change while
+# you work: where you are, and what git thinks of it.
+#
+# Colours are not set here on purpose — they come from the terminal, which
+# omacos themes, so the prompt follows `omacos theme set` without a second
+# palette to keep in step.
+
+add_newline = true
+
+format = """
+$directory$git_branch$git_status$cmd_duration
+$character"""
+
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+style = "bold cyan"
+
+[git_branch]
+symbol = " "
+style = "purple"
+format = "[$symbol$branch]($style) "
+
+[git_status]
+style = "yellow"
+# Counts, not a wall of glyphs: how many, not one mark per file.
+format = '([$all_status$ahead_behind]($style) )'
+
+[cmd_duration]
+# Only when it was long enough that you went and did something else.
+min_time = 2000
+style = "dimmed white"
+format = "[took $duration]($style)"
+
+[character]
+success_symbol = "[❯](green)"
+error_symbol = "[❯](red)"
+vicmd_symbol = "[❮](green)"

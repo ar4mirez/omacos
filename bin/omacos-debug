@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# omacos:summary=Collect what a bug report needs, with nothing private in it
+# omacos:args=[--stdout]
+# omacos:examples=omacos debug | omacos debug --stdout
+#
+# Omarchy has omarchy-debug for the same job. What matters here is the second
+# half of the sentence: this is written to be pasted into a public issue, so it
+# reports which settings exist rather than what they say, and never reads a
+# file that holds a secret.
+#
+# Specifically not included, and each for a reason:
+#   local.env values   your email, your signing key's name, your app choices
+#   the clipboard      it is a clipboard
+#   any keychain item  obviously
+#   the Wi-Fi name     macOS calls it location data and so does omacos
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+section() { printf '\n## %s\n\n' "$1"; }
+
+collect() {
+  printf '# omacos debug — %s\n' "$(date '+%Y-%m-%d %H:%M')"
+
+  section "omacos"
+  printf 'version:   %s\n' "$(cat "$OMACOS_PATH/version" 2>/dev/null || echo unknown)"
+  printf 'tree:      %s\n' "$OMACOS_PATH"
+  if [[ -d $OMACOS_PATH/.git ]]; then
+    printf 'commit:    %s\n' "$(git -C "$OMACOS_PATH" log -1 --format='%h %cd %s' --date=short 2>/dev/null)"
+    printf 'branch:    %s\n' "$(git -C "$OMACOS_PATH" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+    # A dirty installed tree explains a great many otherwise impossible reports.
+    printf 'modified:  %s file(s)\n' "$(git -C "$OMACOS_PATH" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
+  fi
+  printf 'linked:    %s\n' "$([[ -f $OMACOS_CONFIG/path.conf ]] && echo yes || echo no)"
+  printf 'features:  %s\n' "$(omacos-feature list 2>/dev/null | tr '\n' ' ' || echo '(none)')" 
+  printf 'pending migrations: %s\n' "$(omacos migrate --pending 2>/dev/null | wc -l | tr -d ' ')"
+
+  section "Machine"
+  printf 'macOS:     %s (%s)\n' "$(sw_vers -productVersion)" "$(sw_vers -buildVersion)"
+  printf 'hardware:  %s\n' "$(sysctl -n hw.model 2>/dev/null)"
+  printf 'cpu:       %s\n' "$(sysctl -n machdep.cpu.brand_string 2>/dev/null)"
+  printf 'shell:     %s\n' "${SHELL:-unknown}"
+  printf 'terminal:  %s\n' "${TERM_PROGRAM:-unknown}"
+
+  section "Versions"
+  local tool version
+  for tool in brew aerospace sketchybar borders nvim starship gum jq; do
+    if command -v "$tool" >/dev/null 2>&1; then
+      printf '%-12s %s\n' "$tool" "$("$tool" --version 2>/dev/null | head -1)"
+    else
+      printf '%-12s %s\n' "$tool" "(not installed)"
+    fi
+  done
+  # tmux answers -V and rejects --version, which otherwise reports as blank.
+  if command -v tmux >/dev/null 2>&1; then
+    printf '%-12s %s\n' tmux "$(tmux -V 2>/dev/null)"
+  else
+    printf '%-12s %s\n' tmux "(not installed)"
+  fi
+  # Ghostty is an app bundle, not something on PATH — looking for the command
+  # reports the terminal you are reading this in as missing.
+  if [[ -x /Applications/Ghostty.app/Contents/MacOS/ghostty ]]; then
+    version=$(/Applications/Ghostty.app/Contents/MacOS/ghostty --version 2>/dev/null | head -1)
+    printf '%-12s %s\n' ghostty "$version"
+  else
+    printf '%-12s %s\n' ghostty "(not installed)"
+  fi
+
+  section "Doctor"
+  omacos doctor 2>&1 || true
+
+  section "Config"
+  # Names and sizes only. What is in them is the part that is yours.
+  local file
+  while IFS= read -r file; do
+    printf '%-44s %s\n' "${file/#$HOME/\~}" "$(wc -c <"$file" | tr -d ' ') bytes"
+  done < <(find "$OMACOS_CONFIG" "${XDG_CONFIG_HOME:-$HOME/.config}/aerospace" \
+                "${XDG_CONFIG_HOME:-$HOME/.config}/sketchybar" \
+                -maxdepth 2 -type f 2>/dev/null | sort)
+
+  section "local.env"
+  # The keys, never the values: this file holds an email address and the name
+  # of a signing key at minimum.
+  if [[ -f $OMACOS_CONFIG/local.env ]]; then
+    sed -n 's/^[[:space:]]*\(export[[:space:]]\{1,\}\)\{0,1\}\([A-Z_][A-Z0-9_]*\)=.*/\2 is set/p' \
+      "$OMACOS_CONFIG/local.env" | sort -u
+  else
+    printf '(no local.env)\n'
+  fi
+
+  section "Keymap"
+  printf 'bindings:  %s\n' "$(grep -cE '^[a-z].*\|.*\|' "$OMACOS_CONFIG/keymap.conf" 2>/dev/null || echo 0)"
+  printf 'differs from shipped: %s\n' \
+    "$(diff -q "$OMACOS_PATH/config/omacos/keymap.conf" "$OMACOS_CONFIG/keymap.conf" >/dev/null 2>&1 && echo no || echo yes)"
+}
+
+# Colour is for a terminal; this is for a text box in a bug tracker.
+plain() { sed $'s/\033\[[0-9;]*[a-zA-Z]//g'; }
+
+if [[ ${1:-} == --stdout ]]; then
+  collect | plain
+  exit 0
+fi
+
+report="${TMPDIR:-/tmp}/omacos-debug-$(date +%Y%m%d-%H%M%S).md"
+collect | plain > "$report"
+
+printf '\033[32mWrote %s\033[0m\n' "$report"
+printf '\033[2m%s lines. Read it before you post it — it is meant to be safe to\n' "$(wc -l <"$report" | tr -d ' ')"
+printf 'share, but it is your machine and your call.\033[0m\n'
+
+helper="$OMACOS_STATE/bin/omacos-helper"
+if [[ -x $helper ]]; then
+  "$helper" copy-file "$report" >/dev/null 2>&1 && \
+    printf '\033[2mOn the clipboard as a file.\033[0m\n'
+fi

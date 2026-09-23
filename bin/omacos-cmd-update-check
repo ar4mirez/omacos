@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# omacos:summary=Say whether an omacos update is waiting
+# omacos:args=[--force]
+# omacos:hidden=true
+# omacos:examples=omacos cmd update-check
+#
+# Exits 0 when there is an update, 1 when there is not. The answer is cached in
+# state, because asking the remote costs a second of network and the bar item
+# that reads this redraws far more often than a release happens.
+#
+# Nothing here fetches or merges: `git ls-remote` reads one ref and writes
+# nothing, so this can never move the tree under a running command.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+flag="$OMACOS_STATE/update-available"
+stamp="$OMACOS_STATE/update-checked"
+ttl=${OMACOS_UPDATE_CHECK_TTL:-1800}
+
+fresh() {
+  [[ ${1:-} != --force ]] || return 1
+  [[ -f $stamp ]] || return 1
+  local age=$(( $(date +%s) - $(stat -f %m "$stamp" 2>/dev/null || echo 0) ))
+  ((age >= 0 && age < ttl))
+}
+
+if fresh "${1:-}"; then
+  [[ -f $flag ]]
+  exit $?
+fi
+
+# A checkout that is not a git tree, or has no remote, has no update to offer.
+[[ -d $OMACOS_PATH/.git ]] || exit 1
+
+local_head=$(git -C "$OMACOS_PATH" rev-parse HEAD 2>/dev/null) || exit 1
+branch=$(git -C "$OMACOS_PATH" rev-parse --abbrev-ref HEAD 2>/dev/null) || branch=main
+remote_head=$(git -C "$OMACOS_PATH" ls-remote origin "$branch" 2>/dev/null | cut -f1) || remote_head=""
+
+# No network, no answer — and an unreachable remote is not an update. Leave the
+# previous answer alone rather than claiming the machine is current.
+[[ -n $remote_head ]] || { [[ -f $flag ]]; exit $?; }
+
+mkdir -p "$OMACOS_STATE"
+: > "$stamp"
+
+if [[ $local_head == "$remote_head" ]]; then
+  rm -f "$flag"
+  exit 1
+fi
+
+# Behind, not merely different: a checkout ahead of its remote is a developer's
+# tree, and telling them to update would be backwards.
+if git -C "$OMACOS_PATH" merge-base --is-ancestor "$local_head" "$remote_head" 2>/dev/null; then
+  printf '%s\n' "$remote_head" > "$flag"
+  exit 0
+fi
+rm -f "$flag"
+exit 1

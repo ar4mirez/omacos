@@ -55,6 +55,7 @@ sketchybar --add event omacos_recording
 sketchybar --add event omacos_idle
 sketchybar --add event omacos_reminders
 sketchybar --add event omacos_nightshift
+sketchybar --add event omacos_update
 
 # AeroSpace's server is gated on Accessibility, so it may not answer yet.
 # Falling back to the workspaces the keymap defines keeps the bar complete
@@ -120,6 +121,15 @@ sketchybar --add item nightshift right \
                             click_script="$PLUGIN_DIR/click.sh nightshift" \
            --subscribe nightshift omacos_nightshift
 
+# An update waiting is the one thing on the bar you would want to act on
+# rather than just read. update_freq is long because the check behind it caches
+# its answer; the item costs nothing between releases.
+sketchybar --add item update right \
+           --set update updates=on drawing=off update_freq=1800 \
+                        script="$PLUGIN_DIR/update.sh" \
+                        click_script="$PLUGIN_DIR/click.sh update" \
+           --subscribe update omacos_update
+
 sketchybar --add item clock right \
            --set clock update_freq=10 script="$PLUGIN_DIR/clock.sh" \
                        click_script="$PLUGIN_DIR/click.sh clock"
@@ -144,6 +154,7 @@ sketchybar --trigger omacos_recording
 sketchybar --trigger omacos_idle
 sketchybar --trigger omacos_reminders
 sketchybar --trigger omacos_nightshift
+sketchybar --trigger omacos_update
 
 # The workspace items only update on aerospace_workspace_change, so without
 # this they sit unstyled until you happen to switch workspaces. It has to come

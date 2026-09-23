@@ -579,6 +579,74 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mThe last small things\033[0m\n'
+# --- the update badge -------------------------------------------------------
+UC="$OMACOS_PATH/bin/omacos-cmd-update-check"
+# ls-remote reads one ref and writes nothing. fetch or pull would move the tree
+# under whatever command happens to be running.
+update_check_never_writes() {
+  # merge-base is a read-only query and has to survive the pattern that is
+  # looking for merge. So do the mutating commands by exact word.
+  ! grep -vE 'merge-base' "$UC" | grep -qE 'git [^|]*\b(fetch|pull|reset|merge|checkout|clone)\b'
+}
+check "the check never writes"    update_check_never_writes
+check "it caches its answer"      "grep -q 'update-checked' $UC"
+check "an ahead tree is not behind" "grep -q 'merge-base --is-ancestor' $UC"
+# An unreachable remote is not an up-to-date machine.
+check "no network keeps the last answer" "grep -q 'unreachable remote is not an update' $UC"
+check "the bar has the item"      "grep -q 'add item update' $OMACOS_PATH/config/sketchybar/sketchybarrc"
+check "updating clears the badge" "grep -q 'update-available' $OMACOS_PATH/bin/omacos-update"
+update_check_is_quiet_without_git() {
+  local dir; dir=$(mktemp -d)
+  # Not a git tree: there is no update to offer, and it must say so rather than
+  # error into the bar plugin that calls it every half hour.
+  OMACOS_PATH="$dir" omacos-cmd-update-check --force >/dev/null 2>&1
+  local rc=$?
+  rm -rf "$dir"
+  ((rc == 1))
+}
+check "a non-git tree offers nothing" update_check_is_quiet_without_git
+
+# --- low power mode ---------------------------------------------------------
+LP="$OMACOS_PATH/bin/omacos-toggle-lowpower"
+check "status needs no sudo"      "omacos-toggle-lowpower status >/dev/null 2>&1 || omacos-toggle-lowpower status 2>&1 | grep -q 'Low Power Mode'"
+check "it reads pmset, not guesses" "grep -q 'pmset -g custom' $LP"
+check "it sets both power sources"  "grep -q 'pmset -a lowpowermode' $LP"
+check "no terminal is explained"    "grep -q 'no terminal to ask on' $LP"
+check "an unknown verb is rejected" "! omacos-toggle-lowpower bogus 2>/dev/null"
+
+# --- the debug report -------------------------------------------------------
+DBG="$OMACOS_PATH/bin/omacos-debug"
+DEBUG_OUT=$(omacos-debug --stdout 2>/dev/null)
+check "it reports something"      "test -n \"\$DEBUG_OUT\""
+check "it has the sections"       "grep -q '## Machine' <<<\"\$DEBUG_OUT\" && grep -q '## Versions' <<<\"\$DEBUG_OUT\""
+# It is written to be pasted into a public issue.
+check "no escape codes survive"   "! printf '%s' \"\$DEBUG_OUT\" | grep -q \$'\033'"
+debug_leaks_no_local_env_values() {
+  local env_file="$OMACOS_CONFIG/local.env" value
+  printf 'SECRET_CANARY=hunter2-do-not-leak\n' >> "$env_file"
+  local out; out=$(omacos-debug --stdout 2>/dev/null)
+  sed -i '' '/SECRET_CANARY/d' "$env_file"
+  # The key may be named. The value may never be.
+  [[ $out == *SECRET_CANARY* ]] || return 1
+  [[ $out != *hunter2-do-not-leak* ]]
+}
+check "it names keys, never values" debug_leaks_no_local_env_values
+check "tmux is asked with -V"     "grep -q 'tmux -V' $DBG"
+check "ghostty is found in its bundle" "grep -q 'Ghostty.app/Contents/MacOS/ghostty' $DBG"
+
+# --- the three packages -----------------------------------------------------
+check "tldr ships"   "grep -q '^brew \"tldr\"' $OMACOS_PATH/Brewfile"
+check "yt-dlp ships" "grep -q '^brew \"yt-dlp\"' $OMACOS_PATH/Brewfile"
+check "try ships"    "grep -q '^brew \"try\"' $OMACOS_PATH/Brewfile"
+
+# --- the prompt -------------------------------------------------------------
+check "a starship config is seeded" "test -f $OMACOS_PATH/config/starship.toml"
+check "the prompt parses"           "python3 -c \"import tomllib,sys; tomllib.load(open('$OMACOS_PATH/config/starship.toml','rb'))\""
+# Colours come from the terminal, which omacos themes; a second palette here
+# would drift out of step with `omacos theme set`.
+check "the prompt sets no palette"  "! grep -qE '^\[palettes' $OMACOS_PATH/config/starship.toml"
+
 printf '\n\033[1mTranscode\033[0m\n'
 TR="$OMACOS_PATH/bin/omacos-transcode"
 check "it is bound to a key"  "grep -q '^alt-ctrl-period |.*omacos-transcode' $OMACOS_PATH/config/omacos/keymap.conf"

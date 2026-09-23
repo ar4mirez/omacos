@@ -485,6 +485,12 @@
     "label": "Night Shift",
     "action": "omacos-toggle-nightlight"
   },
+  "toggles.lowpower": {
+    "icon": "◑",
+    "label": "Low Power Mode",
+    "action": "omacos-toggle-lowpower",
+    "checked": "omacos-toggle-lowpower status"
+  },
   "toggles.menubar": {
     "icon": "▔",
     "label": "Hide the macOS menu bar",
@@ -575,6 +581,11 @@
     "label": "Doctor",
     "action": "omacos-doctor; read -n 1 -s -r -p 'Press any key'"
   },
+  "setup.debug": {
+    "icon": "☷",
+    "label": "Collect a debug report",
+    "action": "omacos-debug; read -n 1 -s -r -p 'Press any key'"
+  },
   "setup.edit-keymap": {
     "icon": "✎",
     "label": "Edit keymap",
@@ -604,6 +615,11 @@
     "label": "Run pending migrations",
     "action": "omacos-migrate",
     "when": "omacos-migrate --pending"
+  },
+  "update.check": {
+    "icon": "↻",
+    "label": "Check for an update",
+    "action": "omacos-cmd-update-check --force && echo 'An update is waiting — run Update > omacos' || echo 'Up to date.'; read -n 1 -s -r -p 'Press any key'"
   },
   "system": {
     "icon": "▣",

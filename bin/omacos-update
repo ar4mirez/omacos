@@ -111,6 +111,12 @@ command -v omacos-keymap-build >/dev/null && omacos-feature check desktop 2>/dev
 theme=$(omacos-theme-current 2>/dev/null || echo "")
 [[ -n $theme ]] && omacos-theme-set "$theme" >/dev/null && echo "  Reapplied theme: $theme"
 
+# The badge is stale the moment this finishes, whichever way it went.
+rm -f "$OMACOS_STATE/update-available" "$OMACOS_STATE/update-checked"
+if command -v sketchybar >/dev/null 2>&1; then
+  sketchybar --trigger omacos_update >/dev/null 2>&1 || true
+fi
+
 omacos-hook post-update || true
 
 # Anything that asked for a restart during this run says so once, here.

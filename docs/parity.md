@@ -24,7 +24,7 @@ how a port ends up claiming things it cannot do.
 | 02 | Getting started | differs | An ISO and a partitioning wizard become `curl \| bash`. No disk to encrypt: FileVault is macOS's, and already there. |
 | 03 | Coming from Mac/Windows | done | Answered chapter-for-chapter in [coming-from-macos.md](coming-from-macos.md). |
 | 04 | Navigation | done | Answered chapter-for-chapter in [navigation.md](navigation.md), and every binding in it driven on a live desktop. Three things stay out of reach and say so there. |
-| 05 | The top bar | differs | SketchyBar, with every item answering left, right and middle click from one editable table. Omarchy's *panels* are in-bar popups; omacos opens the matching System Settings pane instead, because macOS already owns that UI. Indicators: a recording, held-off sleep, a pending reminder, and Night Shift where it can be read. **Open:** an update-available badge; `bar position` / `transparent` commands. Do Not Disturb cannot be indicated at all — see below. |
+| 05 | The top bar | differs | SketchyBar, with every item answering left, right and middle click from one editable table. Omarchy's *panels* are in-bar popups; omacos opens the matching System Settings pane instead, because macOS already owns that UI. Indicators: a recording, held-off sleep, a pending reminder, Night Shift where it can be read, and an update waiting. **Open:** `bar position` / `transparent` commands. Do Not Disturb cannot be indicated at all — see below. |
 | 06 | Themes | done | 22 themes, the same count. `alt-ctrl-shift-space` picks one, `alt-ctrl-space` cycles its backgrounds. Unlock screens are n/a — the FileVault screen is not themeable. |
 | 07 | Hotkeys | done | 136 bindings, `alt-ctrl-k` shows them all. **Open** from this chapter: an emoji picker key (macOS's own needs Accessibility to trigger from a script), window transparency, save/restore window width. |
 
@@ -45,7 +45,7 @@ how a port ends up claiming things it cannot do.
 | # | Chapter | | Notes |
 |---|---|---|---|
 | 15–18 | Terminal, Neovim, AI, dev tools | done | Ghostty, LazyVim, and a 68-entry catalog covering browsers, editors, terminals, AI apps, coding agents, services and runtimes. |
-| 19 | Shell tools | differs | fzf, zoxide, ripgrep, eza, bat, fd, atuin, direnv, mise all ship. **Open:** `tldr`, `yt-dlp`, `try`. |
+| 19 | Shell tools | done | fzf, zoxide, ripgrep, eza, bat, fd, atuin, direnv, mise, and now `tldr`, `yt-dlp` and `try`. |
 | 20 | Shell functions | done | Ported in full: `compress`/`decompress`, `ff`/`eff`, the tmux dev layouts (`tdl`, `tds`, `tdlm`, `tsl`), the git worktree helpers (`ga`, `gd`), the rsync watchers (`rsw`, `lsw`, `dsw`), the SSH port-forward helpers (`fip`, `dip`, `lip`), the reconnecting `ssh` wrapper, and `format-drive`/`iso2sd` on `diskutil`. See [shell-functions.md](shell-functions.md). |
 | 21–25 | TUIs, GUIs, browsers, commercial apps, web apps | done | `omacos tui install`, `omacos webapp install`, `omacos default browser`, and the catalog behind all of them. |
 | 26–29 | Gaming, PDFs, Windows VM, other packages | n/a | Steam aside, this is Proton, Lutris and virt-manager. Preview fills in PDFs; Homebrew is the package manager. |
@@ -54,17 +54,17 @@ how a port ends up claiming things it cannot do.
 
 | # | Chapter | | Notes |
 |---|---|---|---|
-| 30 | Updates | differs | `omacos update` snapshots, pulls, migrates, seeds, upgrades and re-themes. Omarchy's four release channels become one: `omacos dev link` is the dev channel. **Open:** the update-available badge in the bar. |
+| 30 | Updates | differs | `omacos update` snapshots, pulls, migrates, seeds, upgrades and re-themes. Omarchy's four release channels become one: `omacos dev link` is the dev channel. The bar shows a badge when a release is waiting; the check reads one ref and caches the answer, so it costs nothing between releases. |
 | 31 | Dotfiles | done | The ownership boundary is omacos's central idea — see [architecture.md](architecture.md). Hooks fire on `post-install`, `post-update`, `theme-set` and `font-set`, with samples shipped for each. **Open:** a `battery-low` event. |
 | 32 | Shell plugins | differs | zsh, not bash. The extension point is `~/.config/zsh/local.zsh`. |
 | 33 | Monitors | n/a | Scaling, mirroring, arrangement and brightness are macOS's, and it is better at them. **Open:** a single text-size knob across terminal and bar. |
 | 34 | Keyboard, mouse, trackpad | n/a | System Settings. `omacos setup capslock` is the one thing worth scripting. |
 | 35 | Networking | done | macOS owns the radio. What the chapter does on top of it is here: `omacos network speedtest` (the built-in `networkQuality`, no account and nothing to install), `dns` with Cloudflare, Google and Quad9 by name on whichever service holds the default route, and `qr` to put someone on the Wi-Fi without reading a password out. The SSID has to be typed: since macOS 14 it is location data and a terminal is told `<redacted>`. Band pinning and the firewall are macOS's. |
-| 36 | System sleep | differs | Suspend and hibernation are macOS's business. **Open:** Low Power Mode as a toggle, which is the closest thing to power profiles. |
+| 36 | System sleep | differs | Suspend and hibernation are macOS's business. `omacos toggle lowpower` is the closest thing macOS has to Omarchy's power profiles — and it is already per-source underneath, so one switch does both. |
 | 37 | Hardware authentication | done | The lock screen and system prompts take Touch ID on their own. `omacos setup touchid` adds the third, `sudo`, in `/etc/pam.d/sudo_local` — and installs `pam_reattach` so it also works inside tmux, where it otherwise silently falls back to a password. That module sits in a user-writable Homebrew prefix, which the command says out loud; `--no-tmux` skips it. Fido2 is n/a. |
 | 38 | Fonts | done | `omacos font set` changes the terminal and the bar together, through a generated file each one loads — so it never rewrites a config you own. `omacos app list font` carries the same six Nerd Fonts Omarchy offers plus Hack and Iosevka. `omacos font list` reads the font files themselves, because nothing else on macOS can see a font Homebrew installed. |
 | 39 | Backgrounds | done | Per-theme, plus anything you drop in `~/.config/omacos/backgrounds/<theme>/`. Video wallpapers are n/a. |
-| 40 | Prompt | differs | Starship ships and is initialised. **Open:** no `starship.toml` is seeded, so you get Starship's default rather than a curated one. |
+| 40 | Prompt | done | Starship ships and is initialised. A `starship.toml` is seeded: the directory, the branch, and how long the last thing took. It sets no colours of its own, so the prompt follows `omacos theme set` rather than keeping a second palette. |
 | 41 | Branding | n/a | ASCII-art screensaver logos, for a screensaver macOS supplies. |
 | 42 | Common tweaks | done | Gaps, the bar, and the menu bar are all one command. |
 | 43 | Making your own theme | done | `omacos theme import`, and a converter that ported Omarchy's palettes rather than copying them by hand. Themes from strangers are stripped of anything executable. |
@@ -74,7 +74,7 @@ how a port ends up claiming things it cannot do.
 | # | Chapter | | Notes |
 |---|---|---|---|
 | 44 | Mac support | n/a | This chapter is about running Omarchy *on* Mac hardware. omacos is the other direction. |
-| 45 | Troubleshooting | differs | `omacos doctor` reports what is actually true, and names the three things no script can do. **Open:** a debug bundle to paste into an issue, and one-command restarts for Wi-Fi, Bluetooth and audio. |
+| 45 | Troubleshooting | differs | `omacos doctor` reports what is actually true, and names the three things no script can do. `omacos debug` collects a report for an issue — the keys in `local.env` but never their values, and no escape codes. **Open:** one-command restarts for Wi-Fi, Bluetooth and audio. |
 | 46 | FAQ | differs | Spread across the docs rather than collected. |
 | 47 | System snapshots | done | APFS local snapshots, taken before every update, restorable through Recovery. No bootloader required, because macOS has had this the whole time. |
 | 48 | Security | differs | FileVault, Gatekeeper and the application firewall are macOS's and are on. 1Password's SSH agent holds the keys and nothing is written to `~/.ssh`. |
@@ -84,13 +84,20 @@ how a port ends up claiming things it cannot do.
 
 Ranked by what you would notice:
 
-1. **Update-available badge** (ch 05, 30).
-2. **Low Power Mode** (ch 36), **a seeded `starship.toml`** (ch 40), **a debug bundle** (ch 45).
-3. **`tldr`, `yt-dlp`, `try`** (ch 19) — three packages, not a feature.
+1. **`bar position` and `transparent`** (ch 05) — Omarchy's bar can be dragged
+   to another screen edge and made transparent. SketchyBar can do both; omacos
+   exposes neither.
+2. **One-command restarts** for Wi-Fi, Bluetooth and audio (ch 45).
+3. **A `battery-low` hook event** (ch 31).
+
+Everything else in the manual is answered, deliberately different, or named
+below as something macOS will not allow.
 
 *Shell functions (ch 20), Touch ID for `sudo` (ch 37), the bar indicators
-(ch 05, 13), fonts (ch 38), networking (ch 35), and QR decode and transcoding
-(ch 12) used to head this list. All seven are done.*
+(ch 05, 13), fonts (ch 38), networking (ch 35), QR decode and transcoding
+(ch 12), the update badge (ch 05, 30), Low Power Mode (ch 36), the prompt
+(ch 40), the debug report (ch 45) and the last three shell tools (ch 19) have
+all been on this list. Every one of them is done.*
 
 **One thing that cannot be done, rather than has not been.** Omarchy's
 indicators widget shows Do Not Disturb. macOS keeps Focus state under

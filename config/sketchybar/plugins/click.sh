@@ -52,6 +52,9 @@ case "$item.${BUTTON:-left}" in
 
   nightshift.*)    omacos-toggle-nightlight ;;
 
+  # It only draws when there is something to do, so every button does it.
+  update.*)        omacos-launch-tui "omacos-update" ;;
+
   theme.left)      omacos-theme-next ;;
   theme.right)     omacos-menu-theme ;;
   theme.*)         omacos-theme-background ;;

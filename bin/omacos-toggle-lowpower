@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# omacos:summary=Turn Low Power Mode on or off
+# omacos:args=[on|off|status]
+# omacos:examples=omacos toggle lowpower | omacos toggle lowpower status
+#
+# Omarchy remembers a power profile per power source and switches as you plug
+# and unplug. macOS has one switch rather than a set of profiles — Low Power
+# Mode — and it is already per-source underneath: pmset stores it separately
+# for battery and charger. So this sets both, which is what "on" means when
+# you reach for it.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+# Readable without sudo; only changing it needs rights.
+current() {
+  local settings
+  settings=$(pmset -g custom 2>/dev/null) || return 1
+  # The value under whichever source is active is the one in force. Both are
+  # reported; taking the first is right for a machine on one or the other.
+  [[ $(printf '%s\n' "$settings" | awk '/lowpowermode/ {print $2; exit}') == 1 ]]
+}
+
+report() {
+  if current; then
+    printf 'Low Power Mode is \033[32mon\033[0m.\n'
+  else
+    printf 'Low Power Mode is \033[2moff\033[0m.\n'
+    return 1
+  fi
+}
+
+apply() {
+  local value=$1
+  if ! sudo -n true 2>/dev/null && [[ ! -t 0 && -z ${SUDO_ASKPASS:-} ]]; then
+    echo "Changing Low Power Mode needs sudo, and there is no terminal to ask on." >&2
+    echo "Run it in a terminal window: omacos toggle lowpower ${2:-}" >&2
+    exit 1
+  fi
+  # -a is both sources. macOS keeps them separately and this is the switch
+  # people mean, rather than "quiet on battery and loud on the wall".
+  sudo pmset -a lowpowermode "$value"
+}
+
+case ${1:-toggle} in
+  status) report ;;
+  on)     apply 1 on;  printf '\033[32mLow Power Mode on.\033[0m\n' ;;
+  off)    apply 0 off; printf '\033[33mLow Power Mode off.\033[0m\n' ;;
+  toggle)
+    if current; then
+      apply 0 off; printf '\033[33mLow Power Mode off.\033[0m\n'
+    else
+      apply 1 on;  printf '\033[32mLow Power Mode on.\033[0m\n'
+    fi
+    ;;
+  *) echo "usage: omacos toggle lowpower [on|off|status]" >&2; exit 1 ;;
+esac

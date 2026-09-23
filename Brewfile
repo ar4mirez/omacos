@@ -47,6 +47,9 @@ brew "jq"
 brew "yq"
 brew "mas"
 brew "duti"             # sets URL scheme handlers for `omacos setup browser`
+brew "tldr"                 # the examples, without three screens of history
+brew "yt-dlp"               # download a video from a page
+brew "try"                  # date-stamped experiment directories, in ~/Work/tries
 brew "fswatch"              # rsw: the macOS answer to inotifywait
 brew "shellcheck"
 
