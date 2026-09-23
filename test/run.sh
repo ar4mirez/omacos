@@ -619,6 +619,17 @@ check "it decodes without leaking" qr_decode_round_trip
 
 # Vision reads 1D barcodes too, and dense screen content false-positives as one
 # readily. A wrong answer here is worse than no answer.
+# A usage line that stops being updated is how a working binary gets mistaken
+# for a stale one.
+helper_usage_lists_every_subcommand() {
+  local usage
+  usage=$(grep -o 'usage: omacos-helper <[^"]*>' "$OMACOS_PATH/default/swift/omacos-helper.swift" | head -1)
+  local verb
+  for verb in ocr color clipboard fonts qr qr-decode; do
+    [[ $usage == *"$verb"* ]] || { echo "usage omits $verb: $usage"; return 1; }
+  done
+}
+check "the helper's usage is current" helper_usage_lists_every_subcommand
 check "it looks for QR codes only" "grep -q 'symbologies = \[.qr\]' $OMACOS_PATH/default/swift/omacos-helper.swift"
 # The convention every clipboard manager honours, and the one omacos's own
 # watcher already skips.

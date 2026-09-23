@@ -272,5 +272,7 @@ case "fonts":
 case "clipboard":
     watchClipboard()
 default:
-    die("usage: omacos-helper <ocr <image>|color>")
+    // Every subcommand, not the two it launched with. A usage line that stops
+    // being updated is how you end up believing a working binary is stale.
+    die("usage: omacos-helper <ocr <image>|color|clipboard|fonts|qr <text>|qr-decode <image>>")
 }
