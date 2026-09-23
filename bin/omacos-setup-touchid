@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+# omacos:summary=Use Touch ID instead of typing your password for sudo
+# omacos:args=[status|on|off]
+# omacos:examples=omacos setup touchid | omacos setup touchid status | omacos setup touchid off
+#
+# Omarchy's hardware-authentication chapter sets up a fingerprint for three
+# things: the lock screen, system authorization prompts, and sudo. macOS does
+# the first two with Touch ID already and has since the sensor shipped — the
+# only one missing is sudo in a terminal.
+#
+# That is one line of PAM config, and the safe place for it is /etc/pam.d/
+# sudo_local: /etc/pam.d/sudo includes it on the first line, and macOS leaves
+# it alone across system updates. Editing /etc/pam.d/sudo directly works until
+# the next update silently reverts it.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+SUDO_LOCAL=/etc/pam.d/sudo_local
+MARKER="# managed by omacos — omacos setup touchid off"
+REATTACH="${HOMEBREW_PREFIX:-/opt/homebrew}/lib/pam/pam_reattach.so"
+
+# Read first, then match: piping ioreg into `grep -q` makes grep exit on the
+# first hit, ioreg take SIGPIPE, and pipefail turn that into a failed check —
+# which reads as "this Mac has no Touch ID" on a Mac that plainly does.
+has_sensor() {
+  local sensors
+  sensors=$(ioreg -c AppleBiometricSensor 2>/dev/null) || return 1
+  [[ $sensors == *AppleBiometricSensor* ]]
+}
+
+# `bioutil -r` reports this user's enrolment. No print means the prompt would
+# appear and there would be nothing to match it against.
+has_print() {
+  [[ $(bioutil -r 2>/dev/null | sed -n 's/.*Effective biometrics for unlock: *//p' | head -1) == 1 ]]
+}
+
+configured() { [[ -f $SUDO_LOCAL ]] && grep -q 'pam_tid.so' "$SUDO_LOCAL"; }
+reattach_configured() { [[ -f $SUDO_LOCAL ]] && grep -q 'pam_reattach.so' "$SUDO_LOCAL"; }
+
+status() {
+  if has_sensor; then
+    printf '  \033[32m✓\033[0m This Mac has Touch ID\n'
+  else
+    printf '  \033[31m✗\033[0m No Touch ID sensor on this Mac\n'
+    return 1
+  fi
+
+  if has_print; then
+    printf '  \033[32m✓\033[0m A fingerprint is enrolled\n'
+  else
+    printf '  \033[33m!\033[0m No fingerprint enrolled\n'
+    printf '      \033[2mSystem Settings > Touch ID & Password\033[0m\n'
+  fi
+
+  if configured; then
+    printf '  \033[32m✓\033[0m sudo accepts Touch ID\n'
+  else
+    printf '  \033[33m!\033[0m sudo still wants your password\n'
+    printf '      \033[2mTurn it on with: omacos setup touchid\033[0m\n'
+  fi
+
+  # Without pam_reattach, the prompt never reaches the window server from
+  # inside tmux, so sudo silently falls back to asking for a password — in the
+  # one place an omacos user does most of their typing.
+  if command -v tmux >/dev/null 2>&1; then
+    if reattach_configured && [[ -f $REATTACH ]]; then
+      printf '  \033[32m✓\033[0m Works inside tmux\n'
+    else
+      printf '  \033[33m!\033[0m Inside tmux it will ask for a password\n'
+      printf '      \033[2mpam_reattach fixes that; omacos setup touchid installs it\033[0m\n'
+    fi
+  fi
+
+  printf '\n\033[2mThe lock screen and system prompts already take Touch ID — macOS does\n'
+  printf 'that on its own, and there is nothing here to configure for them.\033[0m\n'
+}
+
+enable() {
+  has_sensor || { echo "This Mac has no Touch ID sensor." >&2; exit 1; }
+  if ! has_print; then
+    echo "No fingerprint is enrolled yet." >&2
+    echo "Enrol one in System Settings > Touch ID & Password, then run this again." >&2
+    # Opening the pane is the whole of what a script can do here: enrolment
+    # needs the sensor and a human finger.
+    open "x-apple.systempreferences:com.apple.preferences.password" 2>/dev/null || true
+    exit 1
+  fi
+
+  # pam_reattach is only worth having where there is a tmux to be stuck in.
+  local want_reattach=false
+  if command -v tmux >/dev/null 2>&1; then
+    want_reattach=true
+    if [[ ! -f $REATTACH ]]; then
+      if command -v brew >/dev/null 2>&1; then
+        printf 'Installing pam-reattach, so Touch ID also works inside tmux...\n'
+        brew install pam-reattach >/dev/null 2>&1 || true
+      fi
+    fi
+    [[ -f $REATTACH ]] || {
+      printf '\033[33mpam-reattach is not installed; Touch ID will work outside tmux only.\033[0m\n'
+      want_reattach=false
+    }
+  fi
+
+  local content="$MARKER
+# sudo_local is included by /etc/pam.d/sudo and survives system updates.
+"
+  # Order matters: reattach has to run before pam_tid, or there is no GUI
+  # session for the prompt to appear in. ignore_ssh, because over SSH there is
+  # no session to reattach to and trying is a hang rather than an error.
+  if $want_reattach; then
+    content+="auth       optional       $REATTACH ignore_ssh
+"
+  fi
+  # `sufficient`: Touch ID succeeding is enough, and Touch ID failing or being
+  # unavailable falls through to the password rules below it in /etc/pam.d/sudo.
+  # That fall-through is what makes this safe to turn on.
+  content+="auth       sufficient     pam_tid.so
+"
+
+  if configured && [[ $(cat "$SUDO_LOCAL" 2>/dev/null) == "$content" ]]; then
+    printf '\033[2mAlready set up.\033[0m\n'
+    return 0
+  fi
+
+  printf 'Writing %s (needs your password this one last time).\n' "$SUDO_LOCAL"
+  # A staging file left behind by a failure halfway through is confusing at
+  # best; it is never the file PAM reads, but it should not outlive the run.
+  trap 'sudo rm -f "$SUDO_LOCAL.omacos-new" 2>/dev/null || true' EXIT
+  # One privileged step: back up anything already there, write, and set the
+  # ownership PAM insists on. A file writable by anyone but root is ignored.
+  printf '%s' "$content" | sudo tee "$SUDO_LOCAL.omacos-new" >/dev/null || {
+    echo "Could not write $SUDO_LOCAL." >&2; exit 1; }
+  if [[ -f $SUDO_LOCAL ]] && ! grep -q "$MARKER" "$SUDO_LOCAL"; then
+    sudo cp "$SUDO_LOCAL" "$SUDO_LOCAL.bak" || true
+    printf '\033[2mYour previous %s was kept as %s.bak\033[0m\n' "$SUDO_LOCAL" "$SUDO_LOCAL"
+  fi
+  sudo chown root:wheel "$SUDO_LOCAL.omacos-new"
+  sudo chmod 444 "$SUDO_LOCAL.omacos-new"
+  sudo mv "$SUDO_LOCAL.omacos-new" "$SUDO_LOCAL"
+  trap - EXIT
+
+  # Prove sudo still authenticates before walking away from it. With the
+  # credential dropped, `sudo -n true` must fail the ordinary way — by saying a
+  # password is required. Any other failure means PAM did not like the file, and
+  # the only safe move is to take it straight back out while we still can.
+  sudo -k
+  local probe
+  probe=$(sudo -n true 2>&1 || true)
+  if [[ $probe != *"password is required"* ]]; then
+    printf '\033[31msudo did not behave as expected afterwards:\033[0m\n  %s\n' "$probe" >&2
+    printf '\033[33mRemoving %s again.\033[0m\n' "$SUDO_LOCAL" >&2
+    sudo rm -f "$SUDO_LOCAL"
+    [[ -f $SUDO_LOCAL.bak ]] && sudo mv "$SUDO_LOCAL.bak" "$SUDO_LOCAL"
+    exit 1
+  fi
+
+  printf '\033[32mTouch ID is on for sudo.\033[0m\n'
+  printf '\033[2mTry it in a new terminal: sudo -k; sudo true\033[0m\n'
+  printf '\033[2mIf anything is wrong, undo it with: omacos setup touchid off\033[0m\n'
+}
+
+disable() {
+  if [[ ! -f $SUDO_LOCAL ]]; then
+    printf '\033[2mTouch ID was not set up for sudo.\033[0m\n'
+    return 0
+  fi
+  if ! grep -q "$MARKER" "$SUDO_LOCAL"; then
+    # Somebody else's file. Removing it would undo a choice omacos never made.
+    echo "$SUDO_LOCAL was not written by omacos; leaving it alone." >&2
+    echo "Edit it by hand to remove the pam_tid.so line." >&2
+    exit 1
+  fi
+  sudo rm -f "$SUDO_LOCAL"
+  if [[ -f $SUDO_LOCAL.bak ]]; then
+    sudo mv "$SUDO_LOCAL.bak" "$SUDO_LOCAL"
+    printf '\033[33mRestored the %s you had before.\033[0m\n' "$SUDO_LOCAL"
+  else
+    printf '\033[33msudo asks for your password again.\033[0m\n'
+  fi
+}
+
+case ${1:-on} in
+  status) status ;;
+  on)     enable ;;
+  off)    disable ;;
+  *)      echo "usage: omacos setup touchid [status|on|off]" >&2; exit 1 ;;
+esac

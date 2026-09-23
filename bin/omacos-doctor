@@ -153,6 +153,16 @@ else
   note "Do Not Disturb not set up" "Focus needs a one-time shortcut: omacos setup dnd"
 fi
 
+# Touch ID for sudo is off until asked for, and the only sign of that is being
+# asked for a password by a Mac that would happily have taken a fingerprint.
+# Captured, not piped into grep -q, for the same reason as csrutil above.
+biometrics=$(ioreg -c AppleBiometricSensor 2>/dev/null) || biometrics=""
+if [[ -f /etc/pam.d/sudo_local ]] && grep -q pam_tid.so /etc/pam.d/sudo_local 2>/dev/null; then
+  ok "sudo takes Touch ID"
+elif [[ $biometrics == *AppleBiometricSensor* ]]; then
+  note "sudo still wants your password" "This Mac has Touch ID: omacos setup touchid"
+fi
+
 # The snapshot is the one safety net nobody looks at until the day they need
 # it, so it is worth saying out loud whether there is one to fall back to.
 newest=$(omacos-snapshot-list --plain 2>/dev/null | head -1)

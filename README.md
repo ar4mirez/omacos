@@ -56,6 +56,7 @@ omacos snapshot create|list|restore|delete   # Time Machine, without the disk
 omacos font list
 omacos feature enable desktop | apps
 omacos setup signing            # git commit signing via 1Password
+omacos setup touchid            # sudo takes your fingerprint
 omacos git org add Acme         # per-org identity under ~/Work/Acme/
 
 omacos app list [category]      # the catalog, and what you already have

@@ -61,7 +61,7 @@ how a port ends up claiming things it cannot do.
 | 34 | Keyboard, mouse, trackpad | n/a | System Settings. `omacos setup capslock` is the one thing worth scripting. |
 | 35 | Networking | n/a | macOS owns Wi-Fi and Ethernet. **Open, and all easy:** `networkQuality` is a built-in speed test, `networksetup` sets DNS, and sharing Wi-Fi by QR code is a real convenience. |
 | 36 | System sleep | differs | Suspend and hibernation are macOS's business. **Open:** Low Power Mode as a toggle, which is the closest thing to power profiles. |
-| 37 | Hardware authentication | open | Omarchy does fingerprint auth for the lock screen and `sudo`. macOS has Touch ID for both, and `sudo` needs one line in `/etc/pam.d/sudo_local`. This is the clearest unclaimed win in the manual. |
+| 37 | Hardware authentication | done | The lock screen and system prompts take Touch ID on their own. `omacos setup touchid` adds the third, `sudo`, in `/etc/pam.d/sudo_local` — and installs `pam_reattach` so it also works inside tmux, where it otherwise silently falls back to a password. Fido2 is n/a. |
 | 38 | Fonts | differs | `omacos font list` reports what is installed. **Open:** choosing one, and installing more — Omarchy has *Style > Font* and *Install > Style > Font*. |
 | 39 | Backgrounds | done | Per-theme, plus anything you drop in `~/.config/omacos/backgrounds/<theme>/`. Video wallpapers are n/a. |
 | 40 | Prompt | differs | Starship ships and is initialised. **Open:** no `starship.toml` is seeded, so you get Starship's default rather than a curated one. |
@@ -84,14 +84,14 @@ how a port ends up claiming things it cannot do.
 
 Ranked by what you would notice:
 
-1. **Touch ID for `sudo`** (ch 37) — one line of PAM config for the manual's whole hardware-auth chapter.
-2. **Bar indicators** for Do Not Disturb, Night Shift and pending reminders (ch 05, 13) — the state is already tracked; nothing draws it.
-3. **Fonts** (ch 38) — choosing and installing one. Ghostty already loads a generated include, so there is a clean place to put it.
-4. **Networking odds and ends** (ch 35) — speed test, DNS, Wi-Fi QR. All native, all small.
-5. **QR decode** (ch 12) — the Vision framework already does OCR for `omacos capture text`; barcodes are the same API.
-6. **Transcode** (ch 12) — `sips` and ffmpeg.
-7. **Update-available badge** (ch 05, 30).
-8. **Low Power Mode** (ch 36), **a seeded `starship.toml`** (ch 40), **a debug bundle** (ch 45).
-9. **`tldr`, `yt-dlp`, `try`** (ch 19) — three packages, not a feature.
+1. **Bar indicators** for Do Not Disturb, Night Shift and pending reminders (ch 05, 13) — the state is already tracked; nothing draws it.
+2. **Fonts** (ch 38) — choosing and installing one. Ghostty already loads a generated include, so there is a clean place to put it.
+3. **Networking odds and ends** (ch 35) — speed test, DNS, Wi-Fi QR. All native, all small.
+4. **QR decode** (ch 12) — the Vision framework already does OCR for `omacos capture text`; barcodes are the same API.
+5. **Transcode** (ch 12) — `sips` and ffmpeg.
+6. **Update-available badge** (ch 05, 30).
+7. **Low Power Mode** (ch 36), **a seeded `starship.toml`** (ch 40), **a debug bundle** (ch 45).
+8. **`tldr`, `yt-dlp`, `try`** (ch 19) — three packages, not a feature.
 
-*Shell functions (ch 20) used to head this list. It is done.*
+*Shell functions (ch 20) and Touch ID for `sudo` (ch 37) used to head this
+list. Both are done.*

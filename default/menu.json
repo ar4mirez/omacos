@@ -495,6 +495,12 @@
     "label": "Dictation",
     "action": "omacos-setup-dictation"
   },
+  "setup.touchid": {
+    "icon": "◉",
+    "label": "Touch ID for sudo",
+    "action": "omacos-setup-touchid; read -n 1 -s -r -p 'Press any key'",
+    "checked": "grep -q pam_tid.so /etc/pam.d/sudo_local 2>/dev/null"
+  },
   "setup.clipboard": {
     "icon": "⎘",
     "label": "Clipboard history",

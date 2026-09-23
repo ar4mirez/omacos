@@ -564,6 +564,46 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mTouch ID for sudo\033[0m\n'
+TID="$OMACOS_PATH/bin/omacos-setup-touchid"
+# status is read-only and must never need root, on a Mac with the sensor or
+# without one — CI runs on a VM that has none.
+check "status needs no root"     "omacos-setup-touchid status >/dev/null 2>&1 || omacos-setup-touchid status 2>&1 | grep -q 'Touch ID'"
+check "off is a no-op when unset" "test ! -f /etc/pam.d/sudo_local && omacos-setup-touchid off | grep -q 'not set up' || true"
+check "an unknown verb is rejected" "! omacos-setup-touchid bogus 2>/dev/null"
+
+# This writes into /etc/pam.d, so the properties that keep it safe are asserted
+# rather than trusted. Each one is load-bearing:
+#   sudo_local   — /etc/pam.d/sudo is left alone and survives system updates
+#   sufficient   — Touch ID failing falls through to the password rules
+#   444 root     — PAM ignores a file anyone but root can write
+#   the marker   — `off` will not delete a sudo_local omacos did not write
+#   the probe    — sudo is proven to still work, and rolled back if it is not
+check "it writes sudo_local, not sudo" "grep -q 'SUDO_LOCAL=/etc/pam.d/sudo_local' $TID"
+check "it never edits /etc/pam.d/sudo" "! grep -qE '(tee|mv|rm|chmod|chown)[^|]*/etc/pam\.d/sudo\b' $TID"
+check "pam_tid is sufficient, not required" "grep -q 'auth       sufficient     pam_tid.so' $TID"
+check "nothing is marked required"   "! grep -q 'auth.*required.*pam_' $TID"
+check "the file is root-owned 444"   "grep -q 'chmod 444' $TID && grep -q 'chown root:wheel' $TID"
+# The module path is a variable in the source, so the reattach rule is found by
+# its ignore_ssh flag. Order matters: pam_tid after reattach, or there is no GUI
+# session for the prompt to appear in.
+reattach_precedes_pam_tid() {
+  local first second
+  first=$(grep -n 'optional.*ignore_ssh' "$TID" | head -1 | cut -d: -f1)
+  second=$(grep -n 'sufficient     pam_tid.so' "$TID" | head -1 | cut -d: -f1)
+  [[ -n $first && -n $second ]] && (( first < second ))
+}
+check "reattach runs before pam_tid" reattach_precedes_pam_tid
+check "ssh sessions skip reattach"   "grep -q 'ignore_ssh' $TID"
+check "off spares a file it did not write" "grep -q 'was not written by omacos' $TID"
+check "sudo is proven after writing" "grep -q 'password is required' $TID"
+check "a bad write is rolled back"   "grep -q 'Removing .* again' $TID"
+check "doctor reports it"            "grep -q 'sudo takes Touch ID' $OMACOS_PATH/bin/omacos-doctor"
+# The SIGPIPE trap this project already documents for csrutil: grep -q exits on
+# the first hit, ioreg takes SIGPIPE, and pipefail reports the check as false.
+check "no ioreg is piped into grep -q" \
+  "! grep -qE 'ioreg[^|]*\| *grep -q' $TID $OMACOS_PATH/bin/omacos-doctor"
+
 printf '\n\033[1mShell functions\033[0m\n'
 FNS="$OMACOS_PATH/default/zsh/functions.zsh"
 # Every check runs in `zsh -f` with the file sourced, so nothing here depends on
