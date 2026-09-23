@@ -72,7 +72,21 @@ clear_all() {
 }
 
 case ${1:-} in
-  list)  list ;;
+  list)
+    # --window is asked for, never guessed at. Whether stdin or stdout is a
+    # terminal says nothing useful here: a pipe, a script and CI all look like
+    # a hotkey, and guessing turns `omacos reminder list | grep` into a window
+    # that opens and prints nothing to the pipe. The hotkey and the bar pass
+    # the flag; everything else gets the list on stdout where it belongs.
+    if [[ ${2:-} == --window ]]; then
+      exec omacos-launch-tui "omacos-reminder list --wait"
+    fi
+    list
+    if [[ ${2:-} == --wait ]]; then
+      printf '\n\033[2mPress any key\033[0m'
+      read -r -n 1 -s
+    fi
+    ;;
   clear) clear_all ;;
   "")
     # Bound to a hotkey, this arrives with no terminal and no arguments. Ask

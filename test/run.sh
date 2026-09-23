@@ -502,6 +502,21 @@ assert v == ['join-with right', 'layout accordion'], v
 "
 }
 check "array actions stay arrays" array_action_survives
+# A single quote in a non-array action cannot survive: the value is emitted
+# inside single quotes, so the builder strips it — turning `-p '"'"'Press any key'"'"'`
+# into three arguments. It is silent damage you only find by pressing the key.
+quoted_action_is_flagged() {
+  local keymap="$OMACOS_CONFIG/keymap.conf" output
+  printf "alt-ctrl-shift-9 | Quoted | exec-and-forget echo '"'"'hello there'"'"'\n" >> "$keymap"
+  output=$(omacos-keymap-build 2>&1)
+  sed -i '"'"''"'"' '/^alt-ctrl-shift-9 /d' "$keymap"
+  omacos-keymap-build >/dev/null 2>&1
+  [[ $output == *"quotes in its action"* ]]
+}
+check "a quoted action is flagged" quoted_action_is_flagged
+# And the shipped keymap must not contain one, or every build nags.
+check "no shipped action is quoted" \
+  "! awk -F'"'"'|'"'"' '/^[a-z]/ && \$3 !~ /^[[:space:]]*\\[/ && \$3 ~ /'"'"'/ {print; found=1} END {exit !found}' $OMACOS_PATH/config/omacos/keymap.conf"
 check "cheatsheet renders"     "omacos-keymap-show --plain | grep -q 'Focus left'"
 # A keymap comment that begins with a flag is prose, not a `# ---- rule ----`.
 check "a flag in a comment is not a heading" \
@@ -990,6 +1005,9 @@ check "reminder lists what is due" "omacos-reminder list | grep -q 'Tea ready'"
 check "reminder rejects bad input" "! omacos-reminder abc x 2>/dev/null"
 check "reminder clears"            "omacos-reminder clear | grep -q 'Cleared 1'"
 check "cleared means empty"        "omacos-reminder list | grep -q 'No reminders'"
+# Piping it must print, not open a window: stdin is still a terminal when
+# stdout is a pipe, and only stdin says whether a human is there.
+check "listing survives a pipe"   "omacos-reminder list | cat | grep -q 'No reminders'"
 
 printf '\n\033[1mNotifications\033[0m\n'
 # terminal-notifier exits 0 even when macOS has refused it permission, so the

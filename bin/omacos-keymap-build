@@ -69,6 +69,14 @@ trap 'rm -f "$tmp"' EXIT
       if (action ~ /^\[/) {
         literal[key] = 1
       } else {
+        # The value is emitted inside single quotes, so a single quote in the
+        # action cannot survive — it would end the TOML string early. Stripping
+        # it silently turns `-p '"'"'Press any key'"'"'` into three arguments, which is
+        # the kind of thing you only notice by pressing the key. Say so.
+        if (action ~ /'"'"'/) {
+          printf("omacos keymap: %s has quotes in its action; they are being removed\n", key) > "/dev/stderr"
+          printf("  put the quoting inside the command instead of in the keymap\n") > "/dev/stderr"
+        }
         gsub(/'"'"'/, "", action)
         literal[key] = 0
       }

@@ -46,7 +46,7 @@ case "$item.${BUTTON:-left}" in
 
   # Reminders are the one indicator where "what are they?" is a fair question,
   # so left shows them and only right throws them away.
-  reminders.left)  omacos-launch-tui "omacos-reminder list; read -n 1 -s -r -p 'Press any key'" ;;
+  reminders.left)  omacos-reminder list --window ;;
   reminders.right) omacos-reminder clear ;;
   reminders.*)     omacos-reminder ;;
 
