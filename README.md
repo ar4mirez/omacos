@@ -48,6 +48,7 @@ omacos theme list|set|next|current|import
 omacos theme background         # cycle the wallpapers a theme ships
 omacos keymap show|build
 omacos capture screenshot|screenrecording|text|color|qr
+omacos transcode                # shrink a picture or video before sending
 omacos clipboard history|clear
 omacos notice time|battery|weather
 omacos reminder 7 'Tea ready'
