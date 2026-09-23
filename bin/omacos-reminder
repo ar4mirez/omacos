@@ -8,6 +8,13 @@ set -euo pipefail
 store="$OMACOS_STATE/reminders"
 mkdir -p "$store"
 
+# The bar is the only place a pending reminder is visible at all, so it is told
+# whenever the set changes — including from the detached process that fires one.
+refresh_bar() {
+  command -v sketchybar >/dev/null 2>&1 || return 0
+  sketchybar --trigger omacos_reminders >/dev/null 2>&1 || true
+}
+
 # A reminder outlives the shell that set it: the hotkey's process is gone the
 # moment the key is released. Each one is a detached sleep with a file beside
 # it, so `list` and `clear` work across sessions and survive a logout of the
@@ -20,13 +27,18 @@ schedule() {
   due=$(( $(date +%s) + minutes * 60 ))
   file="$store/$due.$$"
 
+  # The trigger has to happen here too: this process outlives the one that
+  # scheduled it, and the bar would otherwise keep counting down a reminder
+  # that has already gone off.
   nohup bash -c '
     sleep "$1"
     omacos-cmd-notify "Reminder" "$2" || true
     rm -f "$3"
+    command -v sketchybar >/dev/null 2>&1 && sketchybar --trigger omacos_reminders >/dev/null 2>&1
   ' _ "$((minutes * 60))" "$message" "$file" >/dev/null 2>&1 &
 
   printf '%s\t%s\t%s\n' "$due" "$!" "$message" > "$file"
+  refresh_bar
   printf '\033[32mReminder set\033[0m for %s — %s\n' "$(date -r "$due" '+%H:%M')" "$message"
 }
 
@@ -55,6 +67,7 @@ clear_all() {
     rm -f "$file"
     count=$((count + 1))
   done
+  refresh_bar
   printf 'Cleared %d reminder(s).\n' "$count"
 }
 

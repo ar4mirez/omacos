@@ -12,6 +12,14 @@ set -euo pipefail
 
 shortcut=${OMACOS_NIGHTLIGHT_SHORTCUT:-omacos-nightlight}
 
+# The indicator can only read the state through the nightlight CLI, but the
+# trigger is cheap and harmless either way — with no CLI the item redraws as
+# nothing, which is what it was already showing.
+refresh_bar() {
+  command -v sketchybar >/dev/null 2>&1 || return 0
+  sketchybar --trigger omacos_nightshift >/dev/null 2>&1 || true
+}
+
 have_shortcut() {
   local list
   list=$(shortcuts list 2>/dev/null) || return 1
@@ -25,6 +33,7 @@ if have_shortcut; then
   fi
   shortcuts run "$shortcut" >/dev/null 2>&1 || {
     echo "omacos: the \"$shortcut\" shortcut failed to run." >&2; exit 1; }
+  refresh_bar
   printf 'Night Shift toggled.\n'
   exit 0
 fi
@@ -32,9 +41,11 @@ fi
 if command -v nightlight >/dev/null 2>&1; then
   if [[ $(nightlight status 2>/dev/null) == *on* ]]; then
     nightlight off
+    refresh_bar
     printf 'Night Shift off.\n'
   else
     nightlight on
+    refresh_bar
     printf 'Night Shift on.\n'
   fi
   exit 0

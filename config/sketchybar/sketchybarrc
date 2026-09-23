@@ -49,6 +49,8 @@ sketchybar --add event aerospace_workspace_change
 # below cost nothing while nothing is happening.
 sketchybar --add event omacos_recording
 sketchybar --add event omacos_idle
+sketchybar --add event omacos_reminders
+sketchybar --add event omacos_nightshift
 
 # AeroSpace's server is gated on Accessibility, so it may not answer yet.
 # Falling back to the workspaces the keymap defines keeps the bar complete
@@ -100,6 +102,20 @@ sketchybar --add item idle right \
                       click_script="$PLUGIN_DIR/click.sh idle" \
            --subscribe idle omacos_idle
 
+# A reminder is a detached sleep. Nothing else on the machine knows it exists,
+# so without this the only way to find out is to wait for it.
+sketchybar --add item reminders right \
+           --set reminders updates=on drawing=off update_freq=30 \
+                           script="$PLUGIN_DIR/reminders.sh" \
+                           click_script="$PLUGIN_DIR/click.sh reminders" \
+           --subscribe reminders omacos_reminders
+
+# Draws only when it can read the real state — see the plugin.
+sketchybar --add item nightshift right \
+           --set nightshift updates=on drawing=off script="$PLUGIN_DIR/nightshift.sh" \
+                            click_script="$PLUGIN_DIR/click.sh nightshift" \
+           --subscribe nightshift omacos_nightshift
+
 sketchybar --add item clock right \
            --set clock update_freq=10 script="$PLUGIN_DIR/clock.sh" \
                        click_script="$PLUGIN_DIR/click.sh clock"
@@ -122,6 +138,8 @@ sketchybar --update
 # appears on the next change would miss it.
 sketchybar --trigger omacos_recording
 sketchybar --trigger omacos_idle
+sketchybar --trigger omacos_reminders
+sketchybar --trigger omacos_nightshift
 
 # The workspace items only update on aerospace_workspace_change, so without
 # this they sit unstyled until you happen to switch workspaces. It has to come

@@ -24,7 +24,7 @@ how a port ends up claiming things it cannot do.
 | 02 | Getting started | differs | An ISO and a partitioning wizard become `curl \| bash`. No disk to encrypt: FileVault is macOS's, and already there. |
 | 03 | Coming from Mac/Windows | done | Answered chapter-for-chapter in [coming-from-macos.md](coming-from-macos.md). |
 | 04 | Navigation | done | Answered chapter-for-chapter in [navigation.md](navigation.md), and every binding in it driven on a live desktop. Three things stay out of reach and say so there. |
-| 05 | The top bar | differs | SketchyBar, with every item answering left, right and middle click from one editable table. Omarchy's *panels* are in-bar popups; omacos opens the matching System Settings pane instead, because macOS already owns that UI. **Open:** indicators for Do Not Disturb, Night Shift and pending reminders; an update-available badge; `bar position` / `transparent` commands. |
+| 05 | The top bar | differs | SketchyBar, with every item answering left, right and middle click from one editable table. Omarchy's *panels* are in-bar popups; omacos opens the matching System Settings pane instead, because macOS already owns that UI. Indicators: a recording, held-off sleep, a pending reminder, and Night Shift where it can be read. **Open:** an update-available badge; `bar position` / `transparent` commands. Do Not Disturb cannot be indicated at all — see below. |
 | 06 | Themes | done | 22 themes, the same count. `alt-ctrl-shift-space` picks one, `alt-ctrl-space` cycles its backgrounds. Unlock screens are n/a — the FileVault screen is not themeable. |
 | 07 | Hotkeys | done | 136 bindings, `alt-ctrl-k` shows them all. **Open** from this chapter: an emoji picker key (macOS's own needs Accessibility to trigger from a script), window transparency, save/restore window width. |
 
@@ -37,7 +37,7 @@ how a port ends up claiming things it cannot do.
 | 10 | Notices | done | Time, battery and weather on `alt-ctrl-shift-t/b/w`. `omacos notice location` pins the weather when IP geolocation guesses wrong. |
 | 11 | Text extraction & dictation | differs | OCR on `alt-ctrl-o` via the native Vision framework — no second OCR engine. Dictation is macOS's own, on-device; `omacos setup dictation` turns it on, but its shortcut lives behind a settings pane no script can drive, so there is no toggle key. |
 | 12 | Screenshots & recording | differs | Screenshot, region, window, recording, colour picker — all there, saving wherever macOS is already configured to save. macOS's own capture gives you the annotation editor. **Open:** QR decode, and transcoding media before sharing. The webcam overlay is n/a. |
-| 13 | Toggles, idle, screensaver | done | Night Shift, Do Not Disturb, stay awake, gaps, bar, screensaver, lock. Flags live in state, and `omacos state check` is the script predicate. Dismissing and replaying notifications is not scriptable on macOS and says so. |
+| 13 | Toggles, idle, screensaver | done | Night Shift, Do Not Disturb, stay awake, gaps, bar, screensaver, lock. Flags live in state, and `omacos state check` is the script predicate. Two of Omarchy's six indicators have no readable state here: Focus is behind Full Disk Access and Night Shift behind a private framework, so the bar shows what it can actually check. Dismissing and replaying notifications is not scriptable and says so. |
 | 14 | Omarchy CLI | done | Same shape throughout: groups, `--help` at every level, `commands --json`, `commands --check`. Adding a command is adding a file. |
 
 ## Software
@@ -84,14 +84,22 @@ how a port ends up claiming things it cannot do.
 
 Ranked by what you would notice:
 
-1. **Bar indicators** for Do Not Disturb, Night Shift and pending reminders (ch 05, 13) — the state is already tracked; nothing draws it.
-2. **Fonts** (ch 38) — choosing and installing one. Ghostty already loads a generated include, so there is a clean place to put it.
-3. **Networking odds and ends** (ch 35) — speed test, DNS, Wi-Fi QR. All native, all small.
-4. **QR decode** (ch 12) — the Vision framework already does OCR for `omacos capture text`; barcodes are the same API.
-5. **Transcode** (ch 12) — `sips` and ffmpeg.
-6. **Update-available badge** (ch 05, 30).
-7. **Low Power Mode** (ch 36), **a seeded `starship.toml`** (ch 40), **a debug bundle** (ch 45).
-8. **`tldr`, `yt-dlp`, `try`** (ch 19) — three packages, not a feature.
+1. **Fonts** (ch 38) — choosing and installing one. Ghostty already loads a generated include, so there is a clean place to put it.
+2. **Networking odds and ends** (ch 35) — speed test, DNS, Wi-Fi QR. All native, all small.
+3. **QR decode** (ch 12) — the Vision framework already does OCR for `omacos capture text`; barcodes are the same API.
+4. **Transcode** (ch 12) — `sips` and ffmpeg.
+5. **Update-available badge** (ch 05, 30).
+6. **Low Power Mode** (ch 36), **a seeded `starship.toml`** (ch 40), **a debug bundle** (ch 45).
+7. **`tldr`, `yt-dlp`, `try`** (ch 19) — three packages, not a feature.
 
-*Shell functions (ch 20) and Touch ID for `sudo` (ch 37) used to head this
-list. Both are done.*
+*Shell functions (ch 20), Touch ID for `sudo` (ch 37) and the bar indicators
+(ch 05, 13) used to head this list. All three are done.*
+
+**One thing that cannot be done, rather than has not been.** Omarchy's
+indicators widget shows Do Not Disturb. macOS keeps Focus state under
+`~/Library/DoNotDisturb`, which answers *Operation not permitted* without Full
+Disk Access — so an indicator could only report whether omacos itself last
+toggled it, and would be wrong the moment you used Control Centre. Night Shift
+is the same shape: no readable preference, so its indicator draws only when the
+`nightlight` CLI is installed to answer for it. An indicator that is right most
+of the time is the one you stop believing, so neither guesses.

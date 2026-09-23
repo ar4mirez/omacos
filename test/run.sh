@@ -564,6 +564,68 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mBar indicators\033[0m\n'
+BARP="$OMACOS_PATH/config/sketchybar/plugins"
+# A fake sketchybar that echoes its arguments, so a plugin can be run and read.
+mkdir -p "$sandbox/fakebin"
+printf '#!/usr/bin/env bash\nprintf "sketchybar"; for a in "$@"; do printf " %%s" "$a"; done; printf "\\n"\n' \
+  > "$sandbox/fakebin/sketchybar"
+chmod +x "$sandbox/fakebin/sketchybar"
+plug() { PATH="$sandbox/fakebin:$PATH" NAME="$1" bash "$BARP/$1.sh" 2>&1; }
+
+check "the bar declares both items"  "grep -q 'add item reminders' $OMACOS_PATH/config/sketchybar/sketchybarrc && grep -q 'add item nightshift' $OMACOS_PATH/config/sketchybar/sketchybarrc"
+check "both have events"             "grep -q 'add event omacos_reminders' $OMACOS_PATH/config/sketchybar/sketchybarrc && grep -q 'add event omacos_nightshift' $OMACOS_PATH/config/sketchybar/sketchybarrc"
+# Without the initial trigger an indicator sits blank until the state next
+# changes — which for a pending reminder could be never.
+check "both are drawn at startup"    "grep -q 'trigger omacos_reminders' $OMACOS_PATH/config/sketchybar/sketchybarrc && grep -q 'trigger omacos_nightshift' $OMACOS_PATH/config/sketchybar/sketchybarrc"
+check "both answer clicks"           "grep -q 'reminders.left' $BARP/click.sh && grep -q 'nightshift' $BARP/click.sh"
+
+check "nothing pending draws nothing" "XDG_STATE_HOME=\$(mktemp -d) plug reminders | grep -q 'drawing=off'"
+reminders_indicator_counts() {
+  # Its own state directory, not the sandbox's: a later check asserts that
+  # `omacos reminder clear` clears exactly one, and fixtures left here by this
+  # one would be counted by that. $$ rather than a background sleep, so the
+  # "still pending" pid is alive by construction and nothing has to be reaped
+  # on the way out.
+  local home; home=$(mktemp -d)
+  local dir="$home/omacos/reminders" out
+  mkdir -p "$dir"
+  printf '%s\t%s\t%s\n' "$(( $(date +%s) + 300 ))" "$$" "Tea"  > "$dir/a"
+  printf '%s\t%s\t%s\n' "$(( $(date +%s) + 90 ))"  "$$" "Call" > "$dir/b"
+  # A reminder whose process is gone has already fired: reaped, not counted.
+  printf '%s\t%s\t%s\n' "$(( $(date +%s) + 60 ))" 999999 "Ghost" > "$dir/c"
+  out=$(PATH="$sandbox/fakebin:$PATH" NAME=reminders XDG_STATE_HOME="$home" \
+        bash "$BARP/reminders.sh" 2>&1)
+  # Nearest first, rounded up, and the dead one neither counted nor kept.
+  [[ $out == *"label=2m ·2"* && ! -f $dir/c ]]
+  local verdict=$?
+  rm -rf "$home"
+  return $verdict
+}
+check "it counts and reaps"          reminders_indicator_counts
+
+# Night Shift has no readable preference on macOS, so the indicator draws only
+# when the nightlight CLI can answer. Guessing would be worse than staying dark.
+check "no nightlight CLI, no glyph"  "plug nightshift | grep -q 'drawing=off'"
+nightshift_follows_the_cli() {
+  local on off
+  printf '#!/usr/bin/env bash\necho "Night Shift is on"\n' > "$sandbox/fakebin/nightlight"
+  chmod +x "$sandbox/fakebin/nightlight"
+  on=$(plug nightshift)
+  printf '#!/usr/bin/env bash\necho "Night Shift is off"\n' > "$sandbox/fakebin/nightlight"
+  off=$(plug nightshift)
+  rm -f "$sandbox/fakebin/nightlight"
+  [[ $on == *drawing=on* && $off == *drawing=off* ]]
+}
+check "it follows the CLI both ways" nightshift_follows_the_cli
+
+# The state changes in a detached process that outlives the one that scheduled
+# it, so the trigger has to be in there too or the bar counts down a reminder
+# that already went off.
+check "a fired reminder redraws the bar" "grep -q 'trigger omacos_reminders' $OMACOS_PATH/bin/omacos-reminder"
+check "setting one redraws the bar"      "test \$(grep -c 'omacos_reminders' $OMACOS_PATH/bin/omacos-reminder) -ge 2"
+check "toggling night shift redraws"     "grep -q 'trigger omacos_nightshift' $OMACOS_PATH/bin/omacos-toggle-nightlight"
+
 printf '\n\033[1mTouch ID for sudo\033[0m\n'
 TID="$OMACOS_PATH/bin/omacos-setup-touchid"
 # status is read-only and must never need root, on a Mac with the sensor or
