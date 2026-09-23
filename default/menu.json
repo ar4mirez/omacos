@@ -502,6 +502,12 @@
     "action": "omacos-toggle-menubar",
     "checked": "omacos-toggle-menubar status >/dev/null"
   },
+  "toggles.titlebar": {
+    "icon": "□",
+    "label": "Terminal title bar",
+    "action": "omacos-toggle-titlebar",
+    "checked": "! omacos-toggle-titlebar status"
+  },
   "toggles.bar-position": {
     "icon": "▤",
     "label": "Bar at the bottom",

@@ -9,7 +9,10 @@ window-padding-x = 12
 window-padding-y = 8
 window-decoration = auto
 window-save-state = always
-macos-titlebar-style = tabs
+# Hidden by default: with AeroSpace tiling and JankyBorders drawing focus, a
+# title bar is ~28pt of every window spent on a name and three buttons alt-w
+# already does. `omacos toggle titlebar` brings it back.
+macos-titlebar-style = hidden
 macos-option-as-alt = true
 
 cursor-style = block
@@ -25,6 +28,9 @@ config-file = ?~/.local/state/omacos/current/theme/ghostty.conf
 # The font from `omacos font set`. After the default above so it wins, before
 # your local file below so yours still wins over both.
 config-file = ?~/.local/state/omacos/current/font.conf
+
+# Window chrome from `omacos toggle titlebar`.
+config-file = ?~/.local/state/omacos/current/ghostty.conf
 
 # Your overrides — loaded last, so they win over both the defaults above and
 # the theme. Never touched by omacos.

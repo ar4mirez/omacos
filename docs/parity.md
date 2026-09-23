@@ -66,7 +66,7 @@ how a port ends up claiming things it cannot do.
 | 39 | Backgrounds | done | Per-theme, plus anything you drop in `~/.config/omacos/backgrounds/<theme>/`. Video wallpapers are n/a. |
 | 40 | Prompt | done | Starship ships and is initialised. A `starship.toml` is seeded: the directory, the branch, and how long the last thing took. It sets no colours of its own, so the prompt follows `omacos theme set` rather than keeping a second palette. |
 | 41 | Branding | n/a | ASCII-art screensaver logos, for a screensaver macOS supplies. |
-| 42 | Common tweaks | done | Gaps, the bar, and the menu bar are all one command. |
+| 42 | Common tweaks | done | Gaps, the bar, the menu bar and the terminal's title bar are all one command. Omarchy softens window corners here; macOS rounds them already. |
 | 43 | Making your own theme | done | `omacos theme import`, and a converter that ported Omarchy's palettes rather than copying them by hand. Themes from strangers are stripped of anything executable. |
 
 ## The rest

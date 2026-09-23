@@ -56,7 +56,7 @@ omacos debug                    # what a bug report needs, with nothing private
 omacos clipboard history|clear
 omacos notice time|battery|weather
 omacos reminder 7 'Tea ready'
-omacos toggle idle|bar|gaps|dnd|nightlight|audio-output|menubar|lowpower
+omacos toggle idle|bar|gaps|dnd|nightlight|audio-output|menubar|lowpower|titlebar
 omacos snapshot create|list|restore|delete   # Time Machine, without the disk
 omacos font list|set|size|current  # one font for the terminal and the bar
 omacos network speedtest|dns|qr # how fast, which DNS, share the Wi-Fi

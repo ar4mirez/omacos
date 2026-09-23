@@ -579,6 +579,40 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mThe title bar\033[0m\n'
+TB="$OMACOS_PATH/bin/omacos-toggle-titlebar"
+GC="$OMACOS_PATH/config/ghostty/config.ghostty"
+check "hidden is the shipped default" "grep -q '^macos-titlebar-style = hidden' $GC"
+# `hidden` leaves a window macOS still treats as normal. `window-decoration =
+# none` removes the frame and takes AeroSpace's grip on the window with it.
+check "it does not strip decorations" "! grep -q '^window-decoration = none' $GC"
+check "ghostty loads the generated file" "grep -q 'current/ghostty.conf' $GC"
+check "it is loaded before yours" \
+  "test \$(grep -n 'current/ghostty.conf' $GC | cut -d: -f1) -lt \$(grep -n 'local.ghostty' $GC | cut -d: -f1)"
+check "the toggle writes only that key" "grep -q 'macos-titlebar-style = %s' $TB"
+check "off restores a visible style"    "grep -q 'apply tabs' $TB"
+check "an unknown verb is rejected"     "! omacos-toggle-titlebar bogus 2>/dev/null"
+titlebar_round_trips() {
+  omacos-toggle-titlebar on  >/dev/null 2>&1 || return 1
+  omacos-toggle-titlebar status >/dev/null 2>&1 || return 1
+  grep -q 'macos-titlebar-style = hidden' "$OMACOS_STATE/current/ghostty.conf" || return 1
+  omacos-toggle-titlebar off >/dev/null 2>&1 || return 1
+  ! omacos-toggle-titlebar status >/dev/null 2>&1
+}
+check "it round-trips"                  titlebar_round_trips
+# Writing a setting into a file nothing reads looks exactly like a broken
+# feature, so the command says so instead.
+check "it warns when not included"      "grep -q 'does not load this yet' $TB"
+valid_titlebar_value() {
+  local ghostty=/Applications/Ghostty.app/Contents/MacOS/ghostty
+  [[ -x $ghostty ]] || return 0
+  # Ghostty names the valid values in its own error; hidden must be one.
+  local out; out=$(printf 'macos-titlebar-style = hidden\n' > "$sandbox/tb.conf"; \
+                   "$ghostty" +validate-config --config-file="$sandbox/tb.conf" 2>&1)
+  [[ -z $out ]]
+}
+check "ghostty accepts hidden"          valid_titlebar_value
+
 printf '\n\033[1mFont size\033[0m\n'
 check "size reads back"        "omacos-font-current --size | grep -qE '^[0-9]+$'"
 check "size is settable"       "omacos-font-size 13 >/dev/null && test \"\$(omacos-font-current --size)\" = 13"
