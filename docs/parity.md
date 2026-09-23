@@ -61,7 +61,7 @@ how a port ends up claiming things it cannot do.
 | 34 | Keyboard, mouse, trackpad | n/a | System Settings. `omacos setup capslock` is the one thing worth scripting. |
 | 35 | Networking | n/a | macOS owns Wi-Fi and Ethernet. **Open, and all easy:** `networkQuality` is a built-in speed test, `networksetup` sets DNS, and sharing Wi-Fi by QR code is a real convenience. |
 | 36 | System sleep | differs | Suspend and hibernation are macOS's business. **Open:** Low Power Mode as a toggle, which is the closest thing to power profiles. |
-| 37 | Hardware authentication | done | The lock screen and system prompts take Touch ID on their own. `omacos setup touchid` adds the third, `sudo`, in `/etc/pam.d/sudo_local` — and installs `pam_reattach` so it also works inside tmux, where it otherwise silently falls back to a password. Fido2 is n/a. |
+| 37 | Hardware authentication | done | The lock screen and system prompts take Touch ID on their own. `omacos setup touchid` adds the third, `sudo`, in `/etc/pam.d/sudo_local` — and installs `pam_reattach` so it also works inside tmux, where it otherwise silently falls back to a password. That module sits in a user-writable Homebrew prefix, which the command says out loud; `--no-tmux` skips it. Fido2 is n/a. |
 | 38 | Fonts | differs | `omacos font list` reports what is installed. **Open:** choosing one, and installing more — Omarchy has *Style > Font* and *Install > Style > Font*. |
 | 39 | Backgrounds | done | Per-theme, plus anything you drop in `~/.config/omacos/backgrounds/<theme>/`. Video wallpapers are n/a. |
 | 40 | Prompt | differs | Starship ships and is initialised. **Open:** no `starship.toml` is seeded, so you get Starship's default rather than a curated one. |

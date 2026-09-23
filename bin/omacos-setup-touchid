@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # omacos:summary=Use Touch ID instead of typing your password for sudo
-# omacos:args=[status|on|off]
+# omacos:args=[status|on|off] [--no-tmux]
 # omacos:examples=omacos setup touchid | omacos setup touchid status | omacos setup touchid off
 #
 # Omarchy's hardware-authentication chapter sets up a fingerprint for three
@@ -12,6 +12,14 @@
 # sudo_local: /etc/pam.d/sudo includes it on the first line, and macOS leaves
 # it alone across system updates. Editing /etc/pam.d/sudo directly works until
 # the next update silently reverts it.
+
+# One trade-off worth stating rather than burying. pam_reattach is what makes
+# Touch ID work inside tmux, and Homebrew installs it under a prefix your user
+# can write to. A module in the sudo stack that you can overwrite is a module
+# anything running as you can overwrite — and it would then run as root at your
+# next sudo. pam_tid itself is Apple's, in /usr/lib/pam, and root-owned.
+# `--no-tmux` sets this up without pam_reattach if that trade is not one you
+# want; Touch ID then works everywhere except inside tmux.
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
 
@@ -77,6 +85,17 @@ status() {
 
 enable() {
   has_sensor || { echo "This Mac has no Touch ID sensor." >&2; exit 1; }
+
+  # This needs sudo, and sudo needs somewhere to ask. Run from a hotkey, a
+  # menu row, or a shell that is not attached to a terminal, it cannot — and
+  # sudo's own message about askpass helpers explains none of that.
+  if ! sudo -n true 2>/dev/null && [[ ! -t 0 && -z ${SUDO_ASKPASS:-} ]]; then
+    echo "This has to write /etc/pam.d/sudo_local, and sudo has no terminal to ask" >&2
+    echo "you for a password on. Run it directly in a terminal window:" >&2
+    echo "" >&2
+    echo "    omacos setup touchid" >&2
+    exit 1
+  fi
   if ! has_print; then
     echo "No fingerprint is enrolled yet." >&2
     echo "Enrol one in System Settings > Touch ID & Password, then run this again." >&2
@@ -88,7 +107,9 @@ enable() {
 
   # pam_reattach is only worth having where there is a tmux to be stuck in.
   local want_reattach=false
-  if command -v tmux >/dev/null 2>&1; then
+  if [[ ${1:-} == --no-tmux ]]; then
+    printf '\033[2mSkipping pam_reattach; Touch ID will work outside tmux only.\033[0m\n'
+  elif command -v tmux >/dev/null 2>&1; then
     want_reattach=true
     if [[ ! -f $REATTACH ]]; then
       if command -v brew >/dev/null 2>&1; then
@@ -180,9 +201,16 @@ disable() {
   fi
 }
 
-case ${1:-on} in
-  status) status ;;
-  on)     enable ;;
-  off)    disable ;;
-  *)      echo "usage: omacos setup touchid [status|on|off]" >&2; exit 1 ;;
+# `shift` with nothing to shift fails, and under `set -e` that ends the script
+# before it has printed anything at all — which is what running this with no
+# arguments, the ordinary way, did.
+verb=${1:-on}
+if (( $# )); then shift; fi
+
+case $verb in
+  status)    status ;;
+  on)        enable "$@" ;;
+  --no-tmux) enable --no-tmux ;;
+  off)       disable ;;
+  *)         echo "usage: omacos setup touchid [status|on|off] [--no-tmux]" >&2; exit 1 ;;
 esac

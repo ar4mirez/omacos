@@ -571,6 +571,16 @@ TID="$OMACOS_PATH/bin/omacos-setup-touchid"
 check "status needs no root"     "omacos-setup-touchid status >/dev/null 2>&1 || omacos-setup-touchid status 2>&1 | grep -q 'Touch ID'"
 check "off is a no-op when unset" "test ! -f /etc/pam.d/sudo_local && omacos-setup-touchid off | grep -q 'not set up' || true"
 check "an unknown verb is rejected" "! omacos-setup-touchid bogus 2>/dev/null"
+# `shift` with nothing to shift fails, and under `set -e` the script died before
+# printing anything — for the plainest possible invocation.
+check "no arguments still says something" \
+  "test -n \"$(omacos-setup-touchid </dev/null 2>&1)\""
+check "it explains a missing terminal" \
+  "omacos-setup-touchid </dev/null 2>&1 | grep -q 'no terminal'"
+check "--no-tmux is accepted"        "omacos-setup-touchid --no-tmux </dev/null 2>&1 | grep -qv 'usage:'"
+# The module that makes tmux work lives somewhere the user can write, and that
+# is a real trade-off rather than an implementation detail.
+check "the reattach trade-off is stated" "grep -q 'can write to' $TID"
 
 # This writes into /etc/pam.d, so the properties that keep it safe are asserted
 # rather than trusted. Each one is load-bearing:
