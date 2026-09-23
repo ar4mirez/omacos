@@ -133,11 +133,22 @@ idea an accordion, and omacos calls it a stack:
 | `alt-comma` | stack the windows in this container, or unstack them |
 | `alt-cmd-comma` | pull the window to the right into a stack with this one |
 | `alt-h` / `alt-l`, `alt-backtick` | move between the stacked windows |
-| `alt-shift-j` / `alt-shift-k` | lift this window back out of the stack |
+| `alt-ctrl-1`..`4` | straight to the nth window here |
+| `alt-shift-<direction>` | push a window into the stack, or out of it |
 
-There is no tab bar, and there is no "jump to the third one in the group" —
-cycling is the only ordering there is. Everything else about the shape is the
-same: many windows, one slot, and the rest of the workspace unaffected.
+Membership goes both ways on those last four keys, which is Omarchy's
+`Super + Alt + Arrows` and `Super + Alt + G` in one pair. Push a loose window
+into a stack and it joins; push one out and it leaves while the others stay
+stacked — a group of three becomes a window and a group of two, not three
+loose tiles. Which direction does it depends on whether the stack runs across
+or down, so it is the same four keys either way.
+
+A window you open while the stack has focus joins it, which is the part of
+Omarchy's groups that makes them worth using: start three terminals into a
+stack and they stay one slot instead of quartering the screen.
+
+There is no tab bar. Everything else about the shape is the same: many windows,
+one slot, and the rest of the workspace unaffected.
 
 ## Pinning a window everywhere
 
@@ -234,7 +245,9 @@ would rather say so than ship a hack that breaks every autumn:
 | `Super + L` | — | no scrolling layout |
 | `Super + G` | `alt-comma` | stack, or unstack |
 | `Super + Ctrl + Arrow` | `alt-h`/`alt-l` | move within the stack |
-| `Super + Alt + G` | `alt-shift-j`/`k` | lift it out |
+| `Super + Alt + 1/2/3/4` | `alt-ctrl-1`..`4` | the nth window here |
+| `Super + Alt + G` | `alt-shift-<dir>` | push it out of the stack |
+| `Super + Alt + Arrows` | `alt-shift-<dir>` | push one into the stack |
 | `Super + O` | `alt-o` | pin it everywhere, at its own size |
 | `Super + Grave`, `Super + S` | `alt-s` | the scratchpad, both ways |
 | `Super + Shift + Grave`, `Super + Alt + S` | `alt-shift-s` | put it there |

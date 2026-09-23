@@ -553,6 +553,12 @@ check "fullscreen has an edge-to-edge variant" \
 check "the scratchpad toggles"  "grep -q '^alt-s |.*| workspace --auto-back-and-forth S$' $KEYMAP"
 check "the scratchpad persists" "grep -q 'persistent-workspaces = .*\"S\"' $XDG_CONFIG_HOME/aerospace/aerospace.toml"
 
+# Super+Alt+1/2/3/4 — straight to one window rather than cycling to it.
+check "the nth window here is bound" \
+  "grep -q '^alt-ctrl-1 |.*| focus --dfs-index 0$' $KEYMAP"
+check "the nth window counts from 1" \
+  "grep -q '^alt-ctrl-4 |.*| focus --dfs-index 3$' $KEYMAP"
+
 # Super+O: a window that follows you everywhere.
 check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
