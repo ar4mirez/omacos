@@ -9,6 +9,13 @@
 #
 # Turn the whole layer off with OMACOS_FUNCTIONS=false in ~/.config/zsh/local.zsh.
 
+# Aliases are expanded when a function body is *parsed*, not when it runs, and
+# this file is sourced after the alias block — so a bare `grep` below would be
+# baked in as `rg` and a bare `cat` as `bat`. Expansion is off for the whole
+# parse and restored at the bottom exactly as it was found.
+if [[ -o aliases ]]; then _omacos_restore_aliases=1; else _omacos_restore_aliases=0; fi
+setopt no_aliases
+
 # ------------------------------------------------------------------ helpers ---
 
 # Which coding agent you chose, so the tmux layouts do not have to be told.
@@ -235,7 +242,12 @@ rsw() {
 }
 
 _omacos_rsw_processes() {
-  ps -axo pid=,command= 2>/dev/null | grep -F "$_OMACOS_RSW_MARKER" | grep -v grep
+  # pgrep leaves its own process out, which `ps | grep` cannot do without also
+  # matching the grep that is doing the looking.
+  local pids
+  pids=$(pgrep -f "$_OMACOS_RSW_MARKER" 2>/dev/null) || return 0
+  [[ -n $pids ]] || return 0
+  ps -o pid=,command= -p ${=pids} 2>/dev/null
 }
 
 lsw() {
@@ -447,3 +459,7 @@ iso2sd() {
   sudo dd if="$1" of="${2/disk/rdisk}" bs=4m status=progress
   diskutil eject "$2"
 }
+
+# Alias expansion back to whatever it was before this file was parsed.
+(( _omacos_restore_aliases )) && setopt aliases
+unset _omacos_restore_aliases

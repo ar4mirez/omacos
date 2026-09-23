@@ -582,6 +582,18 @@ no_zsh_special_locals() {
 }
 check "no local shadows a zsh special" no_zsh_special_locals
 
+# Aliases are expanded when a function body is parsed, and this file is sourced
+# after omacos.zsh's alias block — so a bare `grep` in here became `rg` and lsw
+# started matching its own search. The file turns expansion off while it is
+# parsed; this proves it, by aliasing the two that actually bite.
+aliases_do_not_leak_in() {
+  local body
+  body=$(zsh -f -c "alias grep=rg; alias cat=bat; source '$FNS'; which -a _omacos_refuse_internal _omacos_rsw_processes lsw dsw" 2>&1)
+  [[ $body != *" rg "* && $body != *" bat "* ]]
+}
+check "aliases do not leak into bodies" aliases_do_not_leak_in
+check "aliases survive the file"        "zfn 'alias grep=rg' >/dev/null; zsh -f -c \"alias grep=rg; source '$FNS'; alias grep\" | grep -q 'grep=rg'"
+
 check "compress round-trips"     "zfn 'cd \$(mktemp -d); mkdir p; echo hi > p/f; compress p >/dev/null; rm -rf p; decompress p.tar.gz; cat p/f' | grep -q hi"
 # macOS tar buries a ._ AppleDouble beside every entry unless told not to.
 check "no AppleDouble in the tarball" \

@@ -7,6 +7,11 @@ your own in `~/.config/zsh/local.zsh`, which is sourced afterwards and wins.
 
 Turn the whole thing off with `OMACOS_FUNCTIONS=false` in `local.zsh`.
 
+The file turns alias expansion off while it is parsed. zsh expands aliases when
+a function body is *read*, not when it runs, and this is sourced after omacos's
+alias block — so without that, a bare `grep` in here would be permanently baked
+in as `rg`, and `cat` as `bat`. Your aliases are untouched everywhere else.
+
 ## Compression
 
 ```bash
