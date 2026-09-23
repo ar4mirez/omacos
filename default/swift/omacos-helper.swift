@@ -9,8 +9,10 @@
 //   omacos-helper clipboard     watch the pasteboard, printing each new text
 //                               entry NUL-terminated
 //   omacos-helper fonts         font families you could set, one per line
+//   omacos-helper qr <text>     a QR code drawn in the terminal
 
 import AppKit
+import CoreImage
 import CoreText
 import Vision
 
@@ -139,12 +141,66 @@ func fontFamilies() {
     }
 }
 
+// A QR code you can point a phone at, drawn where you already are.
+//
+// Two rows of modules per line of text, as half blocks, so the code stays
+// square in a terminal whose cells are twice as tall as they are wide.
+func qrCode(_ text: String) {
+    guard let filter = CIFilter(name: "CIQRCodeGenerator") else { die("no QR generator") }
+    filter.setValue(Data(text.utf8), forKey: "inputMessage")
+    // M corrects ~15%, which is plenty for a screen and keeps the code small
+    // enough to fit a terminal window.
+    filter.setValue("M", forKey: "inputCorrectionLevel")
+    guard let image = filter.outputImage else { die("could not encode") }
+    let bitmap = NSBitmapImageRep(ciImage: image)
+    let width = bitmap.pixelsWide, height = bitmap.pixelsHigh
+
+    // Every line is printed black-on-white explicitly. Left to the terminal's
+    // own colours, a dark theme renders the code inverted — which most phone
+    // scanners will not read.
+    let start = "\u{1B}[30;47m", end = "\u{1B}[0m"
+    // The quiet zone is part of the spec, not decoration: without four modules
+    // of margin a scanner cannot find the code's edges.
+    let margin = 4
+    let blank = String(repeating: " ", count: width + margin * 2)
+
+    func dark(_ x: Int, _ y: Int) -> Bool {
+        guard x >= 0, y >= 0, x < width, y < height else { return false }
+        return (bitmap.colorAt(x: x, y: y)?.brightnessComponent ?? 1) < 0.5
+    }
+
+    print("")
+    for _ in 0..<(margin / 2) { print(start + blank + end) }
+    var y = 0
+    while y < height {
+        var line = String(repeating: " ", count: margin)
+        for x in 0..<width {
+            switch (dark(x, y), dark(x, y + 1)) {
+            case (true, true):   line += "\u{2588}"
+            case (true, false):  line += "\u{2580}"
+            case (false, true):  line += "\u{2584}"
+            case (false, false): line += " "
+            }
+        }
+        line += String(repeating: " ", count: margin)
+        print(start + line + end)
+        y += 2
+    }
+    for _ in 0..<(margin / 2) { print(start + blank + end) }
+    print("")
+}
+
 switch CommandLine.arguments.dropFirst().first {
 case "ocr":
     guard CommandLine.arguments.count > 2 else { die("usage: omacos-helper ocr <image>") }
     ocr(path: CommandLine.arguments[2])
 case "color":
     pickColor()
+case "qr":
+    guard let text = CommandLine.arguments.dropFirst(2).first, !text.isEmpty else {
+        die("usage: omacos-helper qr <text>")
+    }
+    qrCode(text)
 case "fonts":
     fontFamilies()
 case "clipboard":

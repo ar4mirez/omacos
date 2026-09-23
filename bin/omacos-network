@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+# omacos:summary=Speed test, DNS, and sharing the Wi-Fi
+# omacos:args=<speedtest [down|up] | dns [provider|servers...|auto] | password [ssid] | qr [ssid]>
+# omacos:examples=omacos network speedtest | omacos network dns Cloudflare | omacos network qr
+#
+# Omarchy drives NetworkManager for all of this. macOS owns the radio itself,
+# so what is left is the handful of things the chapter does that System
+# Settings makes slow: how fast is it, which DNS, and getting someone onto the
+# Wi-Fi without reading a password out loud.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+# The service carrying the default route, so `dns` changes the connection you
+# are actually using rather than whichever one is first in the list.
+active_service() {
+  local interface line service device
+  interface=$(route -n get default 2>/dev/null | awk '/interface:/ {print $2; exit}') || interface=""
+  if [[ -n $interface ]]; then
+    # listnetworkserviceorder pairs "(1) Wi-Fi" with "(Hardware Port: Wi-Fi, Device: en0)".
+    while IFS= read -r line; do
+      case $line in
+        \(*\)\ *) service=${line#*) } ;;
+        *"Device: $interface)"*) [[ -n ${service:-} ]] && { printf '%s\n' "$service"; return 0; } ;;
+      esac
+    done < <(networksetup -listnetworkserviceorder 2>/dev/null)
+  fi
+  # Nothing routed: fall back to Wi-Fi if the machine has one. Captured rather
+  # than piped into grep -q, which under pipefail reports 141 when grep exits
+  # first and would read as "this Mac has no Wi-Fi".
+  local services
+  services=$(networksetup -listallnetworkservices 2>/dev/null) || services=""
+  [[ $'\n'$services$'\n' == *$'\n'"Wi-Fi"$'\n'* ]] && { echo 'Wi-Fi'; return 0; }
+  return 1
+}
+
+wifi_device() {
+  networksetup -listallhardwareports 2>/dev/null \
+    | awk '/Hardware Port: Wi-Fi/ {getline; print $2; exit}'
+}
+
+# The name of the network you are on — if macOS will say.
+#
+# Since macOS 14 the SSID is location data: a process without Location Services
+# permission is told "<redacted>" by ipconfig and "not associated" by
+# networksetup, on a Mac that is plainly associated. Nothing here can grant
+# that permission, so both callers take an SSID argument instead and
+# ssid_unavailable explains why rather than reporting a Mac with no Wi-Fi.
+current_ssid() {
+  local device ssid
+  device=$(wifi_device) || return 1
+  [[ -n $device ]] || return 1
+
+  ssid=$(networksetup -getairportnetwork "$device" 2>/dev/null) || ssid=""
+  if [[ $ssid == *": "* ]]; then
+    ssid=${ssid#*: }
+  else
+    ssid=$(ipconfig getsummary "$device" 2>/dev/null | awk -F' : ' '/[[:space:]]SSID :/ {print $2; exit}') || ssid=""
+  fi
+
+  [[ -n $ssid && $ssid != "<redacted>" ]] || return 1
+  printf '%s\n' "$ssid"
+}
+
+ssid_unavailable() {
+  echo "macOS will not tell a terminal which Wi-Fi network you are on: since" >&2
+  echo "macOS 14 the name is location data, and this process has no Location" >&2
+  echo "Services permission. Name the network yourself:" >&2
+  echo "" >&2
+  echo "    omacos network $1 <ssid>" >&2
+  echo "" >&2
+  echo "It is on screen in System Settings > Wi-Fi." >&2
+  exit 1
+}
+
+# ------------------------------------------------------------- speed test ---
+
+speedtest() {
+  # networkQuality ships with macOS and measures against Apple's servers. No
+  # speedtest-cli, no account, nothing to install.
+  command -v networkQuality >/dev/null 2>&1 || {
+    echo "networkQuality is missing; it ships with macOS 12 and later." >&2; exit 1; }
+  case ${1:-both} in
+    down) printf '\033[2mMeasuring download…\033[0m\n'; networkQuality -d -s ;;
+    up)   printf '\033[2mMeasuring upload…\033[0m\n';   networkQuality -u -s ;;
+    both) printf '\033[2mMeasuring, about half a minute…\033[0m\n'; networkQuality -s ;;
+    *)    echo "usage: omacos network speedtest [down|up]" >&2; exit 1 ;;
+  esac
+}
+
+# -------------------------------------------------------------------- dns ---
+
+dns() {
+  local service; service=$(active_service) || { echo "No active network service." >&2; exit 1; }
+
+  if (($# == 0)); then
+    local current
+    current=$(networksetup -getdnsservers "$service" 2>/dev/null) || current=""
+    if [[ $current == *"aren't any"* || -z $current ]]; then
+      printf '%s: \033[2mwhatever DHCP hands out\033[0m\n' "$service"
+    else
+      printf '%s: \033[32m%s\033[0m\n' "$service" "$(printf '%s' "$current" | paste -sd' ' -)"
+    fi
+    return 0
+  fi
+
+  local -a servers
+  case $1 in
+    # The three that are worth a name. Both addresses of each, so losing one
+    # resolver is not losing DNS.
+    [Cc]loudflare) servers=(1.1.1.1 1.0.0.1) ;;
+    [Gg]oogle)     servers=(8.8.8.8 8.8.4.4) ;;
+    [Qq]uad9)      servers=(9.9.9.9 149.112.112.112) ;;
+    auto|clear|dhcp) servers=(empty) ;;
+    *)             servers=("$@") ;;
+  esac
+
+  # networksetup needs admin rights for this one.
+  if ! sudo -n true 2>/dev/null && [[ ! -t 0 && -z ${SUDO_ASKPASS:-} ]]; then
+    echo "Changing DNS needs sudo, and there is no terminal here to ask on." >&2
+    echo "Run it in a terminal window: omacos network dns $*" >&2
+    exit 1
+  fi
+  sudo networksetup -setdnsservers "$service" "${servers[@]}"
+  # macOS keeps its own answers; without this the old ones linger.
+  sudo dscacheutil -flushcache 2>/dev/null || true
+  sudo killall -HUP mDNSResponder 2>/dev/null || true
+
+  if [[ ${servers[0]} == empty ]]; then
+    printf '\033[33m%s is back to DHCP DNS.\033[0m\n' "$service"
+  else
+    printf '\033[32m%s now resolves through %s.\033[0m\n' "$service" "${servers[*]}"
+  fi
+}
+
+# --------------------------------------------------------------- the wifi ---
+
+wifi_password() {
+  local ssid=${1:-}
+  [[ -n $ssid ]] || ssid=$(current_ssid) || ssid_unavailable password
+  # The keychain will put up its own dialog asking you to allow this, which is
+  # the whole point — a stored Wi-Fi password is not readable without it.
+  security find-generic-password -D "AirPort network password" -wa "$ssid" 2>/dev/null || {
+    echo "No stored password for '$ssid', or the keychain was not unlocked." >&2; exit 1; }
+}
+
+wifi_qr() {
+  local ssid=${1:-} password helper="$OMACOS_STATE/bin/omacos-helper"
+  [[ -n $ssid ]] || ssid=$(current_ssid) || ssid_unavailable qr
+  [[ -x $helper ]] || { echo "Needs the native helper: omacos cmd build-helper" >&2; exit 1; }
+  password=$(wifi_password "$ssid") || exit 1
+
+  # The format every phone camera understands. Backslash-escaping is part of
+  # the spec: an SSID or password containing ; , : or \ breaks the parse
+  # otherwise, and those are all legal in both.
+  escape() { printf '%s' "$1" | sed 's/[\;,:"]/\\&/g'; }
+  "$helper" qr "WIFI:S:$(escape "$ssid");T:WPA;P:$(escape "$password");;"
+  printf '  \033[1m%s\033[0m — point a camera at it\n\n' "$ssid"
+}
+
+case ${1:-} in
+  speedtest) shift; speedtest "$@" ;;
+  dns)       shift; dns "$@" ;;
+  password)  shift; wifi_password "${1:-}" ;;
+  qr)        shift; wifi_qr "${1:-}" ;;
+  *) echo "usage: omacos network <speedtest|dns|password|qr>" >&2; exit 1 ;;
+esac

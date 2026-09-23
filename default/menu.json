@@ -619,6 +619,40 @@
     "label": "Wi-Fi settings",
     "action": "open 'x-apple.systempreferences:com.apple.wifi-settings-extension'"
   },
+  "system.network": {
+    "icon": "◌",
+    "label": "Network"
+  },
+  "system.network.speedtest": {
+    "icon": "◔",
+    "label": "Speed test",
+    "action": "omacos-network speedtest; read -n 1 -s -r -p 'Press any key'"
+  },
+  "system.network.dns": {
+    "icon": "○",
+    "label": "DNS",
+    "action": "omacos-network dns; read -n 1 -s -r -p 'Press any key'"
+  },
+  "system.network.dns-cloudflare": {
+    "icon": "●",
+    "label": "Use Cloudflare DNS",
+    "action": "omacos-network dns Cloudflare; read -n 1 -s -r -p 'Press any key'"
+  },
+  "system.network.dns-google": {
+    "icon": "●",
+    "label": "Use Google DNS",
+    "action": "omacos-network dns Google; read -n 1 -s -r -p 'Press any key'"
+  },
+  "system.network.dns-auto": {
+    "icon": "○",
+    "label": "Back to DHCP DNS",
+    "action": "omacos-network dns auto; read -n 1 -s -r -p 'Press any key'"
+  },
+  "system.network.qr": {
+    "icon": "▦",
+    "label": "Share the Wi-Fi as a QR code",
+    "action": "omacos-network qr; read -n 1 -s -r -p 'Press any key'"
+  },
   "system.fonts": {
     "icon": "A",
     "label": "Fonts",

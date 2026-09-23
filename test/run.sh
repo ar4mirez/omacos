@@ -564,6 +564,43 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mNetworking\033[0m\n'
+NET="$OMACOS_PATH/bin/omacos-network"
+check "it states its usage"       "! omacos-network 2>/dev/null && omacos-network 2>&1 | grep -q 'speedtest|dns'"
+check "dns reads without sudo"    "omacos-network dns | grep -qE 'DHCP|:'"
+check "dns names three providers" "grep -qE '\\[Cc\\]loudflare' $NET && grep -qE '\\[Gg\\]oogle' $NET && grep -qE '\\[Qq\\]uad9' $NET"
+# Both addresses of each, so losing one resolver is not losing DNS.
+check "each provider has two"     "grep -q '1.1.1.1 1.0.0.1' $NET && grep -q '8.8.8.8 8.8.4.4' $NET"
+# A DNS change that leaves the old answers cached looks like it did nothing.
+check "it flushes the cache"      "grep -q 'dscacheutil -flushcache' $NET && grep -q 'killall -HUP mDNSResponder' $NET"
+# The service carrying the default route, not whichever is listed first.
+check "it picks the routed service" "grep -q 'route -n get default' $NET"
+check "speedtest uses the built-in" "grep -q 'networkQuality' $NET"
+# Comments stripped: the header says out loud which tools it deliberately does
+# not need, and that sentence is not a dependency.
+no_speedtest_dependency() {
+  ! grep -vE '^[[:space:]]*#' "$NET" | grep -qE 'speedtest-cli|fast-cli|speedtest\.net'
+}
+check "no speedtest-cli dependency" no_speedtest_dependency
+
+# Since macOS 14 the SSID is location data, and a terminal without Location
+# Services permission is told "<redacted>" on a Mac that is plainly connected.
+check "a redacted ssid is not a name" "grep -q 'redacted' $NET"
+check "it says why, and what to do"   "omacos-network qr 2>&1 | grep -q 'Location' || omacos-network qr 2>&1 | grep -q 'ssid'"
+check "an unknown network fails clean" "! omacos-network password NoSuchNetworkHere12345 2>/dev/null"
+
+# The QR payload is a format every phone camera parses, and its separators are
+# legal characters in both an SSID and a password.
+check "the wifi payload is escaped" "grep -q 'escape' $NET && grep -qF 'WIFI:S:' $NET"
+check "the helper can draw one"     "test -x $OMACOS_STATE/bin/omacos-helper && $OMACOS_STATE/bin/omacos-helper qr hello | grep -q . || true"
+qr_is_black_on_white() {
+  local helper="$OMACOS_STATE/bin/omacos-helper"
+  [[ -x $helper ]] || return 0   # nothing built on CI
+  # Explicit colours, or a dark terminal renders it inverted and phones refuse it.
+  "$helper" qr "hello" | grep -q $'\033\[30;47m'
+}
+check "a QR is drawn black on white" qr_is_black_on_white
+
 printf '\n\033[1mFonts\033[0m\n'
 FONTSTATE="$OMACOS_STATE/current"
 check "font list names families"  "omacos-font-list | grep -q ."

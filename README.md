@@ -54,6 +54,7 @@ omacos reminder 7 'Tea ready'
 omacos toggle idle|bar|gaps|dnd|nightlight|audio-output|menubar
 omacos snapshot create|list|restore|delete   # Time Machine, without the disk
 omacos font list|set|current    # one font for the terminal and the bar
+omacos network speedtest|dns|qr # how fast, which DNS, share the Wi-Fi
 omacos feature enable desktop | apps
 omacos setup signing            # git commit signing via 1Password
 omacos setup touchid            # sudo takes your fingerprint

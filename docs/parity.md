@@ -59,7 +59,7 @@ how a port ends up claiming things it cannot do.
 | 32 | Shell plugins | differs | zsh, not bash. The extension point is `~/.config/zsh/local.zsh`. |
 | 33 | Monitors | n/a | Scaling, mirroring, arrangement and brightness are macOS's, and it is better at them. **Open:** a single text-size knob across terminal and bar. |
 | 34 | Keyboard, mouse, trackpad | n/a | System Settings. `omacos setup capslock` is the one thing worth scripting. |
-| 35 | Networking | n/a | macOS owns Wi-Fi and Ethernet. **Open, and all easy:** `networkQuality` is a built-in speed test, `networksetup` sets DNS, and sharing Wi-Fi by QR code is a real convenience. |
+| 35 | Networking | done | macOS owns the radio. What the chapter does on top of it is here: `omacos network speedtest` (the built-in `networkQuality`, no account and nothing to install), `dns` with Cloudflare, Google and Quad9 by name on whichever service holds the default route, and `qr` to put someone on the Wi-Fi without reading a password out. The SSID has to be typed: since macOS 14 it is location data and a terminal is told `<redacted>`. Band pinning and the firewall are macOS's. |
 | 36 | System sleep | differs | Suspend and hibernation are macOS's business. **Open:** Low Power Mode as a toggle, which is the closest thing to power profiles. |
 | 37 | Hardware authentication | done | The lock screen and system prompts take Touch ID on their own. `omacos setup touchid` adds the third, `sudo`, in `/etc/pam.d/sudo_local` — and installs `pam_reattach` so it also works inside tmux, where it otherwise silently falls back to a password. That module sits in a user-writable Homebrew prefix, which the command says out loud; `--no-tmux` skips it. Fido2 is n/a. |
 | 38 | Fonts | done | `omacos font set` changes the terminal and the bar together, through a generated file each one loads — so it never rewrites a config you own. `omacos app list font` carries the same six Nerd Fonts Omarchy offers plus Hack and Iosevka. `omacos font list` reads the font files themselves, because nothing else on macOS can see a font Homebrew installed. |
@@ -84,15 +84,15 @@ how a port ends up claiming things it cannot do.
 
 Ranked by what you would notice:
 
-1. **Networking odds and ends** (ch 35) — speed test, DNS, Wi-Fi QR. All native, all small.
-2. **QR decode** (ch 12) — the Vision framework already does OCR for `omacos capture text`; barcodes are the same API.
-3. **Transcode** (ch 12) — `sips` and ffmpeg.
-4. **Update-available badge** (ch 05, 30).
-5. **Low Power Mode** (ch 36), **a seeded `starship.toml`** (ch 40), **a debug bundle** (ch 45).
-6. **`tldr`, `yt-dlp`, `try`** (ch 19) — three packages, not a feature.
+1. **QR decode** (ch 12) — the Vision framework already does OCR for `omacos capture text`; barcodes are the same API.
+2. **Transcode** (ch 12) — `sips` and ffmpeg.
+3. **Update-available badge** (ch 05, 30).
+4. **Low Power Mode** (ch 36), **a seeded `starship.toml`** (ch 40), **a debug bundle** (ch 45).
+5. **`tldr`, `yt-dlp`, `try`** (ch 19) — three packages, not a feature.
 
 *Shell functions (ch 20), Touch ID for `sudo` (ch 37), the bar indicators
-(ch 05, 13) and fonts (ch 38) used to head this list. All four are done.*
+(ch 05, 13), fonts (ch 38) and networking (ch 35) used to head this list.
+All five are done.*
 
 **One thing that cannot be done, rather than has not been.** Omarchy's
 indicators widget shows Do Not Disturb. macOS keeps Focus state under
