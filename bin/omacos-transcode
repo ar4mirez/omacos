@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# omacos:summary=Shrink a picture or a video before you send it
+# omacos:args=[file] [format] [size]
+# omacos:examples=omacos transcode | omacos transcode ~/Movies/demo.mov mp4 1080p
+#
+# A 4K screen recording or a raw HEIC off a phone is usually too big to just
+# send. This is the same three questions Omarchy asks — which file, which
+# format, how big — answered with what macOS already has: sips for pictures and
+# avconvert for video. No ffmpeg, no Homebrew, nothing to install.
+#
+# The result lands beside the original with the size in its name, and goes on
+# the clipboard as a file, so pasting into Mail attaches it.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+# Where things worth shrinking actually are. Downloads and Desktop as well as
+# Omarchy's two, because that is where a file someone sent you lands.
+read -r -a search_dirs <<<"${OMACOS_TRANSCODE_DIRS:-$HOME/Pictures $HOME/Movies $HOME/Downloads $HOME/Desktop}"
+
+IMAGE_EXT='jpg|jpeg|png|heic|heif|tiff|gif|bmp'
+VIDEO_EXT='mov|mp4|m4v|avi|mkv|webm'
+
+is_image() { [[ ${1##*.} =~ ^(${IMAGE_EXT//|/|})$ ]]; }
+
+pick_file() {
+  local -a found
+  local dir
+  for dir in "${search_dirs[@]}"; do
+    [[ -d $dir ]] || continue
+    # Two levels deep: enough for Pictures/2026/, not enough to walk a Photos
+    # library of a hundred thousand files.
+    while IFS= read -r line; do found+=("$line"); done < <(
+      find "$dir" -maxdepth 2 -type f 2>/dev/null \
+        | grep -iE "\.($IMAGE_EXT|$VIDEO_EXT)$" || true)
+  done
+  ((${#found[@]})) || { echo "Nothing to transcode in ${search_dirs[*]}" >&2; return 1; }
+  # Newest first: the thing you want to shrink is nearly always the thing you
+  # just made.
+  printf '%s\n' "${found[@]}" \
+    | xargs -I{} stat -f '%m	%N' {} 2>/dev/null \
+    | sort -rn | cut -f2- \
+    | gum filter --placeholder "file to shrink" --height 14
+}
+
+source_file=${1:-}
+if [[ -z $source_file ]]; then
+  if [[ ! -t 0 ]]; then exec omacos-launch-tui "omacos-transcode"; fi
+  command -v gum >/dev/null 2>&1 || { echo "usage: omacos transcode <file> <format> <size>" >&2; exit 1; }
+  source_file=$(pick_file) || exit 1
+  [[ -n $source_file ]] || exit 0
+fi
+[[ -f $source_file ]] || { echo "No such file: $source_file" >&2; exit 1; }
+
+format=${2:-}
+size=${3:-}
+
+if is_image "$source_file"; then
+  [[ -n $format ]] || format=$(printf 'jpg\npng\nheic\n' | gum choose --header "Format") || exit 0
+  [[ -n $size ]] || size=$(printf 'high\nmedium\nlow\n' | gum choose --header "Size") || exit 0
+  # The same caps Omarchy uses, so a picture crosses between the two the same.
+  case $size in
+    high)   width=3160 ;;
+    medium) width=2160 ;;
+    low)    width=1080 ;;
+    *) echo "Size must be high, medium or low." >&2; exit 1 ;;
+  esac
+  case $format in
+    jpg|jpeg) sips_format=jpeg ;;
+    png)      sips_format=png ;;
+    heic)     sips_format=heic ;;
+    *) echo "Format must be jpg, png or heic." >&2; exit 1 ;;
+  esac
+  output="${source_file%.*}-${size}.${format}"
+  # --resampleWidth only ever shrinks here because it caps: a picture narrower
+  # than the cap is converted and left at its own width.
+  current=$(sips -g pixelWidth "$source_file" 2>/dev/null | awk '/pixelWidth/ {print $2}')
+  if [[ -n ${current:-} ]] && ((current < width)); then width=$current; fi
+  sips -s format "$sips_format" --resampleWidth "$width" "$source_file" --out "$output" >/dev/null 2>&1 || {
+    echo "sips could not convert that file." >&2; exit 1; }
+else
+  [[ -n $format ]] || format=$(printf 'mp4\n' | gum choose --header "Format") || exit 0
+  [[ -n $size ]] || size=$(printf '4k\n1080p\n720p\n' | gum choose --header "Size") || exit 0
+  case $size in
+    4k)    preset=Preset3840x2160 ;;
+    1080p) preset=Preset1920x1080 ;;
+    720p)  preset=Preset1280x720 ;;
+    *) echo "Size must be 4k, 1080p or 720p." >&2; exit 1 ;;
+  esac
+  [[ $format == mp4 ]] || {
+    # Omarchy also offers an animated gif. avconvert cannot make one and
+    # nothing else here can either, so this says so rather than pretending.
+    echo "Only mp4 here: avconvert makes no animated gifs, and omacos will not" >&2
+    echo "install ffmpeg behind your back to change that." >&2
+    exit 1; }
+  output="${source_file%.*}-${size}.mp4"
+  printf '\033[2mTranscoding, which takes a while for a long video…\033[0m\n'
+  avconvert --source "$source_file" --output "$output" --preset "$preset" --replace >/dev/null 2>&1 || {
+    echo "avconvert could not convert that file." >&2; exit 1; }
+fi
+
+[[ -f $output ]] || { echo "Nothing was written." >&2; exit 1; }
+
+before=$(stat -f %z "$source_file"); after=$(stat -f %z "$output")
+human() { awk -v b="$1" 'BEGIN { split("B KB MB GB", u, " "); i=1
+  while (b >= 1024 && i < 4) { b /= 1024; i++ }; printf (i<=2 ? "%.0f %s" : "%.1f %s"), b, u[i] }'; }
+
+helper="$OMACOS_STATE/bin/omacos-helper"
+if [[ -x $helper ]]; then
+  "$helper" copy-file "$output" >/dev/null 2>&1 || true
+fi
+
+printf '\033[32m%s\033[0m\n' "${output/#$HOME/\~}"
+
+if ((after >= before)); then
+  # The whole point is a file small enough to send, so a bigger one is a
+  # failure to report rather than a result to announce. It happens when the
+  # source is already smaller than the size asked for, or already in a more
+  # efficient codec than the one that comes out — an HEVC clip re-encoded to
+  # H.264 grows even at identical dimensions.
+  printf '\033[33m%s → %s. That is bigger, not smaller.\033[0m\n' "$(human "$before")" "$(human "$after")"
+  printf '\033[2mThe original was already smaller than this size, or in a more\n'
+  printf 'efficient codec. It is untouched — send that one instead.\033[0m\n'
+else
+  printf '\033[2m%s → %s, and on the clipboard as a file.\033[0m\n' "$(human "$before")" "$(human "$after")"
+fi

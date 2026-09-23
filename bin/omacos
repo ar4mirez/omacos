@@ -53,6 +53,7 @@ declare -A GROUP_DESCRIPTIONS=(
   [snapshot]="System snapshots you can roll back to"
   [system]="What this machine is"
   [network]="Speed test, DNS, and the Wi-Fi"
+  [transcode]="Shrink a picture or a video"
 )
 
 # ---------------------------------------------------------------- metadata ---

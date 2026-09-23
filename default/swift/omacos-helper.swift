@@ -10,6 +10,9 @@
 //                               entry NUL-terminated
 //   omacos-helper fonts         font families you could set, one per line
 //   omacos-helper qr <text>     a QR code drawn in the terminal
+//   omacos-helper copy-file <path>
+//                               put a file on the clipboard as a file, so
+//                               pasting into Mail or Finder attaches it
 //   omacos-helper qr-decode <image>
 //                               read a QR code; the value goes to the
 //                               clipboard, marked concealed, and is never
@@ -251,12 +254,37 @@ func decodeQR(path: String) {
     }
 }
 
+// Put a file on the pasteboard as a *file*, not as its path.
+//
+// Omarchy copies a file:// URI, which is what a Linux app that takes file
+// drops expects. On macOS the equivalent is the file's URL on the pasteboard:
+// paste into Mail and it attaches, into Finder and it copies, into a text
+// field and you still get the path. Writing the path as text does none of that.
+func copyFile(path: String) {
+    let url = URL(fileURLWithPath: path)
+    guard FileManager.default.fileExists(atPath: url.path) else { die("no such file: \(path)") }
+    // One item carrying both: the file URL, which is what Mail and Finder read,
+    // and the path as plain text, so pasting into a text field is not silence.
+    let item = NSPasteboardItem()
+    item.setString(url.absoluteString, forType: .fileURL)
+    item.setString(url.path, forType: .string)
+    let pasteboard = NSPasteboard.general
+    pasteboard.clearContents()
+    guard pasteboard.writeObjects([item]) else { die("could not write the pasteboard") }
+    print(url.path)
+}
+
 switch CommandLine.arguments.dropFirst().first {
 case "ocr":
     guard CommandLine.arguments.count > 2 else { die("usage: omacos-helper ocr <image>") }
     ocr(path: CommandLine.arguments[2])
 case "color":
     pickColor()
+case "copy-file":
+    guard let path = CommandLine.arguments.dropFirst(2).first else {
+        die("usage: omacos-helper copy-file <path>")
+    }
+    copyFile(path: path)
 case "qr-decode":
     guard let path = CommandLine.arguments.dropFirst(2).first else {
         die("usage: omacos-helper qr-decode <image>")
@@ -274,5 +302,5 @@ case "clipboard":
 default:
     // Every subcommand, not the two it launched with. A usage line that stops
     // being updated is how you end up believing a working binary is stale.
-    die("usage: omacos-helper <ocr <image>|color|clipboard|fonts|qr <text>|qr-decode <image>>")
+    die("usage: omacos-helper <ocr <image>|color|clipboard|fonts|qr <text>|qr-decode <image>|copy-file <path>>")
 }

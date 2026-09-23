@@ -579,6 +579,71 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mTranscode\033[0m\n'
+TR="$OMACOS_PATH/bin/omacos-transcode"
+check "it is bound to a key"  "grep -q '^alt-ctrl-period |.*omacos-transcode' $OMACOS_PATH/config/omacos/keymap.conf"
+check "it is in the menu"     "jq -e '.\"capture.transcode\"' $OMACOS_PATH/default/menu.json"
+# sips and avconvert both ship with macOS. Needing ffmpeg would make this the
+# one capture command with a dependency.
+check "pictures go through sips"      "grep -q 'sips -s format' $TR"
+check "video goes through avconvert"  "grep -q 'avconvert --source' $TR"
+no_ffmpeg_dependency() {
+  # Comments and messages both mention it — the command explains why it will
+  # not install ffmpeg. Depending on it would mean running it.
+  ! grep -vE '^[[:space:]]*#|echo |printf ' "$TR" | grep -qE '\bffmpeg\b'
+}
+check "no ffmpeg dependency"  no_ffmpeg_dependency
+check "the caps match Omarchy's" "grep -q '3160' $TR && grep -q '2160' $TR && grep -q '1080' $TR"
+check "bad size is rejected"  "! omacos-transcode /etc/hosts jpg enormous 2>/dev/null"
+check "a missing file is rejected" "! omacos-transcode /nope/nothing.png jpg low 2>/dev/null"
+
+# A transcoder that quietly hands back a bigger file is worse than useless: it
+# happens whenever the source is already smaller, or in a better codec.
+check "growth is reported, not hidden" "grep -q 'bigger, not smaller' $TR"
+
+transcode_shrinks_a_picture() {
+  local dir; dir=$(mktemp -d)
+  # A 2000x1200 PNG, written without any image library.
+  python3 - "$dir/in.png" <<'PYEOF'
+import sys, zlib, struct
+w, h = 2000, 1200
+raw = b"".join(b"\x00" + bytes([(x * 7 + y * 3) % 256 for x in range(w) for _ in (0,)]) for y in range(h))
+def chunk(t, d):
+    c = t + d
+    return struct.pack(">I", len(d)) + c + struct.pack(">I", zlib.crc32(c) & 0xffffffff)
+png = (b"\x89PNG\r\n\x1a\n"
+       + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 0, 0, 0, 0))
+       + chunk(b"IDAT", zlib.compress(raw, 6))
+       + chunk(b"IEND", b""))
+open(sys.argv[1], "wb").write(png)
+PYEOF
+  [[ -s $dir/in.png ]] || { rm -rf "$dir"; return 1; }
+  omacos-transcode "$dir/in.png" jpg low >/dev/null 2>&1 || { rm -rf "$dir"; return 1; }
+  local out="$dir/in-low.jpg" width format
+  [[ -f $out ]] || { rm -rf "$dir"; return 1; }
+  # The low cap is 1080 wide and the source is 2000, so this is the promise.
+  # Not the file size: that depends on the picture, and a smooth gradient is
+  # smaller as a PNG than as any JPEG of it.
+  width=$(sips -g pixelWidth "$out" 2>/dev/null | awk '/pixelWidth/ {print $2}')
+  format=$(sips -g format "$out" 2>/dev/null | awk '/format:/ {print $2}')
+  rm -rf "$dir"
+  [[ $width == 1080 && $format == jpeg ]]
+}
+check "a picture is capped and converted" transcode_shrinks_a_picture
+
+# The output goes on the pasteboard as a file, so pasting into Mail attaches it
+# rather than typing its path.
+check "the result is copied as a file" "grep -q 'copy-file' $TR"
+copy_file_puts_a_real_file_on_the_pasteboard() {
+  local helper="$OMACOS_STATE/bin/omacos-helper"
+  [[ -x $helper ]] || return 0
+  local f="$sandbox/pasteme.txt"; echo hi > "$f"
+  "$helper" copy-file "$f" >/dev/null || return 1
+  # Both: the file for Mail and Finder, the path for a text field.
+  [[ $(pbpaste) == "$f" ]]
+}
+check "copy-file carries path and file" copy_file_puts_a_real_file_on_the_pasteboard
+
 printf '\n\033[1mQR decode\033[0m\n'
 QRC="$OMACOS_PATH/bin/omacos-capture-qr"
 HELPER="$OMACOS_STATE/bin/omacos-helper"

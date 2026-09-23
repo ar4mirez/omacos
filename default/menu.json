@@ -365,6 +365,11 @@
     "label": "Read a QR code",
     "action": "omacos-capture-qr"
   },
+  "capture.transcode": {
+    "icon": "◱",
+    "label": "Shrink a picture or video",
+    "action": "omacos-transcode"
+  },
   "capture.url": {
     "icon": "⚭",
     "label": "Copy the browser's URL",
