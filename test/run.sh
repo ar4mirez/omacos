@@ -626,6 +626,15 @@ check "position is not hardcoded"  "! grep -qE '^ +position=top' $OMACOS_PATH/co
 check "transparent is a colour"    "grep -q '0x00000000' $OMACOS_PATH/config/sketchybar/sketchybarrc"
 # macOS draws a menu bar at the top too; two rows there looks like a bug.
 check "doctor names the two bars"  "grep -q 'Two bars at the top' $OMACOS_PATH/bin/omacos-doctor"
+# doctor had the same bug as the toggle: it read the preference, which says
+# hidden while the bar is on screen, so it reported one bar when there were two.
+check "doctor measures the menu bar" "grep -q 'omacos-helper\" menubar' $OMACOS_PATH/bin/omacos-doctor"
+doctor_does_not_read_the_pref() {
+  # Comments stripped: the line explaining why the preference is not read is
+  # not a read of it. (This is the fourth time in this suite.)
+  ! grep -vE '^[[:space:]]*#' "$OMACOS_PATH/bin/omacos-doctor" | grep -q '_HIHideMenuBar'
+}
+check "doctor does not read the pref" doctor_does_not_read_the_pref
 check "it offers both ways out"    "grep -q 'toggle menubar' $OMACOS_PATH/bin/omacos-doctor && grep -q 'bar position bottom' $OMACOS_PATH/bin/omacos-doctor"
 
 printf '\n\033[1mRestarts and the battery hook\033[0m\n'

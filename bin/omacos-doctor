@@ -223,11 +223,14 @@ else
   # Two bars stacked at the top is the one thing about this desktop that looks
   # like a mistake rather than a choice — macOS draws its menu bar there and
   # omacos draws another underneath. Both ways out are one command.
+  # Measured, not read back: _HIHideMenuBar reports what was asked for, and
+  # macOS only acts on it at login — so the preference says hidden while the
+  # bar is plainly on screen. The helper looks for the menu bar's own window.
   bar_position=$(omacos-bar position 2>/dev/null || echo top)
-  menubar_hidden=$(defaults read NSGlobalDomain _HIHideMenuBar 2>/dev/null || echo 0)
-  if [[ $bar_position == top && $menubar_hidden != 1 ]]; then
+  menubar_state=$("$OMACOS_STATE/bin/omacos-helper" menubar 2>/dev/null || echo unknown)
+  if [[ $bar_position == top && $menubar_state == visible* ]]; then
     note "Two bars at the top of the screen" \
-      "Hide one: omacos toggle menubar — or move ours: omacos bar position bottom"
+      "omacos bar position bottom — or omacos toggle menubar, which needs a log out"
   else
     ok "One bar at a time"
   fi
