@@ -30,8 +30,9 @@ omacos refresh config ghostty/config.ghostty   # take a newer default, with a di
 
 See [docs/architecture.md](docs/architecture.md) for why it works this way,
 [docs/coming-from-macos.md](docs/coming-from-macos.md) for what changes on a Mac
-you already know how to use, and [docs/navigation.md](docs/navigation.md) for
-driving the desktop from the keyboard.
+you already know how to use, [docs/navigation.md](docs/navigation.md) for
+driving the desktop from the keyboard, and [docs/parity.md](docs/parity.md) for
+where this stands against Omarchy's manual, chapter by chapter.
 
 ## Commands
 

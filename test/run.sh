@@ -564,6 +564,28 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mWeather location\033[0m\n'
+# Omarchy pins the weather to a place when IP geolocation guesses wrong. The
+# answer belongs in local.env with every other "which one do you want".
+check "location defaults to your IP" \
+  "omacos-notice location | grep -q 'IP address'"
+check "a place can be pinned" \
+  "omacos-notice location Malibu >/dev/null && grep -q '^OMACOS_WEATHER_LOCATION=Malibu' $OMACOS_CONFIG/local.env"
+check "it reads back" \
+  "omacos-notice location | grep -q 'Weather location: Malibu'"
+check "coordinates win over the name" \
+  "omacos-notice location Malibu 34.0259,-118.7798 >/dev/null && grep -q '34.0259' $OMACOS_CONFIG/local.env"
+# --clear has to remove the line, not blank it: `KEY=''` reads as a setting
+# somebody made, and it is the one thing an empty value is supposed to undo.
+check "clearing removes the line" \
+  "omacos-notice location --clear >/dev/null && ! grep -q OMACOS_WEATHER_LOCATION $OMACOS_CONFIG/local.env"
+check "clearing twice is harmless" \
+  "omacos-notice location --clear >/dev/null && omacos-notice location --clear >/dev/null"
+check "clearing leaves the rest alone" \
+  "grep -q '^WORK_DIR=' $OMACOS_CONFIG/local.env"
+check "a reminder listing is bound" \
+  "grep -q '^alt-ctrl-cmd-r |.*omacos-reminder list' $OMACOS_PATH/config/omacos/keymap.conf"
+
 printf '\n\033[1mSystem info\033[0m\n'
 SYSINFO=$(omacos-system-info --plain 2>/dev/null)
 check "the panel renders"        "test -n \"\$SYSINFO\""

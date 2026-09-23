@@ -37,6 +37,17 @@ local_env_set() {
   mv "$tmp" "$LOCAL_ENV"
 }
 
+# Remove a key outright, rather than leaving `KEY=''` behind. An empty
+# assignment and an absent one mean the same thing to every reader, but only
+# one of them reads as a setting you never made.
+local_env_unset() {
+  local key=$1 tmp
+  [[ -f $LOCAL_ENV ]] || return 0
+  tmp=$(mktemp)
+  grep -vE "^[[:space:]]*(export[[:space:]]+)?$key=" "$LOCAL_ENV" > "$tmp" || true
+  mv "$tmp" "$LOCAL_ENV"
+}
+
 # The catalog entry in <category> whose id ends in <name>, so `omacos default
 # browser firefox` finds browser.firefox without the caller spelling the id.
 default_entry_for() {

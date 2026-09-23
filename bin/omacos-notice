@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # omacos:summary=Show time, battery or weather as a notification
-# omacos:args=<time|battery|weather>
-# omacos:examples=omacos notice time | omacos notice battery
+# omacos:args=<time|battery|weather> | location [<place> [lat,lon]] | location --clear
+# omacos:examples=omacos notice time | omacos notice location Malibu
 #
 # A glance without a status bar. Each notice also prints to stdout, so the same
 # command is useful from a shell and from a hotkey.
 set -euo pipefail
 . "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+# shellcheck source=/dev/null
+. "$OMACOS_PATH/default/lib/defaults.sh"
 
 what=${1:-}
 
@@ -31,9 +33,38 @@ notice_battery() {
   printf 'Battery %s\037%s%s\n' "$percent" "$source" "${remaining:+, $remaining}"
 }
 
+# wttr.in geolocates by IP, which lands within a city or two of most people and
+# nowhere near some. The override is recorded in local.env, where every other
+# "which one do you want" answer already lives.
+weather_location() {
+  case ${1:-} in
+    "")
+      local current; current=$(local_env_get OMACOS_WEATHER_LOCATION)
+      if [[ -n $current ]]; then
+        printf 'Weather location: %s\n' "$current"
+      else
+        printf 'Weather location is detected from your IP address.\n'
+      fi
+      ;;
+    --clear)
+      local_env_unset OMACOS_WEATHER_LOCATION
+      printf 'Back to detecting your location from your IP address.\n'
+      ;;
+    *)
+      # "Malibu" alone is a guess wttr.in has to resolve; adding coordinates
+      # makes it exact. Both are one value to wttr.in, so they are stored as one.
+      local place=$1 coordinates=${2:-}
+      local_env_set OMACOS_WEATHER_LOCATION "${coordinates:-$place}"
+      printf 'Weather location: \033[32m%s\033[0m\n' "${coordinates:-$place}"
+      [[ -n $coordinates ]] || printf '\033[2mAdd coordinates to be exact: omacos notice location %s 34.0259,-118.7798\033[0m\n' "$place"
+      ;;
+  esac
+}
+
 notice_weather() {
   local location report
-  location=${OMACOS_WEATHER_LOCATION:-}
+  # The environment still wins, so a shell can override without editing a file.
+  location=${OMACOS_WEATHER_LOCATION:-$(local_env_get OMACOS_WEATHER_LOCATION)}
   # format=4 is "location: condition temp, wind" on one line.
   if ! report=$(curl -fsS --max-time 5 "https://wttr.in/${location}?format=4" 2>/dev/null); then
     printf 'Weather\037Could not reach wttr.in.\n'
@@ -46,7 +77,10 @@ case $what in
   time)    line=$(notice_time) ;;
   battery) line=$(notice_battery) ;;
   weather) line=$(notice_weather) ;;
-  *) echo "usage: omacos notice <time|battery|weather>" >&2; exit 1 ;;
+  # Not a notice: it decides what the weather notice will say. Exits here
+  # rather than falling through to the notification below.
+  location) shift; weather_location "$@"; exit 0 ;;
+  *) echo "usage: omacos notice <time|battery|weather|location>" >&2; exit 1 ;;
 esac
 
 title=${line%%$'\037'*}
