@@ -612,6 +612,10 @@ valid_titlebar_value() {
   [[ -z $out ]]
 }
 check "ghostty accepts hidden"          valid_titlebar_value
+# Ghostty applies this one to new windows only, unlike the font settings which
+# do update a running terminal. Advising a reload is advising a non-event.
+check "it does not promise a reload"    "! grep -q 'Reload Config' $TB"
+check "it says new window"              "grep -q 'new window' $TB"
 
 printf '\n\033[1mFont size\033[0m\n'
 check "size reads back"        "omacos-font-current --size | grep -qE '^[0-9]+$'"

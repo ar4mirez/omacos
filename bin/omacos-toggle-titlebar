@@ -58,8 +58,13 @@ warn_if_not_included() {
   printf 'which omacos never writes.)\033[0m\n' >&2
 }
 
+# Not the same advice as the font settings, which do update a running terminal
+# on reload. Ghostty's own documentation for this one says: "Changing this
+# option at runtime only applies to new windows." Telling someone to reload is
+# telling them to watch nothing happen.
 reloaded() {
-  printf '\033[2mGhostty applies it on Cmd-Shift-, (Reload Config), or in a new window.\033[0m\n'
+  printf '\033[2mOpen a new window to see it — Ghostty only applies this one to new\n'
+  printf 'windows, so reloading the config leaves the ones you have alone.\033[0m\n'
 }
 
 case ${1:-toggle} in
