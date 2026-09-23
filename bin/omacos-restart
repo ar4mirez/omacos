@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# omacos:summary=Restart Wi-Fi, Bluetooth or audio without rebooting
+# omacos:args=<wifi|bluetooth|audio>
+# omacos:examples=omacos restart wifi | omacos restart audio
+#
+# Omarchy's answer to "it worked five minutes ago": reload the one subsystem
+# rather than the machine. A Bluetooth headset that will not reconnect, sound
+# that vanished when a monitor was unplugged, Wi-Fi that is associated and
+# carrying nothing — all of them clear up without a reboot.
+set -euo pipefail
+. "$(dirname -- "${BASH_SOURCE[0]}")/../default/env-bootstrap"
+
+needs_sudo() {
+  sudo -n true 2>/dev/null && return 0
+  [[ -t 0 || -n ${SUDO_ASKPASS:-} ]] && return 0
+  echo "Restarting $1 needs sudo, and there is no terminal here to ask on." >&2
+  echo "Run it in a terminal window: omacos restart $1" >&2
+  exit 1
+}
+
+wifi() {
+  local device
+  device=$(networksetup -listallhardwareports 2>/dev/null \
+    | awk '/Hardware Port: Wi-Fi/ {getline; print $2; exit}')
+  [[ -n $device ]] || { echo "No Wi-Fi hardware on this Mac." >&2; exit 1; }
+  # No sudo: the power switch is the user's to flip.
+  printf 'Turning %s off…\n' "$device"
+  networksetup -setairportpower "$device" off
+  sleep 2
+  networksetup -setairportpower "$device" on
+  printf '\033[32mWi-Fi restarted.\033[0m It takes a few seconds to rejoin.\n'
+}
+
+bluetooth() {
+  if command -v blueutil >/dev/null 2>&1; then
+    # The clean way, when it is there: no root, and the daemon is left alone.
+    blueutil --power 0
+    sleep 2
+    blueutil --power 1
+    printf '\033[32mBluetooth restarted.\033[0m\n'
+    return 0
+  fi
+  needs_sudo bluetooth
+  # launchd brings bluetoothd straight back, which is the restart.
+  sudo pkill bluetoothd 2>/dev/null || true
+  printf '\033[32mBluetooth restarted.\033[0m\n'
+  printf '\033[2mFor a version that does not need sudo: brew install blueutil\033[0m\n'
+}
+
+audio() {
+  needs_sudo audio
+  # Same shape: coreaudiod is restarted by launchd the moment it dies, and
+  # every app reattaches to the new one.
+  sudo killall coreaudiod 2>/dev/null || true
+  printf '\033[32mAudio restarted.\033[0m\n'
+  printf '\033[2mIf something is still silent, check the output device.\033[0m\n'
+}
+
+case ${1:-} in
+  wifi)      wifi ;;
+  bluetooth) bluetooth ;;
+  audio)     audio ;;
+  *) echo "usage: omacos restart <wifi|bluetooth|audio>" >&2; exit 1 ;;
+esac

@@ -55,6 +55,8 @@ declare -A GROUP_DESCRIPTIONS=(
   [network]="Speed test, DNS, and the Wi-Fi"
   [transcode]="Shrink a picture or a video"
   [debug]="What a bug report needs"
+  [bar]="Where the omacos bar sits"
+  [restart]="Restart a subsystem, not the machine"
 )
 
 # ---------------------------------------------------------------- metadata ---

@@ -579,6 +579,42 @@ check "pinning is bound"        "grep -q '^alt-o |.*omacos-window-pin$' $KEYMAP"
 check "pins are carried on a workspace change" "grep -q 'omacos-window-follow-pinned' $BASE"
 check "pins are dropped at startup"            "grep -q 'omacos-window-pin clear' $BASE"
 
+printf '\n\033[1mThe bar, and the other bar\033[0m\n'
+BAR="$OMACOS_PATH/bin/omacos-bar"
+check "position defaults to top"   "test \"\$(omacos-bar position)\" = top"
+check "it moves"                   "omacos-bar position bottom >/dev/null && test \"\$(omacos-bar position)\" = bottom"
+check "and moves back"             "omacos-bar position top >/dev/null && test \"\$(omacos-bar position)\" = top"
+check "a bad edge is refused"      "! omacos-bar position sideways 2>/dev/null"
+check "transparency toggles"       "omacos-bar transparent on >/dev/null && omacos-bar transparent status && omacos-bar transparent off >/dev/null && ! omacos-bar transparent status"
+# Position lives in a generated file the seeded rc sources, so moving the bar
+# never rewrites a config that is yours.
+check "the rc reads the setting"   "grep -q 'current/bar.sh' $OMACOS_PATH/config/sketchybar/sketchybarrc"
+check "position is not hardcoded"  "! grep -qE '^ +position=top' $OMACOS_PATH/config/sketchybar/sketchybarrc"
+check "transparent is a colour"    "grep -q '0x00000000' $OMACOS_PATH/config/sketchybar/sketchybarrc"
+# macOS draws a menu bar at the top too; two rows there looks like a bug.
+check "doctor names the two bars"  "grep -q 'Two bars at the top' $OMACOS_PATH/bin/omacos-doctor"
+check "it offers both ways out"    "grep -q 'toggle menubar' $OMACOS_PATH/bin/omacos-doctor && grep -q 'bar position bottom' $OMACOS_PATH/bin/omacos-doctor"
+
+printf '\n\033[1mRestarts and the battery hook\033[0m\n'
+RS="$OMACOS_PATH/bin/omacos-restart"
+check "it states its usage"        "! omacos-restart 2>/dev/null && omacos-restart 2>&1 | grep -q 'wifi|bluetooth|audio'"
+check "an unknown subsystem fails" "! omacos-restart printer 2>/dev/null"
+# Wi-Fi power is the user's own switch; asking for root to flip it is wrong.
+check "wifi needs no sudo"         "! grep -qE 'sudo .*(setairportpower)' $RS"
+check "bluetooth prefers blueutil" "grep -q 'blueutil --power' $RS"
+check "audio restarts coreaudiod"  "grep -q 'killall coreaudiod' $RS"
+check "no terminal is explained"   "grep -q 'no terminal here to ask on' $RS"
+
+BATT="$OMACOS_PATH/config/sketchybar/plugins/battery.sh"
+check "the battery fires a hook"   "grep -q 'omacos-hook battery-low' $BATT"
+# Edge-triggered, or a hook runs every two minutes until you find a charger.
+check "it fires once per crossing" "grep -q 'battery-low-fired' $BATT"
+check "charging clears the marker" "grep -q 'rm -f \"\$marker\"' $BATT"
+check "the threshold is settable"  "grep -q 'OMACOS_BATTERY_LOW' $BATT"
+check "a sample hook ships"        "test -f $OMACOS_PATH/config/omacos/hooks/battery-low.d/warn.sample"
+# The plugin calls an omacos command, so it needs the same bootstrap as the rest.
+check "the battery plugin bootstraps" "grep -q 'env-bootstrap' $BATT"
+
 printf '\n\033[1mThe last small things\033[0m\n'
 # --- the update badge -------------------------------------------------------
 UC="$OMACOS_PATH/bin/omacos-cmd-update-check"

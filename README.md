@@ -50,6 +50,8 @@ omacos keymap show|build
 omacos capture screenshot|screenrecording|text|color|qr
 omacos transcode                # shrink a picture or video before sending
 omacos debug                    # what a bug report needs, with nothing private
+omacos bar position bottom      # macOS already draws a bar at the top
+omacos restart wifi|bluetooth|audio
 omacos debug                    # what a bug report needs, with nothing private
 omacos clipboard history|clear
 omacos notice time|battery|weather

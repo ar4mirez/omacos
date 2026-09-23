@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Runs once when the battery falls below the threshold, with the percentage in
+# $1. It fires again only after the battery goes back above it — not every time
+# the bar redraws.
+#
+# Set the threshold with OMACOS_BATTERY_LOW in ~/.config/omacos/local.env.
+#
+# To activate: mv warn.sample warn && chmod +x warn
+
+omacos-cmd-notify "Battery low" "$1% — find a charger."

@@ -497,6 +497,18 @@
     "action": "omacos-toggle-menubar",
     "checked": "omacos-toggle-menubar status >/dev/null"
   },
+  "toggles.bar-position": {
+    "icon": "▤",
+    "label": "Bar at the bottom",
+    "action": "omacos-bar position \"$(omacos-bar position | grep -q bottom && echo top || echo bottom)\"",
+    "checked": "omacos-bar position | grep -q bottom"
+  },
+  "toggles.bar-transparent": {
+    "icon": "▧",
+    "label": "Transparent bar",
+    "action": "omacos-bar transparent",
+    "checked": "omacos-bar transparent status"
+  },
   "toggles.screensaver": {
     "icon": "▦",
     "label": "Start the screensaver",
@@ -678,6 +690,25 @@
     "icon": "▦",
     "label": "Share the Wi-Fi as a QR code",
     "action": "omacos-network qr; read -n 1 -s -r -p 'Press any key'"
+  },
+  "system.restart": {
+    "icon": "↻",
+    "label": "Restart something"
+  },
+  "system.restart.wifi": {
+    "icon": "◌",
+    "label": "Wi-Fi",
+    "action": "omacos-restart wifi; read -n 1 -s -r -p 'Press any key'"
+  },
+  "system.restart.bluetooth": {
+    "icon": "◌",
+    "label": "Bluetooth",
+    "action": "omacos-restart bluetooth; read -n 1 -s -r -p 'Press any key'"
+  },
+  "system.restart.audio": {
+    "icon": "◌",
+    "label": "Audio",
+    "action": "omacos-restart audio; read -n 1 -s -r -p 'Press any key'"
   },
   "system.fonts": {
     "icon": "A",

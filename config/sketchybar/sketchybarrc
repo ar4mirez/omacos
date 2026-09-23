@@ -24,12 +24,25 @@ FONT_FILE="$HOME/.local/state/omacos/current/font.sh"
 # shellcheck source=/dev/null
 [[ -f $FONT_FILE ]] && source "$FONT_FILE"
 
+# Position and transparency come from `omacos bar`, through a generated file —
+# so changing either never rewrites this file, which is yours.
+BAR_SETTINGS="$HOME/.local/state/omacos/current/bar.sh"
+# shellcheck source=/dev/null
+[[ -f $BAR_SETTINGS ]] && source "$BAR_SETTINGS"
+
+# Fully transparent is a colour, not a flag: 0x00 alpha over the theme's own.
+if [[ ${BAR_TRANSPARENT:-false} == true ]]; then
+  BAR_DRAW_COLOR=0x00000000
+else
+  BAR_DRAW_COLOR="$BAR_COLOR"
+fi
+
 sketchybar --bar height=36 \
-                 position=top \
+                 position="${BAR_POSITION:-top}" \
                  sticky=on \
                  padding_left=8 \
                  padding_right=8 \
-                 color="$BAR_COLOR"
+                 color="$BAR_DRAW_COLOR"
 
 # updates=when_shown saves power for polled items (clock, battery). Items that
 # react to events override it with updates=on — with when_shown their scripts

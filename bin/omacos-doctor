@@ -220,6 +220,18 @@ else
     note "switchaudio-osx not installed" "alt-ctrl-shift-s needs it: omacos install feature desktop"
   fi
 
+  # Two bars stacked at the top is the one thing about this desktop that looks
+  # like a mistake rather than a choice — macOS draws its menu bar there and
+  # omacos draws another underneath. Both ways out are one command.
+  bar_position=$(omacos-bar position 2>/dev/null || echo top)
+  menubar_hidden=$(defaults read NSGlobalDomain _HIHideMenuBar 2>/dev/null || echo 0)
+  if [[ $bar_position == top && $menubar_hidden != 1 ]]; then
+    note "Two bars at the top of the screen" \
+      "Hide one: omacos toggle menubar — or move ours: omacos bar position bottom"
+  else
+    ok "One bar at a time"
+  fi
+
   yours=$(grep -cE '^[a-z].*\|.*\|' "$OMACOS_CONFIG/keymap.conf" 2>/dev/null || echo 0)
   shipped=$(grep -cE '^[a-z].*\|.*\|' "$OMACOS_PATH/config/omacos/keymap.conf" 2>/dev/null || echo 0)
   if ((yours == 0)); then

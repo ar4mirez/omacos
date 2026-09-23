@@ -24,7 +24,7 @@ how a port ends up claiming things it cannot do.
 | 02 | Getting started | differs | An ISO and a partitioning wizard become `curl \| bash`. No disk to encrypt: FileVault is macOS's, and already there. |
 | 03 | Coming from Mac/Windows | done | Answered chapter-for-chapter in [coming-from-macos.md](coming-from-macos.md). |
 | 04 | Navigation | done | Answered chapter-for-chapter in [navigation.md](navigation.md), and every binding in it driven on a live desktop. Three things stay out of reach and say so there. |
-| 05 | The top bar | differs | SketchyBar, with every item answering left, right and middle click from one editable table. Omarchy's *panels* are in-bar popups; omacos opens the matching System Settings pane instead, because macOS already owns that UI. Indicators: a recording, held-off sleep, a pending reminder, Night Shift where it can be read, and an update waiting. **Open:** `bar position` / `transparent` commands. Do Not Disturb cannot be indicated at all — see below. |
+| 05 | The top bar | differs | SketchyBar, with every item answering left, right and middle click from one editable table. Omarchy's *panels* are in-bar popups; omacos opens the matching System Settings pane instead, because macOS already owns that UI. Indicators: a recording, held-off sleep, a pending reminder, Night Shift where it can be read, and an update waiting. `omacos bar position top|bottom` and `omacos bar transparent` are the same two choices Omarchy makes by dragging. Moving the bar to the bottom is also the answer to macOS drawing its own menu bar across the top. Do Not Disturb cannot be indicated at all — see below. |
 | 06 | Themes | done | 22 themes, the same count. `alt-ctrl-shift-space` picks one, `alt-ctrl-space` cycles its backgrounds. Unlock screens are n/a — the FileVault screen is not themeable. |
 | 07 | Hotkeys | done | 136 bindings, `alt-ctrl-k` shows them all. **Open** from this chapter: an emoji picker key (macOS's own needs Accessibility to trigger from a script), window transparency, save/restore window width. |
 
@@ -55,7 +55,7 @@ how a port ends up claiming things it cannot do.
 | # | Chapter | | Notes |
 |---|---|---|---|
 | 30 | Updates | differs | `omacos update` snapshots, pulls, migrates, seeds, upgrades and re-themes. Omarchy's four release channels become one: `omacos dev link` is the dev channel. The bar shows a badge when a release is waiting; the check reads one ref and caches the answer, so it costs nothing between releases. |
-| 31 | Dotfiles | done | The ownership boundary is omacos's central idea — see [architecture.md](architecture.md). Hooks fire on `post-install`, `post-update`, `theme-set` and `font-set`, with samples shipped for each. **Open:** a `battery-low` event. |
+| 31 | Dotfiles | done | The ownership boundary is omacos's central idea — see [architecture.md](architecture.md). Hooks fire on `post-install`, `post-update`, `theme-set`, `font-set` and `battery-low`, with samples shipped for each. The battery one is edge-triggered, so it runs when you cross the threshold rather than every two minutes until you find a charger. |
 | 32 | Shell plugins | differs | zsh, not bash. The extension point is `~/.config/zsh/local.zsh`. |
 | 33 | Monitors | n/a | Scaling, mirroring, arrangement and brightness are macOS's, and it is better at them. **Open:** a single text-size knob across terminal and bar. |
 | 34 | Keyboard, mouse, trackpad | n/a | System Settings. `omacos setup capslock` is the one thing worth scripting. |
@@ -74,7 +74,7 @@ how a port ends up claiming things it cannot do.
 | # | Chapter | | Notes |
 |---|---|---|---|
 | 44 | Mac support | n/a | This chapter is about running Omarchy *on* Mac hardware. omacos is the other direction. |
-| 45 | Troubleshooting | differs | `omacos doctor` reports what is actually true, and names the three things no script can do. `omacos debug` collects a report for an issue — the keys in `local.env` but never their values, and no escape codes. **Open:** one-command restarts for Wi-Fi, Bluetooth and audio. |
+| 45 | Troubleshooting | differs | `omacos doctor` reports what is actually true, and names the three things no script can do. `omacos debug` collects a report for an issue — the keys in `local.env` but never their values, and no escape codes. `omacos restart wifi|bluetooth|audio` reloads one subsystem instead of the machine. |
 | 46 | FAQ | differs | Spread across the docs rather than collected. |
 | 47 | System snapshots | done | APFS local snapshots, taken before every update, restorable through Recovery. No bootloader required, because macOS has had this the whole time. |
 | 48 | Security | differs | FileVault, Gatekeeper and the application firewall are macOS's and are on. 1Password's SSH agent holds the keys and nothing is written to `~/.ssh`. |
@@ -84,14 +84,13 @@ how a port ends up claiming things it cannot do.
 
 Ranked by what you would notice:
 
-1. **`bar position` and `transparent`** (ch 05) — Omarchy's bar can be dragged
-   to another screen edge and made transparent. SketchyBar can do both; omacos
-   exposes neither.
-2. **One-command restarts** for Wi-Fi, Bluetooth and audio (ch 45).
-3. **A `battery-low` hook event** (ch 31).
+Nothing. Every chapter is answered, deliberately different, or named below as
+something macOS will not allow.
 
-Everything else in the manual is answered, deliberately different, or named
-below as something macOS will not allow.
+What remains is not a gap but a choice macOS forces and Omarchy does not: it
+draws its own menu bar across the top of the screen, so with the omacos bar
+there too you have two. `omacos toggle menubar` hides Apple's; `omacos bar
+position bottom` moves ours. `omacos doctor` says so when both are up.
 
 *Shell functions (ch 20), Touch ID for `sudo` (ch 37), the bar indicators
 (ch 05, 13), fonts (ch 38), networking (ch 35), QR decode and transcoding
