@@ -595,6 +595,19 @@ check "an ahead tree is not behind" "grep -q 'merge-base --is-ancestor' $UC"
 # An unreachable remote is not an up-to-date machine.
 check "no network keeps the last answer" "grep -q 'unreachable remote is not an update' $UC"
 check "the bar has the item"      "grep -q 'add item update' $OMACOS_PATH/config/sketchybar/sketchybarrc"
+# sketchybar's PATH depends on how it was started, and a launchd-started bar
+# has none of omacos on it. A plugin that calls an omacos command and does not
+# bootstrap first reports "command not found" — which for the update check is
+# indistinguishable from "no update", and for a click is silence.
+plugins_calling_omacos_bootstrap_first() {
+  local plugin
+  for plugin in "$OMACOS_PATH"/config/sketchybar/plugins/*.sh; do
+    grep -qE '(^|[^-a-z])omacos-[a-z-]+' "$plugin" || continue
+    grep -q 'env-bootstrap' "$plugin" || { echo "$(basename "$plugin") calls omacos without bootstrapping"; return 1; }
+  done
+  return 0
+}
+check "bar plugins bootstrap their PATH" plugins_calling_omacos_bootstrap_first
 check "updating clears the badge" "grep -q 'update-available' $OMACOS_PATH/bin/omacos-update"
 update_check_is_quiet_without_git() {
   local dir; dir=$(mktemp -d)

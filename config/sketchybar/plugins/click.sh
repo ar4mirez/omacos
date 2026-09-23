@@ -14,6 +14,13 @@
 # The workspace items pass their number as the argument, since one script
 # serves all of them.
 
+# sketchybar does not necessarily inherit a login shell's PATH — how it was
+# started decides, and a launchd-started bar has none of it. Without this, every
+# omacos command below is "command not found", which for a click is silence and
+# for the update check is indistinguishable from "no update".
+# shellcheck source=/dev/null
+. "${OMACOS_PATH:-$HOME/.local/share/omacos}/default/env-bootstrap" 2>/dev/null || true
+
 item=${1:-${NAME:-}}
 arg=${2:-}
 
